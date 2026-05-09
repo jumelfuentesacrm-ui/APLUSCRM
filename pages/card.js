@@ -26,7 +26,8 @@ export default function CardPage({ session }) {
     setProfile(prof)
     const { data: sessionData } = await supabase.auth.getSession()
     const token = sessionData.session?.access_token
-    const res = await fetch('/api/card/me?user_id='+session.user.id)
+   const uid = session?.user?.id || ''
+const res = await fetch('/api/card/me?user_id='+uid)
     const data = await res.json()
     if (res.ok) { setCard(data.card) } 
     else { setErrMsg(data.error||'Error'); setNoCard(true) }
