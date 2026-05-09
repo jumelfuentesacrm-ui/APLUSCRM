@@ -78,7 +78,7 @@ export default function Admin({ session }) {
   const totalStamps = cards.reduce((a,c)=>a+(c.stamps||0),0)
   const withReward = cards.filter(c=>c.stamps>0&&c.stamps%5===0).length
   const redeemed = rewards.filter(r=>r.status==='Canjeado').length
-  const inp = { width:'100%', padding:'0.78rem 1rem', border:`1px solid ${gl}`, borderRadius:3, background:white, fontFamily:"'DM Sans',sans-serif", fontSize:'0.88rem', outline:'none', color:black, marginBottom:'1rem', boxSizing:'border-box' }
+  const inp = { width:'100%', padding:'0.78rem 1rem', border:`1px solid ${gl}`, borderRadius:3, background:white, fontFamily:'DM Sans,sans-serif', fontSize:'0.88rem', outline:'none', color:black, marginBottom:'1rem', boxSizing:'border-box' }
   const lbl = { fontSize:'0.56rem', letterSpacing:'0.13em', textTransform:'uppercase', color:gray, display:'block', marginBottom:'0.35rem' }
 
   if (loading) return <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'#f2f0eb',fontFamily:'sans-serif',fontSize:'0.8rem',color:gray}}>Cargando panel...</div>
@@ -86,12 +86,12 @@ export default function Admin({ session }) {
   return (
     <>
       <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,400&family=DM+Sans:wght@300;400&display=swap" rel="stylesheet"/>
-      <div style={{background:'#f2f0eb',minHeight:'100vh',fontFamily:"'DM Sans',sans-serif"}}>
+      <div style={{background:'#f2f0eb',minHeight:'100vh',fontFamily:'DM Sans,sans-serif'}}>
         <div style={{background:black,position:'fixed',top:0,left:0,right:0,zIndex:100,height:58,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 2rem'}}>
-          <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'1.15rem',color:white}}>A<span style={{color:gold,fontStyle:'italic'}}>+</span> CRM <span style={{fontSize:'0.5rem',letterSpacing:'0.16em',textTransform:'uppercase',color:'rgba(255,255,255,0.26)',marginLeft:'0.5rem',fontFamily:"'DM Sans',sans-serif"}}>Panel Administrativo</span></div>
+          <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'1.15rem',color:white}}>A<span style={{color:gold,fontStyle:'italic'}}>+</span> CRM <span style={{fontSize:'0.5rem',letterSpacing:'0.16em',textTransform:'uppercase',color:'rgba(255,255,255,0.26)',marginLeft:'0.5rem',fontFamily:'DM Sans,sans-serif'}}>Panel Administrativo</span></div>
           <div style={{display:'flex',alignItems:'center',gap:'1rem'}}>
             <span style={{fontSize:'0.6rem',color:'rgba(255,255,255,0.32)'}}>Administrador</span>
-            <button onClick={signOut} style={{background:'none',border:'1px solid rgba(255,255,255,0.1)',color:'rgba(255,255,255,0.38)',padding:'0.28rem 0.85rem',fontSize:'0.56rem',letterSpacing:'0.1em',textTransform:'uppercase',cursor:'pointer',borderRadius:2,fontFamily:"'DM Sans',sans-serif"}}>Salir</button>
+            <button onClick={signOut} style={{background:'none',border:'1px solid rgba(255,255,255,0.1)',color:'rgba(255,255,255,0.38)',padding:'0.28rem 0.85rem',fontSize:'0.56rem',letterSpacing:'0.1em',textTransform:'uppercase',cursor:'pointer',borderRadius:2,fontFamily:'DM Sans,sans-serif'}}>Salir</button>
           </div>
         </div>
         <div style={{display:'flex',paddingTop:58,minHeight:'100vh'}}>
@@ -114,7 +114,7 @@ export default function Admin({ session }) {
             {panel==='cards' && <>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1.75rem'}}>
                 <h2 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'1.75rem',fontWeight:300}}>Tarjetas de Lealtad</h2>
-                <button onClick={()=>setModal('card')} style={{background:black,color:white,border:'none',padding:'0.7rem 1.4rem',fontFamily:"'DM Sans',sans-serif",fontSize:'0.63rem',letterSpacing:'0.13em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>+ Nueva Tarjeta</button>
+                <button onClick={()=>setModal('card')} style={{background:black,color:white,border:'none',padding:'0.7rem 1.4rem',fontFamily:'DM Sans,sans-serif',fontSize:'0.63rem',letterSpacing:'0.13em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>+ Nueva Tarjeta</button>
               </div>
               <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))',gap:'1.15rem'}}>
                 {cards.map(card=>{
@@ -135,8 +135,8 @@ export default function Admin({ session }) {
                         </div>
                         <div style={{fontSize:'0.65rem',color:gray,marginBottom:'0.75rem'}}>{card.profiles?.full_name}</div>
                         <div style={{display:'flex',gap:'0.45rem'}}>
-                          <button onClick={()=>{setPunchId(card.id);setPanel('punch')}} style={{flex:1,padding:'0.48rem',background:black,color:white,border:'none',borderRadius:3,cursor:'pointer',fontFamily:"'DM Sans',sans-serif",fontSize:'0.58rem',letterSpacing:'0.07em',textTransform:'uppercase'}}>+ Sello</button>
-                          <button onClick={()=>deleteCard(card.id)} style={{flex:1,padding:'0.48rem',background:'rgba(192,57,43,0.08)',color:'#a93226',border:'none',borderRadius:3,cursor:'pointer',fontFamily:"'DM Sans',sans-serif",fontSize:'0.58rem',letterSpacing:'0.07em',textTransform:'uppercase'}}>Borrar</button>
+                          <button onClick={()=>{setPunchId(card.id);setPanel('punch')}} style={{flex:1,padding:'0.48rem',background:black,color:white,border:'none',borderRadius:3,cursor:'pointer',fontFamily:'DM Sans,sans-serif',fontSize:'0.58rem',letterSpacing:'0.07em',textTransform:'uppercase'}}>+ Sello</button>
+                          <button onClick={()=>deleteCard(card.id)} style={{flex:1,padding:'0.48rem',background:'rgba(192,57,43,0.08)',color:'#a93226',border:'none',borderRadius:3,cursor:'pointer',fontFamily:'DM Sans,sans-serif',fontSize:'0.58rem',letterSpacing:'0.07em',textTransform:'uppercase'}}>Borrar</button>
                         </div>
                       </div>
                     </div>
@@ -169,14 +169,14 @@ export default function Admin({ session }) {
                     <div style={{display:'flex',gap:5}}>{Array.from({length:5},(_,i)=><div key={i} style={{width:16,height:16,borderRadius:'50%',border:'1.5px solid rgba(184,151,90,0.22)',background:i<cur?gold:i===cur?'rgba(184,151,90,0.35)':'transparent',borderStyle:i===cur?'dashed':'solid'}}/>)}</div>
                   </div>
                 })()}
-                <button onClick={doPunch} style={{width:'100%',background:black,color:white,border:'none',padding:'0.85rem',fontFamily:"'DM Sans',sans-serif",fontSize:'0.68rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>✦ Dar Sello</button>
+                <button onClick={doPunch} style={{width:'100%',background:black,color:white,border:'none',padding:'0.85rem',fontFamily:'DM Sans,sans-serif',fontSize:'0.68rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>✦ Dar Sello</button>
                 {punchMsg && <div style={{marginTop:'1rem',background:'rgba(45,150,100,0.08)',border:'1px solid rgba(45,150,100,0.22)',borderRadius:4,padding:'0.75rem 1rem',fontSize:'0.78rem',color:'#2d8a60'}}>{punchMsg}</div>}
               </div>
             </>}
             {panel==='rewards' && <>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1.75rem'}}>
                 <h2 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:'1.75rem',fontWeight:300}}>Premios Canjeados</h2>
-                <button onClick={()=>setModal('reward')} style={{background:black,color:white,border:'none',padding:'0.7rem 1.4rem',fontFamily:"'DM Sans',sans-serif",fontSize:'0.63rem',letterSpacing:'0.13em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>+ Registrar Premio</button>
+                <button onClick={()=>setModal('reward')} style={{background:black,color:white,border:'none',padding:'0.7rem 1.4rem',fontFamily:'DM Sans,sans-serif',fontSize:'0.63rem',letterSpacing:'0.13em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>+ Registrar Premio</button>
               </div>
               <div style={{background:white,borderRadius:10,overflow:'hidden',border:'1px solid rgba(14,14,12,0.07)'}}>
                 <table style={{width:'100%',borderCollapse:'collapse'}}>
@@ -214,8 +214,8 @@ export default function Admin({ session }) {
               <label style={lbl}>Notas (opcional)</label>
               <input style={inp} type="text" placeholder="Información adicional..." value={form.notes||''} onChange={e=>upd('notes',e.target.value)}/>
               <div style={{display:'flex',gap:'0.75rem'}}>
-                <button onClick={createCard} style={{flex:1,background:black,color:white,border:'none',padding:'0.85rem',fontFamily:"'DM Sans',sans-serif",fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Crear Tarjeta</button>
-                <button onClick={()=>setModal(null)} style={{background:'rgba(14,14,12,0.06)',color:black,border:'none',padding:'0.85rem 1.5rem',fontFamily:"'DM Sans',sans-serif",fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Cancelar</button>
+                <button onClick={createCard} style={{flex:1,background:black,color:white,border:'none',padding:'0.85rem',fontFamily:'DM Sans,sans-serif',fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Crear Tarjeta</button>
+                <button onClick={()=>setModal(null)} style={{background:'rgba(14,14,12,0.06)',color:black,border:'none',padding:'0.85rem 1.5rem',fontFamily:'DM Sans,sans-serif',fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Cancelar</button>
               </div>
             </div>
           </div>
@@ -239,8 +239,8 @@ export default function Admin({ session }) {
               <label style={{...lbl,marginTop:'1rem'}}>Notas (opcional)</label>
               <input style={inp} type="text" placeholder="Detalles..." value={form.reward_notes||''} onChange={e=>upd('reward_notes',e.target.value)}/>
               <div style={{display:'flex',gap:'0.75rem'}}>
-                <button onClick={saveReward} style={{flex:1,background:black,color:white,border:'none',padding:'0.85rem',fontFamily:"'DM Sans',sans-serif",fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Registrar Premio</button>
-                <button onClick={()=>setModal(null)} style={{background:'rgba(14,14,12,0.06)',color:black,border:'none',padding:'0.85rem 1.5rem',fontFamily:"'DM Sans',sans-serif",fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Cancelar</button>
+                <button onClick={saveReward} style={{flex:1,background:black,color:white,border:'none',padding:'0.85rem',fontFamily:'DM Sans,sans-serif',fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Registrar Premio</button>
+                <button onClick={()=>setModal(null)} style={{background:'rgba(14,14,12,0.06)',color:black,border:'none',padding:'0.85rem 1.5rem',fontFamily:'DM Sans,sans-serif',fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Cancelar</button>
               </div>
             </div>
           </div>
