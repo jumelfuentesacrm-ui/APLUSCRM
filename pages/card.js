@@ -30,7 +30,7 @@ export default function CardPage({ session }) {
 const res = await fetch('/api/card/me?user_id='+uid)
     const data = await res.json()
     if (res.ok) { setCard(data.card || null); if(!data.card) setNoCard(true) } 
-    else { setErrMsg(data.error||'Error'); setNoCard(true) }
+    else { setErrMsg(JSON.stringify(data)); setNoCard(true) }
     setLoading(false)
   }
 
