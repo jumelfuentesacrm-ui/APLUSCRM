@@ -20,8 +20,10 @@ export default function Login() {
     setLoading(false)
     if (error) { setError('Credenciales incorrectas.'); return }
     const { data: profile } = await supabase.from('profiles').select('role').eq('id', data.user.id).single()
-    router.push(profile?.role === 'admin' ? '/admin' : '/card')
-  }
+console.log('profile:', profile)
+if (profile?.role === 'admin') { window.location.href = '/admin'; return }
+window.location.href = '/card'
+    
 
   async function handleSignup(e) {
     e.preventDefault(); setError(''); setSuccess('')
