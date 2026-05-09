@@ -29,7 +29,7 @@ export default function CardPage({ session }) {
    const uid = session?.user?.id || ''
 const res = await fetch('/api/card/me?user_id='+uid)
     const data = await res.json()
-    if (res.ok) { setCard(data.card) } 
+    if (res.ok) { setCard(data.card || null); if(!data.card) setNoCard(true) } 
     else { setErrMsg(data.error||'Error'); setNoCard(true) }
     setLoading(false)
   }
