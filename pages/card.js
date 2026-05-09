@@ -29,10 +29,13 @@ export default function CardPage({ session }) {
    const uid = session?.user?.id || ''
 const res = await fetch('/api/card/me?user_id='+uid)
     const data = await res.json()
-    if (res.ok) { setCard(data.card || null); if(!data.card) setNoCard(true) } 
-    else { setErrMsg(JSON.stringify(data)); setNoCard(true) }
-    setLoading(false)
-  }
+    if (res.ok && data.card) { 
+  setCard(data.card) 
+} else { 
+  setErrMsg(JSON.stringify(data)); 
+  setNoCard(true) 
+} 
+setLoading(false)
 
   const signOut = async () => { await supabase.auth.signOut(); window.location.href = '/login' }
 
