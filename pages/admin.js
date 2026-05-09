@@ -212,7 +212,7 @@ export default function Admin({ session }) {
               <label style={lbl}>Cliente</label>
               <select value={form.user_id||''} onChange={e=>upd('user_id',e.target.value)} style={inp}>
                 <option value="">Seleccionar cliente</option>
-                {users.filter(u=>!u.loyalty_cards?.some(c=>c.is_active)).map(u=><option key={u.id} value={u.id}>{u.business_name||u.full_name}</option>)}
+                {users.map(u=><option key={u.id} value={u.id}>{u.business_name||u.full_name}</option>)}
               </select>
               <label style={lbl}>Notas (opcional)</label>
               <input style={inp} type="text" placeholder="Informacion adicional..." value={form.notes||''} onChange={e=>upd('notes',e.target.value)}/>
