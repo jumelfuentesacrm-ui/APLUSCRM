@@ -11,6 +11,7 @@ export default function CardPage({ session }) {
   const [loading, setLoading] = useState(true)
   const [noCard, setNoCard] = useState(false)
   const [errMsg, setErrMsg] = useState('')
+  const [showProfile, setShowProfile] = useState(false)
 
   useEffect(() => {
     if (!session) { window.location.href = '/login'; return }
@@ -49,6 +50,7 @@ export default function CardPage({ session }) {
     <>
       <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,400&family=DM+Sans:wght@300;400&display=swap" rel="stylesheet"/>
       <style>{`
+        html,body{background:#111110;overscroll-behavior:none;}
         .card-container{max-width:420px;margin:0 auto;padding:0 1.25rem;}
         @media(max-width:480px){
           .client-hero-pad{padding:5rem 1.25rem 3rem!important;}
@@ -145,6 +147,48 @@ export default function CardPage({ session }) {
           )}
         </div>
       </div>
+    <>
+      {/* PROFILE MODAL */}
+      {showProfile && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.7)',zIndex:200,display:'flex',alignItems:'flex-end',justifyContent:'center'}} onClick={e=>e.target===e.currentTarget&&setShowProfile(false)}>
+          <div style={{background:'#1a1917',borderRadius:'16px 16px 0 0',padding:'2rem 1.5rem',width:'100%',maxWidth:480,maxHeight:'80vh',overflowY:'auto',border:'1px solid rgba(184,151,90,0.2)'}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1.5rem'}}>
+              <div style={{fontFamily:ffS,fontSize:'1.4rem',fontWeight:300,color:white}}>Mi Perfil</div>
+              <button onClick={()=>setShowProfile(false)} style={{background:'none',border:'none',color:'rgba(255,255,255,0.4)',fontSize:'1.1rem',cursor:'pointer'}}>✕</button>
+            </div>
+            <div style={{background:'rgba(184,151,90,0.07)',border:'1px solid rgba(184,151,90,0.15)',borderRadius:10,padding:'1.25rem',marginBottom:'1.5rem'}}>
+              <div style={{fontSize:'0.52rem',letterSpacing:'0.14em',textTransform:'uppercase',color:gold,marginBottom:'0.75rem'}}>Informacion Personal</div>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1rem'}}>
+                <div><div style={{fontSize:'0.52rem',color:'rgba(255,255,255,0.35)',marginBottom:'0.2rem'}}>Nombre</div><div style={{fontSize:'0.85rem',color:white}}>{profile?.full_name||'—'}</div></div>
+                <div><div style={{fontSize:'0.52rem',color:'rgba(255,255,255,0.35)',marginBottom:'0.2rem'}}>Negocio</div><div style={{fontSize:'0.85rem',color:white}}>{profile?.business_name||'—'}</div></div>
+                <div><div style={{fontSize:'0.52rem',color:'rgba(255,255,255,0.35)',marginBottom:'0.2rem'}}>Telefono</div><div style={{fontSize:'0.85rem',color:white}}>{profile?.phone||'—'}</div></div>
+                <div><div style={{fontSize:'0.52rem',color:'rgba(255,255,255,0.35)',marginBottom:'0.2rem'}}>Tarjeta</div><div style={{fontSize:'0.85rem',color:gold}}>#{card?.card_number||'—'}</div></div>
+              </div>
+            </div>
+            <div style={{fontSize:'0.52rem',letterSpacing:'0.14em',textTransform:'uppercase',color:gold,marginBottom:'1rem'}}>Historial Completo</div>
+            {card?.stamp_history?.length > 0 ? [...card.stamp_history].reverse().map((h,i)=>(
+              <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'0.75rem 0',borderBottom:'1px solid rgba(255,255,255,0.05)'}}>
+                <div>
+                  <div style={{fontSize:'0.6rem',color:'rgba(255,255,255,0.3)'}}>{new Date(h.created_at).toLocaleDateString('es-PR',{day:'numeric',month:'long',year:'numeric'})}</div>
+                  <div style={{fontSize:'0.78rem',color:'rgba(255,255,255,0.72)',marginTop:'0.1rem'}}>Pago registrado{h.payment_amount?' · '+h.payment_amount:''}</div>
+                </div>
+                <span style={{fontSize:'0.54rem',padding:'0.18rem 0.55rem',borderRadius:20,background:'rgba(184,151,90,0.1)',color:gold,border:'1px solid rgba(184,151,90,0.22)',whiteSpace:'nowrap'}}>+1 sello</span>
+              </div>
+            )) : <p style={{fontSize:'0.78rem',color:'rgba(255,255,255,0.3)',textAlign:'center',padding:'1rem 0'}}>Sin historial aun.</p>}
+            {card?.rewards?.length > 0 && <>
+              <div style={{fontSize:'0.52rem',letterSpacing:'0.14em',textTransform:'uppercase',color:'#52b788',marginTop:'1.5rem',marginBottom:'1rem'}}>Premios Canjeados</div>
+              {card.rewards.map((r,i)=>(
+                <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'0.75rem 0',borderBottom:'1px solid rgba(255,255,255,0.05)'}}>
+                  <div style={{fontSize:'0.78rem',color:'rgba(255,255,255,0.72)'}}>{r.reward_type}</div>
+                  <span style={{fontSize:'0.54rem',padding:'0.18rem 0.55rem',borderRadius:20,background:'rgba(45,150,100,0.12)',color:'#52b788',border:'1px solid rgba(45,150,100,0.25)',whiteSpace:'nowrap'}}>{r.status}</span>
+                </div>
+              ))}
+            </>}
+            <button onClick={signOut} style={{width:'100%',marginTop:'1.5rem',background:'rgba(192,57,43,0.1)',color:'#a93226',border:'1px solid rgba(192,57,43,0.2)',padding:'0.85rem',fontFamily:ff,fontSize:'0.65rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Cerrar Sesion</button>
+          </div>
+        </div>
+      )}
+    </>
     </>
   )
 }
