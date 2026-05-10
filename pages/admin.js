@@ -16,7 +16,7 @@ export default function Admin({ session }) {
   const [modal, setModal] = useState(null)
   const [form, setForm] = useState({})
   const [toast, setToast] = useState('')
-  const [menuOpen, setMenuOpen] = useState(false)
+  const [qrCard, setQrCard] = useState(null)
 
   useEffect(() => {
     if (!session) { window.location.href = '/login'; return }
@@ -74,11 +74,17 @@ export default function Admin({ session }) {
     showToast('Premio eliminado'); loadAll()
   }
 
+  function showQR(card) {
+    setQrCard(card)
+    setModal('qr')
+  }
+
   const signOut = async () => { await supabase.auth.signOut(); window.location.href = '/login' }
   const upd = (k,v) => setForm(f=>({...f,[k]:v}))
   const totalStamps = cards.reduce((a,c)=>a+(c.stamps||0),0)
   const withReward = cards.filter(c=>c.stamps>0&&c.stamps%5===0).length
   const redeemed = rewards.filter(r=>r.status==='Canjeado').length
+  const cardUrl = (card) => `https://app.accountingpluscrm.com/c/${card?.card_number}`
 
   const inp = { width:'100%', padding:'0.75rem 0.9rem', border:'1px solid '+gl, borderRadius:3, background:white, fontFamily:ff, fontSize:'0.88rem', outline:'none', color:black, marginBottom:'1rem', boxSizing:'border-box' }
   const lbl = { fontSize:'0.56rem', letterSpacing:'0.13em', textTransform:'uppercase', color:gray, display:'block', marginBottom:'0.35rem' }
@@ -88,6 +94,7 @@ export default function Admin({ session }) {
   return (
     <>
       <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,400&family=DM+Sans:wght@300;400&display=swap" rel="stylesheet"/>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
       <style>{`
         @media(max-width:700px){
           .admin-sidebar{display:none!important;}
@@ -95,22 +102,20 @@ export default function Admin({ session }) {
           .stats-grid{grid-template-columns:1fr 1fr!important;}
           .cards-grid{grid-template-columns:1fr!important;}
           .punch-row{grid-template-columns:1fr!important;}
-          .rewards-table{font-size:0.7rem!important;}
           .mobile-nav{display:flex!important;}
-          .modal-inner{padding:1.5rem!important;}
         }
         .mobile-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:${ink};z-index:200;border-top:1px solid rgba(184,151,90,0.15);}
         .mobile-nav button{flex:1;padding:0.85rem 0.25rem;background:none;border:none;color:rgba(255,255,255,0.4);font-family:${ff};font-size:0.55rem;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:0.25rem;}
         .mobile-nav button.active{color:${gold};}
         .mobile-nav button span{font-size:1.1rem;}
+        #qr-canvas{display:flex;justify-content:center;margin:1.25rem 0;}
+        #qr-canvas canvas,#qr-canvas img{border-radius:8px;}
       `}</style>
 
       <div style={{background:'#f2f0eb',minHeight:'100vh',fontFamily:ff,paddingBottom:60}}>
         <div style={{background:black,position:'fixed',top:0,left:0,right:0,zIndex:100,height:52,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 1.25rem'}}>
           <div style={{fontFamily:ffS,fontSize:'1.1rem',color:white}}>A<span style={{color:gold,fontStyle:'italic'}}>+</span> CRM <span style={{fontSize:'0.48rem',letterSpacing:'0.14em',textTransform:'uppercase',color:'rgba(255,255,255,0.26)',marginLeft:'0.4rem',fontFamily:ff}}>Admin</span></div>
-          <div style={{display:'flex',alignItems:'center',gap:'0.75rem'}}>
-            <button onClick={signOut} style={{background:'none',border:'1px solid rgba(255,255,255,0.1)',color:'rgba(255,255,255,0.38)',padding:'0.25rem 0.75rem',fontSize:'0.52rem',letterSpacing:'0.1em',textTransform:'uppercase',cursor:'pointer',borderRadius:2,fontFamily:ff}}>Salir</button>
-          </div>
+          <button onClick={signOut} style={{background:'none',border:'1px solid rgba(255,255,255,0.1)',color:'rgba(255,255,255,0.38)',padding:'0.25rem 0.75rem',fontSize:'0.52rem',letterSpacing:'0.1em',textTransform:'uppercase',cursor:'pointer',borderRadius:2,fontFamily:ff}}>Salir</button>
         </div>
 
         <div style={{display:'flex',paddingTop:52,minHeight:'100vh'}}>
@@ -152,11 +157,12 @@ export default function Admin({ session }) {
                       <div style={{padding:'0.85rem 1rem'}}>
                         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.5rem'}}>
                           <div style={{fontSize:'0.68rem',color:gray}}><strong style={{color:black}}>{cur}/5</strong> · Ciclo {cycle}</div>
-                          <div style={{fontSize:'0.54rem',padding:'0.15rem 0.55rem',borderRadius:20,background:'rgba(184,151,90,0.1)',color:gold}}>{hasR?'Premio':'#'+card.card_number}</div>
+                          <div style={{fontSize:'0.54rem',padding:'0.15rem 0.55rem',borderRadius:20,background:'rgba(184,151,90,0.1)',color:gold}}>{hasR?'🎁 Premio':'#'+card.card_number}</div>
                         </div>
                         <div style={{fontSize:'0.62rem',color:gray,marginBottom:'0.65rem'}}>{card.profiles?.full_name}</div>
                         <div style={{display:'flex',gap:'0.4rem'}}>
                           <button onClick={()=>{setPunchId(card.id);setPanel('punch')}} style={{flex:1,padding:'0.45rem',background:black,color:white,border:'none',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.56rem',letterSpacing:'0.07em',textTransform:'uppercase'}}>+ Sello</button>
+                          <button onClick={()=>showQR(card)} style={{flex:1,padding:'0.45rem',background:'rgba(184,151,90,0.1)',color:gold,border:'1px solid rgba(184,151,90,0.25)',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.56rem',letterSpacing:'0.07em',textTransform:'uppercase'}}>QR</button>
                           <button onClick={()=>deleteCard(card.id)} style={{flex:1,padding:'0.45rem',background:'rgba(192,57,43,0.08)',color:'#a93226',border:'none',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.56rem',letterSpacing:'0.07em',textTransform:'uppercase'}}>Borrar</button>
                         </div>
                       </div>
@@ -201,7 +207,7 @@ export default function Admin({ session }) {
                 <button onClick={()=>setModal('reward')} style={{background:black,color:white,border:'none',padding:'0.6rem 1.1rem',fontFamily:ff,fontSize:'0.6rem',letterSpacing:'0.12em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>+ Registrar</button>
               </div>
               <div style={{background:white,borderRadius:10,overflow:'hidden',border:'1px solid rgba(14,14,12,0.07)',overflowX:'auto'}}>
-                <table className="rewards-table" style={{width:'100%',borderCollapse:'collapse',minWidth:500}}>
+                <table style={{width:'100%',borderCollapse:'collapse',minWidth:500}}>
                   <thead><tr>{['#','Cliente','Tipo','Costo','Fecha',''].map(h=><th key={h} style={{padding:'0.65rem 1rem',textAlign:'left',fontSize:'0.54rem',letterSpacing:'0.12em',textTransform:'uppercase',color:gray,borderBottom:'1px solid rgba(14,14,12,0.06)',fontWeight:400}}>{h}</th>)}</tr></thead>
                   <tbody>
                     {rewards.map((r,i)=>(
@@ -231,9 +237,10 @@ export default function Admin({ session }) {
           ))}
         </div>
 
+        {/* MODAL: Nueva Tarjeta */}
         {modal==='card' && (
           <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:500,display:'flex',alignItems:'flex-end',justifyContent:'center'}} onClick={e=>e.target===e.currentTarget&&setModal(null)}>
-            <div className="modal-inner" style={{background:white,borderRadius:'12px 12px 0 0',padding:'2rem',width:'100%',maxWidth:520,maxHeight:'90vh',overflowY:'auto'}}>
+            <div style={{background:white,borderRadius:'12px 12px 0 0',padding:'2rem',width:'100%',maxWidth:520,maxHeight:'90vh',overflowY:'auto'}}>
               <h3 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300,marginBottom:'0.35rem'}}>Nueva Tarjeta</h3>
               <p style={{fontSize:'0.72rem',color:gray,marginBottom:'1.5rem'}}>Asigna una tarjeta a un cliente registrado.</p>
               <label style={lbl}>Cliente</label>
@@ -251,9 +258,41 @@ export default function Admin({ session }) {
           </div>
         )}
 
+        {/* MODAL: QR */}
+        {modal==='qr' && qrCard && (
+          <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:500,display:'flex',alignItems:'center',justifyContent:'center',padding:'1.25rem'}} onClick={e=>e.target===e.currentTarget&&setModal(null)}>
+            <div style={{background:white,borderRadius:12,padding:'2rem',width:'100%',maxWidth:360,textAlign:'center'}}>
+              <h3 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300,marginBottom:'0.25rem'}}>Código QR</h3>
+              <p style={{fontSize:'0.72rem',color:gray,marginBottom:'0.5rem'}}>{qrCard.profiles?.business_name||qrCard.profiles?.full_name}</p>
+              <p style={{fontSize:'0.6rem',color:gray,marginBottom:'1rem',letterSpacing:'0.08em'}}>#{qrCard.card_number}</p>
+              <div id="qr-canvas" ref={el => {
+                if (el && el.children.length === 0) {
+                  const QRCode = window.QRCode
+                  if (QRCode) {
+                    new QRCode(el, {
+                      text: cardUrl(qrCard),
+                      width: 200,
+                      height: 200,
+                      colorDark: black,
+                      colorLight: white,
+                      correctLevel: QRCode.CorrectLevel.H
+                    })
+                  }
+                }
+              }}></div>
+              <p style={{fontSize:'0.62rem',color:gray,marginBottom:'1.25rem',wordBreak:'break-all'}}>{cardUrl(qrCard)}</p>
+              <div style={{display:'flex',gap:'0.75rem'}}>
+                <button onClick={()=>window.open(cardUrl(qrCard),'_blank')} style={{flex:1,background:black,color:white,border:'none',padding:'0.85rem',fontFamily:ff,fontSize:'0.62rem',letterSpacing:'0.12em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Abrir Link</button>
+                <button onClick={()=>setModal(null)} style={{background:'rgba(14,14,12,0.06)',color:black,border:'none',padding:'0.85rem 1.25rem',fontFamily:ff,fontSize:'0.62rem',letterSpacing:'0.12em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Cerrar</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL: Premio */}
         {modal==='reward' && (
           <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:500,display:'flex',alignItems:'flex-end',justifyContent:'center'}} onClick={e=>e.target===e.currentTarget&&setModal(null)}>
-            <div className="modal-inner" style={{background:white,borderRadius:'12px 12px 0 0',padding:'2rem',width:'100%',maxWidth:520,maxHeight:'90vh',overflowY:'auto'}}>
+            <div style={{background:white,borderRadius:'12px 12px 0 0',padding:'2rem',width:'100%',maxWidth:520,maxHeight:'90vh',overflowY:'auto'}}>
               <h3 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300,marginBottom:'0.35rem'}}>Registrar Premio</h3>
               <p style={{fontSize:'0.72rem',color:gray,marginBottom:'1.5rem'}}>Documenta el premio con tipo y costo.</p>
               <label style={lbl}>Cliente</label>
