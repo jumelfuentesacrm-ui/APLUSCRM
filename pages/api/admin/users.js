@@ -6,11 +6,19 @@ const supabaseAdmin = createClient(
 )
 
 export default async function handler(req, res) {
-  const { data: users, error } = await supabaseAdmin
-    .from('profiles')
-    .select('id, full_name, business_name, phone, role')
-    .eq('role', 'client')
-    .order('created_at', { ascending: false })
-  if (error) return res.status(500).json({ error: error.message })
-  return res.status(200).json({ users })
+  if (req.method === 'GET') {
+    const { data: users, error } = await supabaseAdmin
+      .from('profiles')
+      .select('id, full_name, business_name, phone, role')
+      .eq('role', 'client')
+      .order('created_at', { ascending: false })
+    if (error) return res.status(500).json({ error: error.message })
+    return res.status(200).json({ users })
+  }
+  if (req.method === 'PATCH') {
+    const { id, full_name, business_name, phone } = req.body
+    await supabaseAdmin.from('profiles').update({ full_name, business_name, phone }).eq('id', id)
+    return res.status(200).json({ success: true })
+  }
+  res.status(405).end()
 }
