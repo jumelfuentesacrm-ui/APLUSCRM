@@ -49,8 +49,15 @@ export default function Login() {
   return (
     <>
       <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,400&family=DM+Sans:wght@300;400&display=swap" rel="stylesheet"/>
-      <div style={{ minHeight:'100vh', display:'grid', gridTemplateColumns:'1fr 1fr', fontFamily:ff }}>
-        <div style={{ background:black, display:'flex', flexDirection:'column', justifyContent:'center', padding:'5rem' }}>
+      <style>{`
+        @media(max-width:700px){
+          .login-grid{grid-template-columns:1fr!important;}
+          .login-left{display:none!important;}
+        }
+      `}</style>
+      <div className="login-grid" style={{ minHeight:'100vh', display:'grid', gridTemplateColumns:'1fr 1fr', fontFamily:ff }}>
+        <div className="login-left" style={{ background:black, display:'flex', flexDirection:'column', justifyContent:'center', padding:'5rem', position:'relative', overflow:'hidden' }}>
+          <div style={{ position:'absolute', top:'50%', left:'50%', transform:'translate(-50%,-50%)', fontFamily:ffS, fontSize:'18rem', fontWeight:300, color:'rgba(184,151,90,0.04)', lineHeight:1, pointerEvents:'none' }}>A+</div>
           <div style={{ fontFamily:ffS, fontSize:'2.5rem', fontWeight:300, color:white, marginBottom:'0.4rem' }}>A<span style={{color:gold,fontStyle:'italic'}}>+</span> CRM</div>
           <div style={{ fontSize:'0.6rem', letterSpacing:'0.2em', textTransform:'uppercase', color:'rgba(255,255,255,0.3)', marginBottom:'3rem' }}>Accounting Plus Client Return Management</div>
           {[['Tarjeta de Lealtad Digital','5 pagos a tiempo = 1 mes gratis.'],['Datos en Tiempo Real','Sellos e historial actualizados al instante.'],['Acceso Seguro','Tu cuenta, tus datos.']].map(([title,sub])=>(
@@ -60,10 +67,11 @@ export default function Login() {
             </div>
           ))}
         </div>
-        <div style={{ background:white, display:'flex', alignItems:'center', justifyContent:'center', padding:'3rem' }}>
+        <div style={{ background:white, display:'flex', alignItems:'center', justifyContent:'center', padding:'2rem', minHeight:'100vh' }}>
           <div style={{ width:'100%', maxWidth:420 }}>
-            <h2 style={{ fontFamily:ffS, fontSize:'2rem', fontWeight:300, marginBottom:'0.3rem' }}>{mode==='login'?'Iniciar Sesion':'Crear Cuenta'}</h2>
-            <p style={{ fontSize:'0.72rem', color:gray, marginBottom:'2rem', lineHeight:1.7 }}>{mode==='login'?'Accede a tu portal A+ CRM.':'Tu representante activara tu tarjeta una vez te registres.'}</p>
+            <div style={{ fontFamily:ffS, fontSize:'1.8rem', fontWeight:300, color:black, marginBottom:'0.3rem', textAlign:'center' }}>A<span style={{color:gold,fontStyle:'italic'}}>+</span> CRM</div>
+            <h2 style={{ fontFamily:ffS, fontSize:'1.6rem', fontWeight:300, marginBottom:'0.3rem', textAlign:'center' }}>{mode==='login'?'Iniciar Sesion':'Crear Cuenta'}</h2>
+            <p style={{ fontSize:'0.72rem', color:gray, marginBottom:'2rem', lineHeight:1.7, textAlign:'center' }}>{mode==='login'?'Accede a tu portal A+ CRM.':'Tu representante activara tu tarjeta una vez te registres.'}</p>
             {mode==='login' && (
               <div style={{ display:'flex', border:'1px solid '+gl, borderRadius:4, overflow:'hidden', marginBottom:'1.75rem' }}>
                 {[['client','Cliente / Negocio'],['admin','Administrador']].map(([t,label])=>(
