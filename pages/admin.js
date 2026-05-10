@@ -17,6 +17,7 @@ export default function Admin({ session }) {
   const [form, setForm] = useState({})
   const [toast, setToast] = useState('')
   const [qrCard, setQrCard] = useState(null)
+  const [search, setSearch] = useState('')
 
   useEffect(() => {
     if (!session) { window.location.href = '/login'; return }
@@ -164,12 +165,13 @@ export default function Admin({ session }) {
             </div>
 
             {panel==='cards' && <>
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1.25rem'}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1rem'}}>
                 <h2 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300}}>Tarjetas</h2>
                 <button onClick={()=>setModal('card')} style={{background:black,color:white,border:'none',padding:'0.6rem 1.1rem',fontFamily:ff,fontSize:'0.6rem',letterSpacing:'0.12em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>+ Nueva</button>
               </div>
+              <input type="text" placeholder="Buscar cliente..." value={search} onChange={e=>setSearch(e.target.value)} style={{width:'100%',padding:'0.7rem 1rem',border:'1px solid '+gl,borderRadius:3,fontFamily:ff,fontSize:'0.82rem',outline:'none',marginBottom:'1.25rem',boxSizing:'border-box'}}/>
               <div className="cards-grid" style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(260px,1fr))',gap:'1rem'}}>
-                {cards.map(card=>{
+                {cards.filter(c=>(c.profiles?.full_name||'').toLowerCase().includes(search.toLowerCase())||(c.profiles?.business_name||'').toLowerCase().includes(search.toLowerCase())).map(card=>{
                   const cur=card.stamps%5===0&&card.stamps>0?5:card.stamps%5
                   const cycle=Math.ceil((card.stamps||1)/5)||1
                   const hasR=card.stamps>0&&card.stamps%5===0
