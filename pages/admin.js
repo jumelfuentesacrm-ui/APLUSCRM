@@ -235,23 +235,24 @@ export default function Admin({ session }) {
                 <h2 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300}}>Premios</h2>
                 <button onClick={()=>setModal('reward')} style={{background:black,color:white,border:'none',padding:'0.6rem 1.1rem',fontFamily:ff,fontSize:'0.6rem',letterSpacing:'0.12em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>+ Registrar</button>
               </div>
-              <div style={{background:white,borderRadius:10,overflow:'hidden',border:'1px solid rgba(14,14,12,0.07)',overflowX:'auto'}}>
-                <table style={{width:'100%',borderCollapse:'collapse',minWidth:500}}>
-                  <thead><tr>{['#','Cliente','Tipo','Costo','Fecha',''].map(h=><th key={h} style={{padding:'0.65rem 1rem',textAlign:'left',fontSize:'0.54rem',letterSpacing:'0.12em',textTransform:'uppercase',color:gray,borderBottom:'1px solid rgba(14,14,12,0.06)',fontWeight:400}}>{h}</th>)}</tr></thead>
-                  <tbody>
-                    {rewards.map((r,i)=>(
-                      <tr key={r.id}>
-                        <td style={{padding:'0.85rem 1rem',fontSize:'0.7rem',color:gray,borderBottom:'1px solid rgba(14,14,12,0.04)'}}>#{i+1}</td>
-                        <td style={{padding:'0.85rem 1rem',fontSize:'0.78rem',borderBottom:'1px solid rgba(14,14,12,0.04)'}}><strong>{r.profiles?.business_name||r.profiles?.full_name}</strong></td>
-                        <td style={{padding:'0.85rem 1rem',fontSize:'0.78rem',borderBottom:'1px solid rgba(14,14,12,0.04)'}}>{r.reward_type}</td>
-                        <td style={{padding:'0.85rem 1rem',fontSize:'0.78rem',color:gold,fontWeight:500,borderBottom:'1px solid rgba(14,14,12,0.04)'}}>{r.reward_cost||'-'}</td>
-                        <td style={{padding:'0.85rem 1rem',fontSize:'0.78rem',color:gray,borderBottom:'1px solid rgba(14,14,12,0.04)'}}>{r.redeemed_at?new Date(r.redeemed_at).toLocaleDateString('es-PR'):'-'}</td>
-                        <td style={{padding:'0.85rem 1rem',borderBottom:'1px solid rgba(14,14,12,0.04)'}}><button onClick={()=>deleteReward(r.id)} style={{background:'none',border:'none',cursor:'pointer',color:gray,fontSize:'0.75rem'}}>x</button></td>
-                      </tr>
-                    ))}
-                    {rewards.length===0 && <tr><td colSpan={6} style={{padding:'2rem',textAlign:'center',color:gray,fontSize:'0.82rem'}}>Sin premios registrados.</td></tr>}
-                  </tbody>
-                </table>
+              <div style={{display:'flex',flexDirection:'column',gap:'0.75rem'}}>
+                {rewards.length===0 && <div style={{background:white,borderRadius:10,padding:'2rem',textAlign:'center',color:gray,fontSize:'0.82rem',border:'1px solid rgba(14,14,12,0.07)'}}>Sin premios registrados.</div>}
+                {rewards.map((r,i)=>(
+                  <div key={r.id} style={{background:white,borderRadius:10,padding:'1.1rem 1.25rem',border:'1px solid rgba(14,14,12,0.07)',display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:'1rem'}}>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:'0.78rem',fontWeight:500,color:black,marginBottom:'0.25rem',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{r.profiles?.business_name||r.profiles?.full_name}</div>
+                      <div style={{fontSize:'0.72rem',color:gray,marginBottom:'0.25rem'}}>{r.reward_type}</div>
+                      <div style={{display:'flex',gap:'0.75rem',alignItems:'center'}}>
+                        <span style={{fontSize:'0.72rem',color:gold,fontWeight:500}}>{r.reward_cost||'—'}</span>
+                        <span style={{fontSize:'0.65rem',color:gray}}>{r.redeemed_at?new Date(r.redeemed_at).toLocaleDateString('es-PR'):'—'}</span>
+                      </div>
+                    </div>
+                    <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:'0.5rem',flexShrink:0}}>
+                      <span style={{fontSize:'0.58rem',padding:'0.2rem 0.65rem',borderRadius:20,background:'rgba(45,150,100,0.1)',color:'#2d8a60',whiteSpace:'nowrap'}}>{r.status}</span>
+                      <button onClick={()=>deleteReward(r.id)} style={{background:'none',border:'none',cursor:'pointer',color:'rgba(192,57,43,0.5)',fontSize:'0.75rem',padding:0}}>✕</button>
+                    </div>
+                  </div>
+                ))}
               </div>
             </>}
           </div>
