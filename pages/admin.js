@@ -62,6 +62,24 @@ export default function Admin({ session }) {
     showToast('Tarjeta eliminada'); loadAll()
   }
 
+  async function editCard(card) {
+    setForm({ edit_card_id: card.id, edit_name: card.profiles?.full_name||'', edit_business: card.profiles?.business_name||'', edit_phone: card.profiles?.phone||'', edit_notes: card.notes||'' })
+    setModal('edit')
+  }
+
+  async function saveEdit() {
+    if (!form.edit_card_id) return
+    const card = cards.find(c=>c.id===form.edit_card_id)
+    // Update notes on card
+    await fetch('/api/admin/cards', { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id: form.edit_card_id, notes: form.edit_notes }) })
+    // Update profile
+    await fetch('/api/admin/users', { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id: card.user_id, full_name: form.edit_name, business_name: form.edit_business, phone: form.edit_phone }) })
+    showToast('Cliente actualizado')
+    setModal(null)
+    setForm({})
+    loadAll()
+  }
+
   async function saveReward() {
     const card = cards.find(c=>c.user_id===form.reward_user_id)
     if (!card) { showToast('Usuario sin tarjeta activa'); return }
@@ -94,7 +112,7 @@ export default function Admin({ session }) {
   return (
     <>
       <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,400&family=DM+Sans:wght@300;400&display=swap" rel="stylesheet"/>
-      <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+      
       <style>{`
         @media(max-width:700px){
           .admin-sidebar{display:none!important;}
@@ -163,6 +181,7 @@ export default function Admin({ session }) {
                         <div style={{display:'flex',gap:'0.4rem'}}>
                           <button onClick={()=>{setPunchId(card.id);setPanel('punch')}} style={{flex:1,padding:'0.45rem',background:black,color:white,border:'none',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.56rem',letterSpacing:'0.07em',textTransform:'uppercase'}}>+ Sello</button>
                           <button onClick={()=>showQR(card)} style={{flex:1,padding:'0.45rem',background:'rgba(184,151,90,0.1)',color:gold,border:'1px solid rgba(184,151,90,0.25)',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.56rem',letterSpacing:'0.07em',textTransform:'uppercase'}}>QR</button>
+                          <button onClick={()=>editCard(card)} style={{flex:1,padding:'0.45rem',background:'rgba(14,14,12,0.06)',color:black,border:'none',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.56rem',letterSpacing:'0.07em',textTransform:'uppercase'}}>Editar</button>
                           <button onClick={()=>deleteCard(card.id)} style={{flex:1,padding:'0.45rem',background:'rgba(192,57,43,0.08)',color:'#a93226',border:'none',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.56rem',letterSpacing:'0.07em',textTransform:'uppercase'}}>Borrar</button>
                         </div>
                       </div>
@@ -242,7 +261,7 @@ export default function Admin({ session }) {
           <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:500,display:'flex',alignItems:'flex-end',justifyContent:'center'}} onClick={e=>e.target===e.currentTarget&&setModal(null)}>
             <div style={{background:white,borderRadius:'12px 12px 0 0',padding:'2rem',width:'100%',maxWidth:520,maxHeight:'90vh',overflowY:'auto'}}>
               <h3 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300,marginBottom:'0.35rem'}}>Nueva Tarjeta</h3>
-              <p style={{fontSize:'0.72rem',color:gray,marginBottom:'1.5rem'}}>Asigna una tarjeta a un cliente registrado.</p>
+              <p style={{fontSize:'0.72rem',color:gray,marginBottom:'1.5rem'}}>Asigna una tarjeta a un cliente registrado. <a href="https://app.accountingpluscrm.com/login" target="_blank" style={{color:gold}}>Crear cuenta nueva →</a></p>
               <label style={lbl}>Cliente</label>
               <select value={form.user_id||''} onChange={e=>upd('user_id',e.target.value)} style={inp}>
                 <option value="">Seleccionar cliente</option>
@@ -258,32 +277,48 @@ export default function Admin({ session }) {
           </div>
         )}
 
+        {/* MODAL: Editar Cliente */}
+        {modal==='edit' && (
+          <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:500,display:'flex',alignItems:'flex-end',justifyContent:'center'}} onClick={e=>e.target===e.currentTarget&&setModal(null)}>
+            <div style={{background:white,borderRadius:'12px 12px 0 0',padding:'2rem',width:'100%',maxWidth:520,maxHeight:'90vh',overflowY:'auto'}}>
+              <h3 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300,marginBottom:'0.35rem'}}>Editar Cliente</h3>
+              <p style={{fontSize:'0.72rem',color:gray,marginBottom:'1.5rem'}}>Actualiza la informacion del cliente.</p>
+              <label style={lbl}>Nombre Completo</label>
+              <input style={inp} type="text" placeholder="Nombre completo" value={form.edit_name||''} onChange={e=>upd('edit_name',e.target.value)}/>
+              <label style={lbl}>Nombre del Negocio</label>
+              <input style={inp} type="text" placeholder="Nombre del negocio" value={form.edit_business||''} onChange={e=>upd('edit_business',e.target.value)}/>
+              <label style={lbl}>Telefono</label>
+              <input style={inp} type="tel" placeholder="787-000-0000" value={form.edit_phone||''} onChange={e=>upd('edit_phone',e.target.value)}/>
+              <label style={lbl}>Notas</label>
+              <input style={inp} type="text" placeholder="Notas adicionales..." value={form.edit_notes||''} onChange={e=>upd('edit_notes',e.target.value)}/>
+              <div style={{display:'flex',gap:'0.75rem'}}>
+                <button onClick={saveEdit} style={{flex:1,background:black,color:white,border:'none',padding:'0.85rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Guardar</button>
+                <button onClick={()=>setModal(null)} style={{background:'rgba(14,14,12,0.06)',color:black,border:'none',padding:'0.85rem 1.25rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Cancelar</button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* MODAL: QR */}
         {modal==='qr' && qrCard && (
           <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:500,display:'flex',alignItems:'center',justifyContent:'center',padding:'1.25rem'}} onClick={e=>e.target===e.currentTarget&&setModal(null)}>
             <div style={{background:white,borderRadius:12,padding:'2rem',width:'100%',maxWidth:360,textAlign:'center'}}>
-              <h3 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300,marginBottom:'0.25rem'}}>Código QR</h3>
+              <h3 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300,marginBottom:'0.25rem'}}>Codigo QR</h3>
               <p style={{fontSize:'0.72rem',color:gray,marginBottom:'0.5rem'}}>{qrCard.profiles?.business_name||qrCard.profiles?.full_name}</p>
-              <p style={{fontSize:'0.6rem',color:gray,marginBottom:'1rem',letterSpacing:'0.08em'}}>#{qrCard.card_number}</p>
-              <div id="qr-canvas" ref={el => {
-                if (el && el.children.length === 0) {
-                  const QRCode = window.QRCode
-                  if (QRCode) {
-                    new QRCode(el, {
-                      text: cardUrl(qrCard),
-                      width: 200,
-                      height: 200,
-                      colorDark: black,
-                      colorLight: white,
-                      correctLevel: QRCode.CorrectLevel.H
-                    })
-                  }
-                }
-              }}></div>
-              <p style={{fontSize:'0.62rem',color:gray,marginBottom:'1.25rem',wordBreak:'break-all'}}>{cardUrl(qrCard)}</p>
+              <p style={{fontSize:'0.6rem',color:gray,marginBottom:'1.25rem',letterSpacing:'0.08em'}}>#{qrCard.card_number}</p>
+              <div style={{display:'flex',justifyContent:'center',marginBottom:'1.25rem'}}>
+                <img
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(cardUrl(qrCard))}&color=0e0e0c&bgcolor=f8f6f1`}
+                  alt="QR Code"
+                  style={{borderRadius:8,border:'1px solid '+gl,padding:8,background:white}}
+                  width={200} height={200}
+                />
+              </div>
+              <p style={{fontSize:'0.58rem',color:gray,marginBottom:'1.25rem',wordBreak:'break-all',lineHeight:1.6}}>{cardUrl(qrCard)}</p>
               <div style={{display:'flex',gap:'0.75rem'}}>
                 <button onClick={()=>window.open(cardUrl(qrCard),'_blank')} style={{flex:1,background:black,color:white,border:'none',padding:'0.85rem',fontFamily:ff,fontSize:'0.62rem',letterSpacing:'0.12em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Abrir Link</button>
-                <button onClick={()=>setModal(null)} style={{background:'rgba(14,14,12,0.06)',color:black,border:'none',padding:'0.85rem 1.25rem',fontFamily:ff,fontSize:'0.62rem',letterSpacing:'0.12em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Cerrar</button>
+                <button onClick={()=>{navigator.clipboard.writeText(cardUrl(qrCard));showToast('Link copiado!')}} style={{flex:1,background:'rgba(184,151,90,0.1)',color:gold,border:'1px solid rgba(184,151,90,0.25)',padding:'0.85rem',fontFamily:ff,fontSize:'0.62rem',letterSpacing:'0.12em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Copiar</button>
+                <button onClick={()=>setModal(null)} style={{background:'rgba(14,14,12,0.06)',color:black,border:'none',padding:'0.85rem 0.75rem',fontFamily:ff,fontSize:'0.62rem',letterSpacing:'0.12em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>X</button>
               </div>
             </div>
           </div>
