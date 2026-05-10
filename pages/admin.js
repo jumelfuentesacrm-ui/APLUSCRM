@@ -48,6 +48,14 @@ export default function Admin({ session }) {
     else showToast('Error: '+data.error)
   }
 
+  async function createClient() {
+    if (!form.new_email||!form.new_password) { showToast('Email y password requeridos'); return }
+    const res = await fetch('/api/admin/users', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email:form.new_email, password:form.new_password, full_name:form.new_name, business_name:form.new_business, phone:form.new_phone }) })
+    const data = await res.json()
+    if (res.ok) { showToast('Cliente creado'); setForm(f=>({...f,new_email:'',new_password:'',new_name:'',new_business:'',new_phone:'',user_id:data.user.id})); loadAll() }
+    else showToast('Error: '+data.error)
+  }
+
   async function createCard() {
     if (!form.user_id) { showToast('Selecciona un cliente'); return }
     const res = await fetch('/api/admin/cards', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ user_id:form.user_id, notes:form.notes }) })
@@ -260,9 +268,27 @@ export default function Admin({ session }) {
         {modal==='card' && (
           <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:500,display:'flex',alignItems:'flex-end',justifyContent:'center'}} onClick={e=>e.target===e.currentTarget&&setModal(null)}>
             <div style={{background:white,borderRadius:'12px 12px 0 0',padding:'2rem',width:'100%',maxWidth:520,maxHeight:'90vh',overflowY:'auto'}}>
-              <h3 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300,marginBottom:'0.35rem'}}>Nueva Tarjeta</h3>
-              <p style={{fontSize:'0.72rem',color:gray,marginBottom:'1.5rem'}}>Asigna una tarjeta a un cliente registrado. <a href="https://app.accountingpluscrm.com/login" target="_blank" style={{color:gold}}>Crear cuenta nueva →</a></p>
-              <label style={lbl}>Cliente</label>
+              <h3 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300,marginBottom:'1.5rem'}}>Nueva Tarjeta</h3>
+              
+              {/* Crear cliente nuevo */}
+              <div style={{background:'rgba(184,151,90,0.05)',border:'1px solid rgba(184,151,90,0.2)',borderRadius:8,padding:'1.25rem',marginBottom:'1.25rem'}}>
+                <div style={{fontSize:'0.58rem',letterSpacing:'0.14em',textTransform:'uppercase',color:gold,marginBottom:'1rem'}}>Crear Cliente Nuevo</div>
+                <label style={lbl}>Nombre Completo</label>
+                <input style={inp} type="text" placeholder="Nombre del cliente" value={form.new_name||''} onChange={e=>upd('new_name',e.target.value)}/>
+                <label style={lbl}>Nombre del Negocio</label>
+                <input style={inp} type="text" placeholder="Nombre del negocio" value={form.new_business||''} onChange={e=>upd('new_business',e.target.value)}/>
+                <label style={lbl}>Telefono</label>
+                <input style={inp} type="tel" placeholder="787-000-0000" value={form.new_phone||''} onChange={e=>upd('new_phone',e.target.value)}/>
+                <label style={lbl}>Email</label>
+                <input style={inp} type="email" placeholder="correo@negocio.com" value={form.new_email||''} onChange={e=>upd('new_email',e.target.value)}/>
+                <label style={lbl}>Password temporal</label>
+                <input style={{...inp,marginBottom:0}} type="text" placeholder="min. 6 caracteres" value={form.new_password||''} onChange={e=>upd('new_password',e.target.value)}/>
+                <button onClick={createClient} style={{width:'100%',background:gold,color:white,border:'none',padding:'0.75rem',fontFamily:ff,fontSize:'0.62rem',letterSpacing:'0.12em',textTransform:'uppercase',borderRadius:3,cursor:'pointer',marginTop:'0.85rem'}}>Crear Cliente →</button>
+              </div>
+
+              <div style={{fontSize:'0.58rem',letterSpacing:'0.14em',textTransform:'uppercase',color:gray,marginBottom:'0.75rem',textAlign:'center'}}>— o selecciona uno existente —</div>
+
+              <label style={lbl}>Cliente Existente</label>
               <select value={form.user_id||''} onChange={e=>upd('user_id',e.target.value)} style={inp}>
                 <option value="">Seleccionar cliente</option>
                 {users.map(u=><option key={u.id} value={u.id}>{u.business_name||u.full_name}</option>)}
@@ -270,7 +296,7 @@ export default function Admin({ session }) {
               <label style={lbl}>Notas (opcional)</label>
               <input style={inp} type="text" placeholder="Informacion adicional..." value={form.notes||''} onChange={e=>upd('notes',e.target.value)}/>
               <div style={{display:'flex',gap:'0.75rem'}}>
-                <button onClick={createCard} style={{flex:1,background:black,color:white,border:'none',padding:'0.85rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Crear Tarjeta</button>
+                <button onClick={createCard} style={{flex:1,background:black,color:white,border:'none',padding:'0.85rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Asignar Tarjeta</button>
                 <button onClick={()=>setModal(null)} style={{background:'rgba(14,14,12,0.06)',color:black,border:'none',padding:'0.85rem 1.25rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Cancelar</button>
               </div>
             </div>
