@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+\import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 
 const gold='#b8975a',black='#0e0e0c',white='#f8f6f1',gray='#6b6b67',gl='#e8e5de',ink='#1c1c1a'
@@ -740,13 +740,16 @@ export default function Admin({session}){
                 <input type="file" multiple accept=".pdf,.doc,.docx,.jpg,.png,.csv,.xlsx" onChange={async(e)=>{
                   const files=Array.from(e.target.files)
                   for(const file of files){
-                    const path=`clients/${filesClient.id}/${Date.now()}_${file.name}`
-                    const {error}=await supabase.storage.from('client-files').upload(path,file)
-                    if(!error)showToast(file.name+' subido')
-                    else showToast('Error: '+error.message)
+                    const fd=new FormData()
+                    fd.append('file',file)
+                    fd.append('user_id',filesClient.id)
+                    const res=await fetch('/api/admin/files',{method:'POST',body:fd})
+                    const data=await res.json()
+                    if(res.ok)showToast(file.name+' subido')
+                    else showToast('Error: '+data.error)
                   }
                   e.target.value=''
-                  setModal(null);setModal('files')
+                  setModal(null);setTimeout(()=>setModal('files'),100)
                 }} style={{display:'none'}} id="file-input"/>
                 <label htmlFor="file-input" style={{background:black,color:white,padding:'0.6rem 1.25rem',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.62rem',letterSpacing:'0.12em',textTransform:'uppercase'}}>Seleccionar Archivos</label>
               </div>
@@ -790,25 +793,31 @@ export default function Admin({session}){
 
 function FilesListForClient({ userId, showToast }) {
   const [files, setFiles] = useState([])
+  const [loading, setLoading] = useState(true)
   const ff='DM Sans,sans-serif'
   const gray='#6b6b67', black='#0e0e0c', gold='#b8975a'
 
-  useEffect(()=>{
-    supabase.storage.from('client-files').list('clients/'+userId, { sortBy:{column:'created_at',order:'desc'} })
-      .then(({data})=>setFiles(data||[]))
-  },[userId])
+  useEffect(()=>{ loadFiles() },[userId])
 
-  async function deleteFile(name) {
-    await supabase.storage.from('client-files').remove([`clients/${userId}/${name}`])
-    setFiles(f=>f.filter(x=>x.name!==name))
+  async function loadFiles() {
+    setLoading(true)
+    const res = await fetch('/api/admin/files?user_id='+userId)
+    const data = await res.json()
+    setFiles(data.files||[])
+    setLoading(false)
+  }
+
+  async function deleteFile(path) {
+    await fetch('/api/admin/files', { method:'DELETE', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ path }) })
     showToast('Archivo eliminado')
+    loadFiles()
   }
 
-  async function downloadFile(name) {
-    const {data}=await supabase.storage.from('client-files').createSignedUrl(`clients/${userId}/${name}`,60)
-    if(data?.signedUrl) window.open(data.signedUrl,'_blank')
+  async function viewFile(name) {
+    window.open('/api/admin/files?user_id='+userId+'&file='+encodeURIComponent(name),'_blank')
   }
 
+  if(loading) return <div style={{textAlign:'center',color:gray,fontSize:'0.78rem',padding:'1rem 0'}}>Cargando...</div>
   if(files.length===0) return <div style={{textAlign:'center',color:gray,fontSize:'0.78rem',padding:'1rem 0'}}>No hay archivos guardados aun.</div>
 
   return(
@@ -818,8 +827,8 @@ function FilesListForClient({ userId, showToast }) {
         <div key={f.name} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0.75rem 0',borderBottom:'1px solid rgba(14,14,12,0.06)'}}>
           <div style={{fontSize:'0.78rem',color:black,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',flex:1,marginRight:'1rem'}}>{f.name.replace(/^\d+_/,'')}</div>
           <div style={{display:'flex',gap:'0.4rem',flexShrink:0}}>
-            <button onClick={()=>downloadFile(f.name)} style={{padding:'0.3rem 0.65rem',background:'rgba(184,151,90,0.1)',color:gold,border:'1px solid rgba(184,151,90,0.25)',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.56rem',textTransform:'uppercase'}}>Ver</button>
-            <button onClick={()=>deleteFile(f.name)} style={{padding:'0.3rem 0.65rem',background:'rgba(192,57,43,0.08)',color:'#a93226',border:'none',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.56rem',textTransform:'uppercase'}}>x</button>
+            <button onClick={()=>viewFile(f.name)} style={{padding:'0.3rem 0.65rem',background:'rgba(184,151,90,0.1)',color:gold,border:'1px solid rgba(184,151,90,0.25)',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.56rem',textTransform:'uppercase'}}>Ver</button>
+            <button onClick={()=>deleteFile('clients/'+userId+'/'+f.name)} style={{padding:'0.3rem 0.65rem',background:'rgba(192,57,43,0.08)',color:'#a93226',border:'none',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.56rem',textTransform:'uppercase'}}>x</button>
           </div>
         </div>
       ))}
