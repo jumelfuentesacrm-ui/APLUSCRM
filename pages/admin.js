@@ -165,7 +165,6 @@ function DashboardPanel({ cards, onSelectClient }) {
   )
 }
 
-function PLACEHOLDER_OLD_DASHBOARD() 
 
 function ClientProfile({ card, onBack }) {
   const ff='DM Sans,sans-serif', ffS='Cormorant Garamond,serif'
