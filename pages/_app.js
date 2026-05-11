@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import Head from 'next/head'
 
 export default function App({ Component, pageProps }) {
   const [session, setSession] = useState(null)
@@ -18,5 +19,13 @@ export default function App({ Component, pageProps }) {
 
   if (loading) return <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'#0e0e0c',color:'#f8f6f1',fontFamily:'sans-serif',fontSize:'0.8rem',letterSpacing:'0.1em'}}>A+ CRM</div>
 
-  return <Component {...pageProps} session={session} />
+  return (
+    <>
+      <Head>
+        <link rel="icon" href="/favicon.png" type="image/png"/>
+        <title>A+ CRM</title>
+      </Head>
+      <Component {...pageProps} session={session} />
+    </>
+  )
 }
