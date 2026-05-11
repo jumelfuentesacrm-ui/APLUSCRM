@@ -5,142 +5,52 @@ const gold='#b8975a',black='#0e0e0c',white='#f8f6f1',gray='#6b6b67',gl='#e8e5de'
 const ff='DM Sans,sans-serif'
 const ffS='Cormorant Garamond,serif'
 
-
-function ClientsPanel({ users, cards, search, setSearch, onEdit, onAddPayment, onCreateCard, showToast, loadAll }) {
-  const ff='DM Sans,sans-serif', ffS='Cormorant Garamond,serif'
-  const gold='#b8975a', black='#0e0e0c', white='#f8f6f1', gray='#6b6b67', gl='#e8e5de'
-
-  const filtered = users.filter(u=>
-    (u.full_name||'').toLowerCase().includes(search.toLowerCase()) ||
-    (u.business_name||'').toLowerCase().includes(search.toLowerCase())
-  )
-
-  function getCard(userId) {
-    return cards.find(c=>c.user_id===userId)
-  }
-
-  function getStatus(card) {
-    if (!card) return { label:'Sin Tarjeta', color:gray, bg:'rgba(14,14,12,0.06)' }
-    if (!card.stamp_history||card.stamp_history.length===0) return { label:'Nuevo', color:'#3498db', bg:'rgba(52,152,219,0.1)' }
-    const last = new Date(card.stamp_history[card.stamp_history.length-1].created_at)
-    const days = (Date.now()-last)/(1000*60*60*24)
-    if (days<=35) return { label:'Activo', color:'#2d8a60', bg:'rgba(45,138,96,0.1)' }
-    if (days<=60) return { label:'En Riesgo', color:gold, bg:'rgba(184,151,90,0.1)' }
-    return { label:'Inactivo', color:'#c0392b', bg:'rgba(192,57,43,0.1)' }
-  }
-
-  return (
-    <div>
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1.25rem'}}>
-        <h2 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300}}>Clients</h2>
-        <div style={{fontSize:'0.62rem',color:gray,letterSpacing:'0.08em'}}>{users.length} clientes registrados</div>
-      </div>
-
-      <input type="text" placeholder="Buscar por nombre o negocio..." value={search} onChange={e=>setSearch(e.target.value)}
-        style={{width:'100%',padding:'0.7rem 1rem',border:'1px solid '+gl,borderRadius:3,fontFamily:ff,fontSize:'0.82rem',outline:'none',marginBottom:'1.25rem',boxSizing:'border-box',background:white}}/>
-
-      <div style={{display:'flex',flexDirection:'column',gap:'0.75rem'}}>
-        {filtered.map(user=>{
-          const card = getCard(user.id)
-          const status = getStatus(card)
-          const cur = card ? (card.stamps%5===0&&card.stamps>0?5:card.stamps%5) : 0
-          return (
-            <div key={user.id} style={{background:white,borderRadius:10,border:'1px solid rgba(14,14,12,0.07)',overflow:'hidden'}}>
-              {/* Header */}
-              <div style={{background:'linear-gradient(135deg,#1a1917,#252320)',padding:'1rem 1.25rem',color:white}}>
-                <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
-                  <div>
-                    <div style={{fontFamily:ffS,fontSize:'1.05rem',marginBottom:'0.15rem'}}>{user.full_name}</div>
-                    <div style={{fontSize:'0.68rem',color:'rgba(255,255,255,0.5)'}}>{user.business_name||'—'}</div>
-                    {user.phone && <div style={{fontSize:'0.65rem',color:'rgba(255,255,255,0.4)',marginTop:'0.1rem'}}>{user.phone}</div>}
-                  </div>
-                  <span style={{fontSize:'0.56rem',padding:'0.2rem 0.65rem',borderRadius:20,background:status.bg,color:status.color,whiteSpace:'nowrap',border:'1px solid '+status.color+'33'}}>{status.label}</span>
-                </div>
-                {card && (
-                  <div style={{display:'flex',gap:3,marginTop:'0.75rem'}}>
-                    {Array.from({length:5},(_,i)=><div key={i} style={{width:11,height:11,borderRadius:'50%',border:'1px solid rgba(184,151,90,0.22)',background:i<cur?gold:'transparent'}}/>)}
-                    <span style={{fontSize:'0.56rem',color:'rgba(184,151,90,0.7)',marginLeft:'0.4rem'}}>{cur}/5 sellos · #{card.card_number}</span>
-                  </div>
-                )}
-              </div>
-              {/* Actions */}
-              <div style={{padding:'0.85rem 1.25rem',display:'flex',gap:'0.5rem',flexWrap:'wrap'}}>
-                <button onClick={()=>onEdit(user)} style={{padding:'0.45rem 0.85rem',background:'rgba(14,14,12,0.06)',color:black,border:'none',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.58rem',letterSpacing:'0.07em',textTransform:'uppercase'}}>✏️ Editar</button>
-                {card
-                  ? <button onClick={()=>onAddPayment(card)} style={{padding:'0.45rem 0.85rem',background:black,color:white,border:'none',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.58rem',letterSpacing:'0.07em',textTransform:'uppercase'}}>+ Pago</button>
-                  : <button onClick={()=>onCreateCard(user.id)} style={{padding:'0.45rem 0.85rem',background:'rgba(184,151,90,0.1)',color:gold,border:'1px solid rgba(184,151,90,0.25)',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.58rem',letterSpacing:'0.07em',textTransform:'uppercase'}}>+ Tarjeta</button>
-                }
-                {card && card.stamp_history?.length > 0 && (
-                  <div style={{flex:1,minWidth:'100%',marginTop:'0.25rem'}}>
-                    <div style={{fontSize:'0.56rem',color:gray,letterSpacing:'0.08em',textTransform:'uppercase',marginBottom:'0.3rem'}}>Ultimo pago</div>
-                    <div style={{fontSize:'0.72rem',color:black}}>{new Date(card.stamp_history[card.stamp_history.length-1].created_at).toLocaleDateString('es-PR',{day:'numeric',month:'long',year:'numeric'})}</div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )
-        })}
-        {filtered.length===0 && <div style={{background:white,borderRadius:10,padding:'2rem',textAlign:'center',color:gray,fontSize:'0.82rem',border:'1px solid rgba(14,14,12,0.07)'}}>No se encontraron clientes.</div>}
-      </div>
-    </div>
-  )
-}
-
-
 function getStatus(card) {
-  if (!card.stamp_history || card.stamp_history.length === 0) return { label:'Nuevo', color:'#3498db', bg:'rgba(52,152,219,0.1)' }
+  if (!card||!card.stamp_history||card.stamp_history.length===0) return { label:'Nuevo', color:'#3498db', bg:'rgba(52,152,219,0.1)' }
   const last = new Date(card.stamp_history[card.stamp_history.length-1].created_at)
-  const daysSince = (Date.now() - last) / (1000*60*60*24)
-  if (daysSince <= 35) return { label:'Activo', color:'#2d8a60', bg:'rgba(45,138,96,0.1)' }
-  if (daysSince <= 60) return { label:'En Riesgo', color:'#b8975a', bg:'rgba(184,151,90,0.1)' }
+  const days = (Date.now()-last)/(1000*60*60*24)
+  if (days<=35) return { label:'Activo', color:'#2d8a60', bg:'rgba(45,138,96,0.1)' }
+  if (days<=60) return { label:'En Riesgo', color:gold, bg:'rgba(184,151,90,0.1)' }
   return { label:'Inactivo', color:'#c0392b', bg:'rgba(192,57,43,0.1)' }
 }
 
 function DashboardPanel({ cards, onSelectClient }) {
-  const ff='DM Sans,sans-serif', ffS='Cormorant Garamond,serif'
-  const gold='#b8975a', black='#0e0e0c', white='#f8f6f1', gray='#6b6b67'
-  const totalClients = cards.length
-  const activeClients = cards.filter(c=>getStatus(c).label==='Activo').length
-  const atRisk = cards.filter(c=>getStatus(c).label==='En Riesgo').length
-  const inactive = cards.filter(c=>getStatus(c).label==='Inactivo').length
-  const newClients = totalClients-activeClients-atRisk-inactive
-  const totalStamps = cards.reduce((a,c)=>a+(c.stamps||0),0)
-  const completedCycles = cards.reduce((a,c)=>a+Math.floor((c.stamps||0)/5),0)
-  const sorted = [...cards].sort((a,b)=>(b.stamps||0)-(a.stamps||0))
-  const top5 = sorted.slice(0,5)
-  const maxStamps = top5[0]?.stamps||1
+  const totalClients=cards.length
+  const activeClients=cards.filter(c=>getStatus(c).label==='Activo').length
+  const atRisk=cards.filter(c=>getStatus(c).label==='En Riesgo').length
+  const inactive=cards.filter(c=>getStatus(c).label==='Inactivo').length
+  const newClients=totalClients-activeClients-atRisk-inactive
+  const sorted=[...cards].sort((a,b)=>(b.stamps||0)-(a.stamps||0))
+  const top5=sorted.slice(0,5)
+  const maxStamps=top5[0]?.stamps||1
+  const financial={gross_sales:0,gross_expenses:0,net_profit:0}
 
-  // Financial data - placeholders until CSV is loaded
-  const financial = { gross_sales:0, gross_expenses:0, net_profit:0 }
-
-  const clientDonut = [
-    { label:'Activos', value:activeClients, color:'#2d8a60' },
-    { label:'En Riesgo', value:atRisk, color:gold },
-    { label:'Inactivos', value:inactive, color:'#c0392b' },
-    { label:'Nuevos', value:newClients, color:'#3498db' },
+  const clientDonut=[
+    {label:'Activos',value:activeClients,color:'#2d8a60'},
+    {label:'En Riesgo',value:atRisk,color:gold},
+    {label:'Inactivos',value:inactive,color:'#c0392b'},
+    {label:'Nuevos',value:newClients,color:'#3498db'},
   ].filter(d=>d.value>0)
 
-  const finDonut = [
-    { label:'Gastos', value:financial.gross_expenses||1, color:'#c0392b' },
-    { label:'Ganancia', value:Math.max(financial.net_profit,0)||0, color:'#2d8a60' },
-    { label:'Sin datos', value:financial.gross_sales===0?1:0, color:'rgba(14,14,12,0.1)' },
+  const finDonut=[
+    {label:'Gastos',value:financial.gross_expenses||0,color:'#c0392b'},
+    {label:'Ganancia',value:Math.max(financial.net_profit,0)||0,color:'#2d8a60'},
+    {label:'Sin datos',value:financial.gross_sales===0?1:0,color:'rgba(14,14,12,0.08)'},
   ].filter(d=>d.value>0)
 
   function makeSegs(data) {
-    const total = data.reduce((a,d)=>a+d.value,0)||1
+    const total=data.reduce((a,d)=>a+d.value,0)||1
     let cum=0
-    return data.map(d=>{ const s=cum; cum+=d.value/total; return {...d,start:s,pct:d.value/total} })
+    return data.map(d=>{const s=cum;cum+=d.value/total;return{...d,start:s,pct:d.value/total}})
   }
-
-  function polar(pct) { const a=pct*2*Math.PI-Math.PI/2; return {x:50+35*Math.cos(a),y:50+35*Math.sin(a)} }
-  function arc(start,pct) {
-    if(pct>=1) return 'M 50 15 A 35 35 0 1 1 49.99 15 Z'
+  function polar(pct){const a=pct*2*Math.PI-Math.PI/2;return{x:50+35*Math.cos(a),y:50+35*Math.sin(a)}}
+  function arc(start,pct){
+    if(pct>=1)return'M 50 15 A 35 35 0 1 1 49.99 15 Z'
     const s=polar(start),e=polar(start+pct),lg=pct>0.5?1:0
-    return `M 50 50 L ${s.x} ${s.y} A 35 35 0 ${lg} 1 ${e.x} ${e.y} Z`
+    return`M 50 50 L ${s.x} ${s.y} A 35 35 0 ${lg} 1 ${e.x} ${e.y} Z`
   }
-
-  function Donut({ segs, center }) {
-    return (
+  function Donut({segs,center}){
+    return(
       <svg viewBox="0 0 100 100" style={{width:100,height:100,flexShrink:0}}>
         {segs.map((d,i)=><path key={i} d={arc(d.start,d.pct)} fill={d.color} opacity={0.85}/>)}
         <circle cx="50" cy="50" r="22" fill={white}/>
@@ -148,17 +58,12 @@ function DashboardPanel({ cards, onSelectClient }) {
       </svg>
     )
   }
+  const clientSegs=makeSegs(clientDonut)
+  const finSegs=makeSegs(finDonut)
 
-  const clientSegs = makeSegs(clientDonut)
-  const finSegs = makeSegs(finDonut)
-
-  return (
+  return(
     <div>
-
-
-      {/* Two donuts */}
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1rem',marginBottom:'1.5rem'}}>
-        {/* Donut 1 - Clients */}
         <div style={{background:white,borderRadius:10,padding:'1.5rem',border:'1px solid rgba(14,14,12,0.07)'}}>
           <div style={{fontFamily:ffS,fontSize:'1.1rem',fontWeight:300,marginBottom:'1.25rem'}}>Clientes</div>
           <div style={{display:'flex',alignItems:'center',gap:'1rem'}}>
@@ -172,13 +77,8 @@ function DashboardPanel({ cards, onSelectClient }) {
                 </div>
               ))}
             </div>
-            <button onClick={()=>setPanel('clients')} style={{display:'flex',alignItems:'center',gap:'0.65rem',padding:'0.82rem 1.5rem',marginTop:'0.25rem',fontSize:'0.66rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel==='clients'?gold:'rgba(255,255,255,0.32)',cursor:'pointer',background:'none',border:'none',borderLeft:panel==='clients'?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>
-              <span>👥</span>Clients
-            </button>
           </div>
         </div>
-
-        {/* Donut 2 - Financial */}
         <div style={{background:white,borderRadius:10,padding:'1.5rem',border:'1px solid rgba(14,14,12,0.07)',position:'relative'}}>
           <div style={{fontFamily:ffS,fontSize:'1.1rem',fontWeight:300,marginBottom:'1.25rem'}}>Financiero</div>
           <div style={{display:'flex',alignItems:'center',gap:'1rem'}}>
@@ -188,18 +88,14 @@ function DashboardPanel({ cards, onSelectClient }) {
                 <div key={label} style={{display:'flex',alignItems:'center',gap:'0.4rem',marginBottom:'0.4rem'}}>
                   <div style={{width:7,height:7,borderRadius:'50%',background:color,flexShrink:0}}/>
                   <span style={{fontSize:'0.62rem',color:gray,flex:1}}>{label}</span>
-                  <span style={{fontSize:'0.62rem',fontWeight:500,color:val>0?black:'rgba(14,14,12,0.25)'}}>{val>0?'$'+val.toLocaleString():'—'}</span>
+                  <span style={{fontSize:'0.62rem',fontWeight:500,color:'rgba(14,14,12,0.25)'}}>—</span>
                 </div>
               ))}
             </div>
           </div>
-          {financial.gross_sales===0 && (
-            <div style={{position:'absolute',bottom:'1rem',left:0,right:0,textAlign:'center',fontSize:'0.54rem',color:'rgba(14,14,12,0.3)',letterSpacing:'0.1em',textTransform:'uppercase'}}>Pendiente datos Clover</div>
-          )}
+          <div style={{position:'absolute',bottom:'1rem',left:0,right:0,textAlign:'center',fontSize:'0.54rem',color:'rgba(14,14,12,0.3)',letterSpacing:'0.1em',textTransform:'uppercase'}}>Pendiente datos Clover</div>
         </div>
       </div>
-
-      {/* Top clients */}
       <div style={{background:white,borderRadius:10,padding:'1.5rem',border:'1px solid rgba(14,14,12,0.07)',marginBottom:'1.5rem'}}>
         <div style={{fontFamily:ffS,fontSize:'1.1rem',fontWeight:300,marginBottom:'1.25rem'}}>Top Clientes</div>
         {top5.map((card,i)=>(
@@ -211,19 +107,17 @@ function DashboardPanel({ cards, onSelectClient }) {
                 <div style={{height:'100%',width:((card.stamps||0)/maxStamps*100)+'%',background:i===0?gold:'rgba(14,14,12,0.15)',borderRadius:2}}/>
               </div>
             </div>
-            <div style={{fontSize:'0.65rem',color:gray,flexShrink:0}}>{card.stamps}</div>
+            <div style={{fontSize:'0.65rem',color:gray,flexShrink:0}}>{card.stamps} sellos</div>
           </div>
         ))}
-        {top5.length===0 && <div style={{fontSize:'0.82rem',color:gray,textAlign:'center',padding:'1rem 0'}}>Sin clientes aun.</div>}
+        {top5.length===0&&<div style={{fontSize:'0.82rem',color:gray,textAlign:'center',padding:'1rem 0'}}>Sin clientes aun.</div>}
       </div>
-
-      {/* All clients */}
       <div style={{background:white,borderRadius:10,border:'1px solid rgba(14,14,12,0.07)',overflow:'hidden'}}>
         <div style={{padding:'1rem 1.25rem',borderBottom:'1px solid rgba(14,14,12,0.06)',fontFamily:ffS,fontSize:'1.1rem',fontWeight:300}}>Todos los Clientes</div>
         {sorted.map(card=>{
           const status=getStatus(card)
           const cur=card.stamps%5===0&&card.stamps>0?5:card.stamps%5
-          return (
+          return(
             <div key={card.id} onClick={()=>onSelectClient(card)} style={{display:'flex',alignItems:'center',gap:'0.75rem',padding:'0.85rem 1.25rem',borderBottom:'1px solid rgba(14,14,12,0.04)',cursor:'pointer'}}>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontSize:'0.78rem',color:black,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{card.profiles?.business_name||card.profiles?.full_name}</div>
@@ -235,34 +129,28 @@ function DashboardPanel({ cards, onSelectClient }) {
             </div>
           )
         })}
-        {sorted.length===0 && <div style={{padding:'2rem',textAlign:'center',color:gray,fontSize:'0.82rem'}}>No hay clientes aun.</div>}
+        {sorted.length===0&&<div style={{padding:'2rem',textAlign:'center',color:gray,fontSize:'0.82rem'}}>No hay clientes aun.</div>}
       </div>
     </div>
   )
 }
 
-
-function ClientProfile({ card, onBack }) {
-  const ff='DM Sans,sans-serif', ffS='Cormorant Garamond,serif'
-  const gold='#b8975a', black='#0e0e0c', white='#f8f6f1', gray='#6b6b67'
-  if (!card) return null
-  const cur = card.stamps%5===0&&card.stamps>0?5:card.stamps%5
-  const cycle = Math.ceil((card.stamps||1)/5)||1
-  const totalPaid = card.stamp_history?.length||0
-  const rewardsClaimed = card.rewards?.filter(r=>r.status==='Canjeado').length||0
-
-  return (
+function ClientProfile({card,onBack}){
+  if(!card)return null
+  const cur=card.stamps%5===0&&card.stamps>0?5:card.stamps%5
+  const cycle=Math.ceil((card.stamps||1)/5)||1
+  const totalPaid=card.stamp_history?.length||0
+  const rewardsClaimed=card.rewards?.filter(r=>r.status==='Canjeado').length||0
+  return(
     <div>
-      <button onClick={onBack} style={{display:'flex',alignItems:'center',gap:'0.5rem',background:'none',border:'none',cursor:'pointer',color:gray,fontFamily:ff,fontSize:'0.65rem',letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:'1.5rem',padding:0}}>
-        ← Volver al Dashboard
-      </button>
+      <button onClick={onBack} style={{display:'flex',alignItems:'center',gap:'0.5rem',background:'none',border:'none',cursor:'pointer',color:gray,fontFamily:ff,fontSize:'0.65rem',letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:'1.5rem',padding:0}}>← Volver al Dashboard</button>
       <div style={{background:black,borderRadius:12,padding:'1.75rem',marginBottom:'1.25rem',position:'relative',overflow:'hidden'}}>
         <div style={{position:'absolute',inset:0,background:'radial-gradient(ellipse 60% 50% at 0% 50%,rgba(184,151,90,0.08) 0%,transparent 70%)'}}/>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',flexWrap:'wrap',gap:'1rem',marginBottom:'1.25rem'}}>
           <div>
             <div style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300,color:white,marginBottom:'0.2rem'}}>{card.profiles?.full_name}</div>
             <div style={{fontSize:'0.7rem',color:'rgba(255,255,255,0.4)'}}>{card.profiles?.business_name} · #{card.card_number}</div>
-            {card.profiles?.phone && <div style={{fontSize:'0.68rem',color:'rgba(255,255,255,0.35)',marginTop:'0.2rem'}}>{card.profiles?.phone}</div>}
+            {card.profiles?.phone&&<div style={{fontSize:'0.68rem',color:'rgba(255,255,255,0.35)',marginTop:'0.2rem'}}>{card.profiles?.phone}</div>}
           </div>
           <div style={{display:'flex',gap:'0.5rem',flexWrap:'wrap'}}>
             {[['Ciclo',cycle],['Sellos',cur+'/5'],['Pagos',totalPaid],['Premios',rewardsClaimed]].map(([label,val])=>(
@@ -273,14 +161,12 @@ function ClientProfile({ card, onBack }) {
             ))}
           </div>
         </div>
-        <div style={{display:'flex',gap:'0.4rem'}}>
-          {Array.from({length:5},(_,i)=><div key={i} style={{flex:1,height:5,borderRadius:3,background:i<cur?gold:'rgba(255,255,255,0.08)'}}/>)}
-        </div>
+        <div style={{display:'flex',gap:'0.4rem'}}>{Array.from({length:5},(_,i)=><div key={i} style={{flex:1,height:5,borderRadius:3,background:i<cur?gold:'rgba(255,255,255,0.08)'}}/>)}</div>
         <div style={{fontSize:'0.58rem',color:'rgba(255,255,255,0.3)',marginTop:'0.4rem'}}>{cur===0&&card.stamps>0?'Premio disponible':cur+'/5 sellos en ciclo actual'}</div>
       </div>
       <div style={{background:white,borderRadius:10,border:'1px solid rgba(14,14,12,0.07)',overflow:'hidden',marginBottom:'1rem'}}>
         <div style={{padding:'1rem 1.25rem',borderBottom:'1px solid rgba(14,14,12,0.06)',fontFamily:ffS,fontSize:'1.1rem',fontWeight:300}}>Historial de Pagos</div>
-        {card.stamp_history?.length > 0 ? [...card.stamp_history].reverse().map((h,i)=>(
+        {card.stamp_history?.length>0?[...card.stamp_history].reverse().map((h,i)=>(
           <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'0.85rem 1.25rem',borderBottom:'1px solid rgba(14,14,12,0.04)'}}>
             <div>
               <div style={{fontSize:'0.78rem',color:black}}>Pago registrado{h.payment_amount?' · '+h.payment_amount:''}</div>
@@ -288,16 +174,16 @@ function ClientProfile({ card, onBack }) {
             </div>
             <span style={{fontSize:'0.58rem',padding:'0.2rem 0.65rem',borderRadius:20,background:'rgba(184,151,90,0.1)',color:gold,border:'1px solid rgba(184,151,90,0.2)'}}>+1 sello</span>
           </div>
-        )) : <div style={{padding:'1.5rem',textAlign:'center',color:gray,fontSize:'0.82rem'}}>Sin historial aun.</div>}
+        )):<div style={{padding:'1.5rem',textAlign:'center',color:gray,fontSize:'0.82rem'}}>Sin historial aun.</div>}
       </div>
-      {card.rewards?.length > 0 && (
+      {card.rewards?.length>0&&(
         <div style={{background:white,borderRadius:10,border:'1px solid rgba(14,14,12,0.07)',overflow:'hidden'}}>
           <div style={{padding:'1rem 1.25rem',borderBottom:'1px solid rgba(14,14,12,0.06)',fontFamily:ffS,fontSize:'1.1rem',fontWeight:300}}>Premios</div>
           {card.rewards.map((r,i)=>(
             <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'0.85rem 1.25rem',borderBottom:'1px solid rgba(14,14,12,0.04)'}}>
               <div>
                 <div style={{fontSize:'0.78rem',color:black}}>{r.reward_type}</div>
-                {r.reward_cost && <div style={{fontSize:'0.65rem',color:gold,marginTop:'0.1rem'}}>{r.reward_cost}</div>}
+                {r.reward_cost&&<div style={{fontSize:'0.65rem',color:gold,marginTop:'0.1rem'}}>{r.reward_cost}</div>}
               </div>
               <span style={{fontSize:'0.58rem',padding:'0.2rem 0.65rem',borderRadius:20,background:'rgba(45,138,96,0.1)',color:'#2d8a60'}}>{r.status}</span>
             </div>
@@ -308,162 +194,196 @@ function ClientProfile({ card, onBack }) {
   )
 }
 
-export default function Admin({ session }) {
-  const [panel, setPanel] = useState('cards')
-  const [cards, setCards] = useState([])
-  const [users, setUsers] = useState([])
-  const [rewards, setRewards] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [punchId, setPunchId] = useState('')
-  const [punchAmt, setPunchAmt] = useState('')
-  const [modal, setModal] = useState(null)
-  const [form, setForm] = useState({})
-  const [toast, setToast] = useState('')
-  const [qrCard, setQrCard] = useState(null)
-  const [search, setSearch] = useState('')
-  const [selectedClient, setSelectedClient] = useState(null)
-  const [loyaltyOpen, setLoyaltyOpen] = useState(true)
-  const [clientSearch, setClientSearch] = useState('')
-  const [editingClient, setEditingClient] = useState(null)
-  const [editForm, setEditForm] = useState({})
+function ClientsPanel({users,cards,search,setSearch,onEdit,onAddPayment,onCreateCard}){
+  const filtered=users.filter(u=>
+    (u.full_name||'').toLowerCase().includes(search.toLowerCase())||
+    (u.business_name||'').toLowerCase().includes(search.toLowerCase())
+  )
+  function getCard(uid){return cards.find(c=>c.user_id===uid)}
+  function getClientStatus(uid){
+    const card=getCard(uid)
+    if(!card)return{label:'Sin Tarjeta',color:gray,bg:'rgba(14,14,12,0.06)'}
+    return getStatus(card)
+  }
+  return(
+    <div>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1.25rem'}}>
+        <h2 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300}}>Clients</h2>
+        <div style={{fontSize:'0.62rem',color:gray}}>{users.length} registrados</div>
+      </div>
+      <input type="text" placeholder="Buscar por nombre o negocio..." value={search} onChange={e=>setSearch(e.target.value)}
+        style={{width:'100%',padding:'0.7rem 1rem',border:'1px solid '+gl,borderRadius:3,fontFamily:ff,fontSize:'0.82rem',outline:'none',marginBottom:'1.25rem',boxSizing:'border-box',background:white}}/>
+      <div style={{display:'flex',flexDirection:'column',gap:'0.75rem'}}>
+        {filtered.map(user=>{
+          const card=getCard(user.id)
+          const status=getClientStatus(user.id)
+          const cur=card?(card.stamps%5===0&&card.stamps>0?5:card.stamps%5):0
+          return(
+            <div key={user.id} style={{background:white,borderRadius:10,border:'1px solid rgba(14,14,12,0.07)',overflow:'hidden'}}>
+              <div style={{background:'linear-gradient(135deg,#1a1917,#252320)',padding:'1rem 1.25rem',color:white}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
+                  <div>
+                    <div style={{fontFamily:ffS,fontSize:'1.05rem',marginBottom:'0.15rem'}}>{user.full_name}</div>
+                    <div style={{fontSize:'0.68rem',color:'rgba(255,255,255,0.5)'}}>{user.business_name||'—'}</div>
+                    {user.phone&&<div style={{fontSize:'0.65rem',color:'rgba(255,255,255,0.4)',marginTop:'0.1rem'}}>{user.phone}</div>}
+                  </div>
+                  <span style={{fontSize:'0.56rem',padding:'0.2rem 0.65rem',borderRadius:20,background:status.bg,color:status.color,whiteSpace:'nowrap'}}>{status.label}</span>
+                </div>
+                {card&&(
+                  <div style={{display:'flex',gap:3,marginTop:'0.75rem',alignItems:'center'}}>
+                    {Array.from({length:5},(_,i)=><div key={i} style={{width:11,height:11,borderRadius:'50%',border:'1px solid rgba(184,151,90,0.22)',background:i<cur?gold:'transparent'}}/>)}
+                    <span style={{fontSize:'0.56rem',color:'rgba(184,151,90,0.7)',marginLeft:'0.4rem'}}>{cur}/5 · #{card.card_number}</span>
+                  </div>
+                )}
+              </div>
+              <div style={{padding:'0.85rem 1.25rem',display:'flex',gap:'0.5rem',flexWrap:'wrap',alignItems:'center'}}>
+                <button onClick={()=>onEdit(user)} style={{padding:'0.45rem 0.85rem',background:'rgba(14,14,12,0.06)',color:black,border:'none',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.58rem',letterSpacing:'0.07em',textTransform:'uppercase'}}>✏️ Editar</button>
+                {card
+                  ?<button onClick={()=>onAddPayment(card)} style={{padding:'0.45rem 0.85rem',background:black,color:white,border:'none',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.58rem',letterSpacing:'0.07em',textTransform:'uppercase'}}>+ Pago</button>
+                  :<button onClick={()=>onCreateCard(user.id)} style={{padding:'0.45rem 0.85rem',background:'rgba(184,151,90,0.1)',color:gold,border:'1px solid rgba(184,151,90,0.25)',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.58rem',letterSpacing:'0.07em',textTransform:'uppercase'}}>+ Tarjeta</button>
+                }
+                {card&&card.stamp_history?.length>0&&(
+                  <span style={{fontSize:'0.65rem',color:gray,marginLeft:'auto'}}>Ultimo pago: {new Date(card.stamp_history[card.stamp_history.length-1].created_at).toLocaleDateString('es-PR',{day:'numeric',month:'short',year:'numeric'})}</span>
+                )}
+              </div>
+            </div>
+          )
+        })}
+        {filtered.length===0&&<div style={{background:white,borderRadius:10,padding:'2rem',textAlign:'center',color:gray,fontSize:'0.82rem',border:'1px solid rgba(14,14,12,0.07)'}}>No se encontraron clientes.</div>}
+      </div>
+    </div>
+  )
+}
 
-  useEffect(() => {
-    if (!session) { window.location.href = '/login'; return }
-    supabase.from('profiles').select('role').eq('id', session.user.id).single()
-      .then(({ data }) => {
-        if (!data || data.role !== 'admin') { window.location.href = '/card'; return }
+export default function Admin({session}){
+  const [panel,setPanel]=useState('dashboard')
+  const [cards,setCards]=useState([])
+  const [users,setUsers]=useState([])
+  const [rewards,setRewards]=useState([])
+  const [loading,setLoading]=useState(true)
+  const [punchId,setPunchId]=useState('')
+  const [punchAmt,setPunchAmt]=useState('')
+  const [modal,setModal]=useState(null)
+  const [form,setForm]=useState({})
+  const [toast,setToast]=useState('')
+  const [qrCard,setQrCard]=useState(null)
+  const [search,setSearch]=useState('')
+  const [selectedClient,setSelectedClient]=useState(null)
+  const [loyaltyOpen,setLoyaltyOpen]=useState(true)
+  const [clientSearch,setClientSearch]=useState('')
+  const [editingClient,setEditingClient]=useState(null)
+  const [editForm,setEditForm]=useState({})
+
+  useEffect(()=>{
+    if(!session){window.location.href='/login';return}
+    supabase.from('profiles').select('role').eq('id',session.user.id).single()
+      .then(({data})=>{
+        if(!data||data.role!=='admin'){window.location.href='/card';return}
         loadAll()
       })
-  }, [session])
+  },[session])
 
-  async function loadAll() {
+  async function loadAll(){
     setLoading(true)
-    const [c,u,r] = await Promise.all([
+    const [c,u,r]=await Promise.all([
       fetch('/api/admin/cards').then(r=>r.json()),
       fetch('/api/admin/users').then(r=>r.json()),
       fetch('/api/admin/rewards').then(r=>r.json())
     ])
-    setCards(c.cards||[]); setUsers(u.users||[]); setRewards(r.rewards||[])
+    setCards(c.cards||[]);setUsers(u.users||[]);setRewards(r.rewards||[])
     setLoading(false)
   }
 
-  function showToast(msg) { setToast(msg); setTimeout(()=>setToast(''),3200) }
+  function showToast(msg){setToast(msg);setTimeout(()=>setToast(''),3200)}
 
-  async function doPunch() {
-    if (!punchId) { showToast('Selecciona un cliente'); return }
-    const res = await fetch('/api/admin/punch', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ card_id:punchId, payment_amount:punchAmt }) })
-    const data = await res.json()
-    if (res.ok) { showToast(data.message); setPunchId(''); setPunchAmt(''); loadAll() }
+  async function doPunch(){
+    if(!punchId){showToast('Selecciona un cliente');return}
+    const res=await fetch('/api/admin/punch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({card_id:punchId,payment_amount:punchAmt})})
+    const data=await res.json()
+    if(res.ok){showToast(data.message);setPunchId('');setPunchAmt('');loadAll()}
     else showToast('Error: '+data.error)
   }
 
-  async function createClient() {
-    if (!form.new_email||!form.new_password) { showToast('Email y password requeridos'); return }
-    const res = await fetch('/api/admin/users', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email:form.new_email, password:form.new_password, full_name:form.new_name, business_name:form.new_business, phone:form.new_phone }) })
-    const data = await res.json()
-    if (res.ok) { showToast('Cliente creado'); setForm(f=>({...f,new_email:'',new_password:'',new_name:'',new_business:'',new_phone:'',user_id:data.user.id})); loadAll() }
+  async function createClient(){
+    if(!form.new_email||!form.new_password){showToast('Email y password requeridos');return}
+    const res=await fetch('/api/admin/users',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:form.new_email,password:form.new_password,full_name:form.new_name,business_name:form.new_business,phone:form.new_phone})})
+    const data=await res.json()
+    if(res.ok){showToast('Cliente creado');setForm(f=>({...f,new_email:'',new_password:'',new_name:'',new_business:'',new_phone:'',user_id:data.user.id}));loadAll()}
     else showToast('Error: '+data.error)
   }
 
-  async function createCard() {
-    if (!form.user_id) { showToast('Selecciona un cliente'); return }
-    const res = await fetch('/api/admin/cards', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ user_id:form.user_id, notes:form.notes }) })
-    const data = await res.json()
-    if (res.ok) { showToast('Tarjeta creada'); setModal(null); setForm({}); loadAll() }
+  async function createCard(){
+    if(!form.user_id){showToast('Selecciona un cliente');return}
+    const res=await fetch('/api/admin/cards',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:form.user_id,notes:form.notes})})
+    const data=await res.json()
+    if(res.ok){showToast('Tarjeta creada');setModal(null);setForm({});loadAll()}
     else showToast('Error: '+data.error)
   }
 
-  async function deleteCard(id) {
-    if (!confirm('Eliminar esta tarjeta?')) return
-    await fetch('/api/admin/cards', { method:'DELETE', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id }) })
-    showToast('Tarjeta eliminada'); loadAll()
+  async function deleteCard(id){
+    if(!confirm('Eliminar esta tarjeta?'))return
+    await fetch('/api/admin/cards',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})})
+    showToast('Tarjeta eliminada');loadAll()
   }
 
-  async function editCard(card) {
-    setForm({ edit_card_id: card.id, edit_name: card.profiles?.full_name||'', edit_business: card.profiles?.business_name||'', edit_phone: card.profiles?.phone||'', edit_notes: card.notes||'' })
-    setModal('edit')
+  async function saveReward(){
+    const card=cards.find(c=>c.user_id===form.reward_user_id)
+    if(!card){showToast('Usuario sin tarjeta activa');return}
+    const res=await fetch('/api/admin/rewards',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({card_id:card.id,user_id:form.reward_user_id,reward_type:form.reward_type||'1 Mes Gratis',reward_cost:form.reward_cost,notes:form.reward_notes})})
+    if(res.ok){showToast('Premio registrado');setModal(null);setForm({});loadAll()}
   }
 
-  async function saveEdit() {
-    if (!form.edit_card_id) return
-    const card = cards.find(c=>c.id===form.edit_card_id)
-    // Update notes on card
-    await fetch('/api/admin/cards', { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id: form.edit_card_id, notes: form.edit_notes }) })
-    // Update profile
-    await fetch('/api/admin/users', { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id: card.user_id, full_name: form.edit_name, business_name: form.edit_business, phone: form.edit_phone }) })
-    showToast('Cliente actualizado')
-    setModal(null)
-    setForm({})
-    loadAll()
+  async function deleteReward(id){
+    await fetch('/api/admin/rewards',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})})
+    showToast('Premio eliminado');loadAll()
   }
 
-  async function saveReward() {
-    const card = cards.find(c=>c.user_id===form.reward_user_id)
-    if (!card) { showToast('Usuario sin tarjeta activa'); return }
-    const res = await fetch('/api/admin/rewards', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ card_id:card.id, user_id:form.reward_user_id, reward_type:form.reward_type||'1 Mes Gratis', reward_cost:form.reward_cost, notes:form.reward_notes }) })
-    if (res.ok) { showToast('Premio registrado'); setModal(null); setForm({}); loadAll() }
-  }
+  const signOut=async()=>{await supabase.auth.signOut();window.location.href='/login'}
+  const upd=(k,v)=>setForm(f=>({...f,[k]:v}))
+  const withReward=cards.filter(c=>c.stamps>0&&c.stamps%5===0).length
+  const redeemed=rewards.filter(r=>r.status==='Canjeado').length
+  const cardUrl=(card)=>`https://app.accountingpluscrm.com/c/${card?.card_number}`
 
-  async function deleteReward(id) {
-    await fetch('/api/admin/rewards', { method:'DELETE', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id }) })
-    showToast('Premio eliminado'); loadAll()
-  }
+  const inp={width:'100%',padding:'0.75rem 0.9rem',border:'1px solid '+gl,borderRadius:3,background:white,fontFamily:ff,fontSize:'0.88rem',outline:'none',color:black,marginBottom:'1rem',boxSizing:'border-box'}
+  const lbl={fontSize:'0.56rem',letterSpacing:'0.13em',textTransform:'uppercase',color:gray,display:'block',marginBottom:'0.35rem'}
 
-  function showQR(card) {
-    setQrCard(card)
-    setModal('qr')
-  }
+  if(loading)return<div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'#f2f0eb',fontFamily:ff,fontSize:'0.8rem',color:gray}}>Cargando panel...</div>
 
-  const signOut = async () => { await supabase.auth.signOut(); window.location.href = '/login' }
-  const upd = (k,v) => setForm(f=>({...f,[k]:v}))
-  const totalStamps = cards.reduce((a,c)=>a+(c.stamps||0),0)
-  const withReward = cards.filter(c=>c.stamps>0&&c.stamps%5===0).length
-  const redeemed = rewards.filter(r=>r.status==='Canjeado').length
-  const cardUrl = (card) => `https://app.accountingpluscrm.com/c/${card?.card_number}`
-
-  const inp = { width:'100%', padding:'0.75rem 0.9rem', border:'1px solid '+gl, borderRadius:3, background:white, fontFamily:ff, fontSize:'0.88rem', outline:'none', color:black, marginBottom:'1rem', boxSizing:'border-box' }
-  const lbl = { fontSize:'0.56rem', letterSpacing:'0.13em', textTransform:'uppercase', color:gray, display:'block', marginBottom:'0.35rem' }
-
-  if (loading) return <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'#f2f0eb',fontFamily:ff,fontSize:'0.8rem',color:gray}}>Cargando panel...</div>
-
-  return (
+  return(
     <>
       <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,400&family=DM+Sans:wght@300;400&display=swap" rel="stylesheet"/>
-      
       <style>{`
         @media(max-width:700px){
           .admin-sidebar{display:none!important;}
           .admin-main{margin-left:0!important;padding:1.25rem!important;}
-          .stats-grid{grid-template-columns:1fr 1fr!important;}
           .cards-grid{grid-template-columns:1fr!important;}
           .punch-row{grid-template-columns:1fr!important;}
           .mobile-nav{display:flex!important;}
         }
         .mobile-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:${ink};z-index:200;border-top:1px solid rgba(184,151,90,0.15);}
-        .mobile-nav button{flex:1;padding:0.85rem 0.25rem;background:none;border:none;color:rgba(255,255,255,0.4);font-family:${ff};font-size:0.55rem;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:0.25rem;}
+        .mobile-nav button{flex:1;padding:0.75rem 0.1rem;background:none;border:none;color:rgba(255,255,255,0.4);font-family:${ff};font-size:0.5rem;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:0.2rem;}
         .mobile-nav button.active{color:${gold};}
-        .mobile-nav button span{font-size:1.1rem;}
-        #qr-canvas{display:flex;justify-content:center;margin:1.25rem 0;}
-        #qr-canvas canvas,#qr-canvas img{border-radius:8px;}
+        .mobile-nav button span{font-size:1rem;}
       `}</style>
 
-      <div style={{background:'#f2f0eb',minHeight:'100vh',fontFamily:ff,paddingBottom:60}}>
+      <div style={{background:'#f2f0eb',minHeight:'100vh',fontFamily:ff,paddingBottom:70}}>
         <div style={{background:black,position:'fixed',top:0,left:0,right:0,zIndex:100,height:52,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 1.25rem'}}>
           <div style={{fontFamily:ffS,fontSize:'1.1rem',color:white}}>A<span style={{color:gold,fontStyle:'italic'}}>+</span> CRM <span style={{fontSize:'0.48rem',letterSpacing:'0.14em',textTransform:'uppercase',color:'rgba(255,255,255,0.26)',marginLeft:'0.4rem',fontFamily:ff}}>Admin</span></div>
           <button onClick={signOut} style={{background:'none',border:'1px solid rgba(255,255,255,0.1)',color:'rgba(255,255,255,0.38)',padding:'0.25rem 0.75rem',fontSize:'0.52rem',letterSpacing:'0.1em',textTransform:'uppercase',cursor:'pointer',borderRadius:2,fontFamily:ff}}>Salir</button>
         </div>
 
         <div style={{display:'flex',paddingTop:52,minHeight:'100vh'}}>
-          <div className="admin-sidebar" style={{width:200,background:ink,flexShrink:0,position:'fixed',top:52,left:0,bottom:0,padding:'1.5rem 0',overflowY:'auto'}}>
+          {/* SIDEBAR */}
+          <div className="admin-sidebar" style={{width:205,background:ink,flexShrink:0,position:'fixed',top:52,left:0,bottom:0,padding:'1.5rem 0',overflowY:'auto'}}>
             <button onClick={()=>setPanel('dashboard')} style={{display:'flex',alignItems:'center',gap:'0.65rem',padding:'0.82rem 1.5rem',fontSize:'0.66rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel==='dashboard'?gold:'rgba(255,255,255,0.32)',cursor:'pointer',background:'none',border:'none',borderLeft:panel==='dashboard'?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>
               <span>📊</span>Dashboard
             </button>
-            <div style={{marginTop:'0.25rem'}}>
+            <div>
               <button onClick={()=>setLoyaltyOpen(o=>!o)} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0.82rem 1.5rem',fontSize:'0.64rem',letterSpacing:'0.12em',textTransform:'uppercase',color:['cards','punch','rewards'].includes(panel)?gold:'rgba(255,255,255,0.45)',cursor:'pointer',background:'none',border:'none',width:'100%',textAlign:'left',fontFamily:ff}}>
                 <span style={{display:'flex',alignItems:'center',gap:'0.65rem'}}><span>🎯</span>Loyalty Program</span>
                 <span style={{fontSize:'0.6rem',display:'inline-block',transform:loyaltyOpen?'rotate(180deg)':'rotate(0deg)',transition:'transform 0.2s'}}>▾</span>
               </button>
-              {loyaltyOpen && (
+              {loyaltyOpen&&(
                 <div style={{background:'rgba(0,0,0,0.15)'}}>
                   {[['cards','🎴','Tarjetas'],['punch','✦','Ponchar'],['rewards','🎁','Premios']].map(([id,icon,label])=>(
                     <button key={id} onClick={()=>setPanel(id)} style={{display:'flex',alignItems:'center',gap:'0.6rem',padding:'0.68rem 1.5rem 0.68rem 2.25rem',fontSize:'0.62rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel===id?gold:'rgba(255,255,255,0.28)',cursor:'pointer',background:'none',border:'none',borderLeft:panel===id?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>
@@ -473,25 +393,38 @@ export default function Admin({ session }) {
                 </div>
               )}
             </div>
+            <button onClick={()=>setPanel('clients')} style={{display:'flex',alignItems:'center',gap:'0.65rem',padding:'0.82rem 1.5rem',fontSize:'0.66rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel==='clients'?gold:'rgba(255,255,255,0.32)',cursor:'pointer',background:'none',border:'none',borderLeft:panel==='clients'?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>
+              <span>👥</span>Clients
+            </button>
           </div>
 
-          <div className="admin-main" style={{marginLeft:190,flex:1,padding:'1.75rem',maxWidth:980}}>
+          {/* MAIN */}
+          <div className="admin-main" style={{marginLeft:205,flex:1,padding:'1.75rem',maxWidth:980}}>
+            {panel==='dashboard'&&<DashboardPanel cards={cards} onSelectClient={(card)=>{setSelectedClient(card);setPanel('client')}}/>}
+            {panel==='client'&&selectedClient&&<ClientProfile card={selectedClient} onBack={()=>{setSelectedClient(null);setPanel('dashboard')}}/>}
 
+            {panel==='clients'&&<ClientsPanel
+              users={users}
+              cards={cards}
+              search={clientSearch}
+              setSearch={setClientSearch}
+              onEdit={(u)=>{setEditingClient(u);setEditForm({name:u.full_name||'',business:u.business_name||'',phone:u.phone||'',email:'',password:''});setModal('editclient')}}
+              onAddPayment={(card)=>{setPunchId(card.id);setPanel('punch')}}
+              onCreateCard={(uid)=>{setForm({user_id:uid});setModal('card')}}
+            />}
 
-            {panel==='dashboard' && <DashboardPanel cards={cards} onSelectClient={(card)=>{setSelectedClient(card);setPanel('client')}}/>}
-            {panel==='client' && selectedClient && <ClientProfile card={selectedClient} onBack={()=>{setSelectedClient(null);setPanel('dashboard')}} allCards={cards}/>}
-            {panel==='cards' && <>
+            {panel==='cards'&&<>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1rem'}}>
                 <h2 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300}}>Tarjetas</h2>
                 <button onClick={()=>setModal('card')} style={{background:black,color:white,border:'none',padding:'0.6rem 1.1rem',fontFamily:ff,fontSize:'0.6rem',letterSpacing:'0.12em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>+ Nueva</button>
               </div>
-              <input type="text" placeholder="Buscar cliente..." value={search} onChange={e=>setSearch(e.target.value)} style={{width:'100%',padding:'0.7rem 1rem',border:'1px solid '+gl,borderRadius:3,fontFamily:ff,fontSize:'0.82rem',outline:'none',marginBottom:'1.25rem',boxSizing:'border-box'}}/>
+              <input type="text" placeholder="Buscar cliente..." value={search} onChange={e=>setSearch(e.target.value)} style={{width:'100%',padding:'0.7rem 1rem',border:'1px solid '+gl,borderRadius:3,fontFamily:ff,fontSize:'0.82rem',outline:'none',marginBottom:'1.25rem',boxSizing:'border-box',background:white}}/>
               <div className="cards-grid" style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(260px,1fr))',gap:'1rem'}}>
                 {cards.filter(c=>(c.profiles?.full_name||'').toLowerCase().includes(search.toLowerCase())||(c.profiles?.business_name||'').toLowerCase().includes(search.toLowerCase())).map(card=>{
                   const cur=card.stamps%5===0&&card.stamps>0?5:card.stamps%5
                   const cycle=Math.ceil((card.stamps||1)/5)||1
                   const hasR=card.stamps>0&&card.stamps%5===0
-                  return (
+                  return(
                     <div key={card.id} style={{background:white,borderRadius:10,border:'1px solid rgba(14,14,12,0.07)',overflow:'hidden'}}>
                       <div style={{background:'linear-gradient(135deg,#1a1917,#252320)',padding:'1rem',color:white}}>
                         <div style={{fontFamily:ffS,fontSize:'0.9rem',marginBottom:'0.15rem'}}>A<span style={{color:gold,fontStyle:'italic'}}>+</span> CRM</div>
@@ -506,19 +439,18 @@ export default function Admin({ session }) {
                         <div style={{fontSize:'0.62rem',color:gray,marginBottom:'0.65rem'}}>{card.profiles?.full_name}</div>
                         <div style={{display:'flex',gap:'0.4rem'}}>
                           <button onClick={()=>{setPunchId(card.id);setPanel('punch')}} style={{flex:1,padding:'0.45rem',background:black,color:white,border:'none',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.56rem',letterSpacing:'0.07em',textTransform:'uppercase'}}>+ Sello</button>
-                          <button onClick={()=>showQR(card)} style={{flex:1,padding:'0.45rem',background:'rgba(184,151,90,0.1)',color:gold,border:'1px solid rgba(184,151,90,0.25)',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.56rem',letterSpacing:'0.07em',textTransform:'uppercase'}}>QR</button>
-                          <button onClick={()=>editCard(card)} style={{flex:1,padding:'0.45rem',background:'rgba(14,14,12,0.06)',color:black,border:'none',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.56rem',letterSpacing:'0.07em',textTransform:'uppercase'}}>Editar</button>
+                          <button onClick={()=>{setQrCard(card);setModal('qr')}} style={{flex:1,padding:'0.45rem',background:'rgba(184,151,90,0.1)',color:gold,border:'1px solid rgba(184,151,90,0.25)',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.56rem',letterSpacing:'0.07em',textTransform:'uppercase'}}>QR</button>
                           <button onClick={()=>deleteCard(card.id)} style={{flex:1,padding:'0.45rem',background:'rgba(192,57,43,0.08)',color:'#a93226',border:'none',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.56rem',letterSpacing:'0.07em',textTransform:'uppercase'}}>Borrar</button>
                         </div>
                       </div>
                     </div>
                   )
                 })}
-                {cards.length===0 && <p style={{color:gray,fontSize:'0.85rem'}}>No hay tarjetas aun.</p>}
+                {cards.length===0&&<p style={{color:gray,fontSize:'0.85rem'}}>No hay tarjetas aun.</p>}
               </div>
             </>}
 
-            {panel==='punch' && <>
+            {panel==='punch'&&<>
               <h2 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300,marginBottom:'1.25rem'}}>Ponchar Tarjeta</h2>
               <div style={{background:white,borderRadius:10,padding:'1.5rem',border:'1px solid rgba(14,14,12,0.07)'}}>
                 <div className="punch-row" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1rem',marginBottom:'1rem'}}>
@@ -534,10 +466,10 @@ export default function Admin({ session }) {
                     <input style={{...inp,marginBottom:0}} type="text" placeholder="$0.00" value={punchAmt} onChange={e=>setPunchAmt(e.target.value)}/>
                   </div>
                 </div>
-                {punchId && (()=>{
+                {punchId&&(()=>{
                   const card=cards.find(c=>c.id===punchId)
                   const cur=card?(card.stamps%5===0&&card.stamps>0?5:card.stamps%5):0
-                  return <div style={{background:'linear-gradient(135deg,#1a1917,#252320)',borderRadius:10,padding:'1.1rem',marginBottom:'1rem',border:'1px solid rgba(184,151,90,0.22)',color:white}}>
+                  return<div style={{background:'linear-gradient(135deg,#1a1917,#252320)',borderRadius:10,padding:'1.1rem',marginBottom:'1rem',border:'1px solid rgba(184,151,90,0.22)',color:white}}>
                     <div style={{fontFamily:ffS,fontSize:'1rem',marginBottom:'0.45rem'}}>A<span style={{color:gold,fontStyle:'italic'}}>+</span> CRM · {card?.profiles?.business_name||card?.profiles?.full_name}</div>
                     <div style={{display:'flex',gap:5}}>{Array.from({length:5},(_,i)=><div key={i} style={{width:15,height:15,borderRadius:'50%',border:'1.5px solid rgba(184,151,90,0.22)',background:i<cur?gold:i===cur?'rgba(184,151,90,0.35)':'transparent'}}/>)}</div>
                   </div>
@@ -546,13 +478,13 @@ export default function Admin({ session }) {
               </div>
             </>}
 
-            {panel==='rewards' && <>
+            {panel==='rewards'&&<>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1.25rem'}}>
                 <h2 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300}}>Premios</h2>
                 <button onClick={()=>setModal('reward')} style={{background:black,color:white,border:'none',padding:'0.6rem 1.1rem',fontFamily:ff,fontSize:'0.6rem',letterSpacing:'0.12em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>+ Registrar</button>
               </div>
               <div style={{display:'flex',flexDirection:'column',gap:'0.75rem'}}>
-                {rewards.length===0 && <div style={{background:white,borderRadius:10,padding:'2rem',textAlign:'center',color:gray,fontSize:'0.82rem',border:'1px solid rgba(14,14,12,0.07)'}}>Sin premios registrados.</div>}
+                {rewards.length===0&&<div style={{background:white,borderRadius:10,padding:'2rem',textAlign:'center',color:gray,fontSize:'0.82rem',border:'1px solid rgba(14,14,12,0.07)'}}>Sin premios registrados.</div>}
                 {rewards.map((r,i)=>(
                   <div key={r.id} style={{background:white,borderRadius:10,padding:'1.1rem 1.25rem',border:'1px solid rgba(14,14,12,0.07)',display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:'1rem'}}>
                     <div style={{flex:1,minWidth:0}}>
@@ -574,7 +506,7 @@ export default function Admin({ session }) {
           </div>
         </div>
 
-        {/* Mobile bottom nav */}
+        {/* MOBILE NAV */}
         <div className="mobile-nav">
           {[['dashboard','📊','Dashboard'],['cards','🎴','Tarjetas'],['punch','✦','Ponchar'],['rewards','🎁','Premios'],['clients','👥','Clients']].map(([id,icon,label])=>(
             <button key={id} onClick={()=>setPanel(id)} className={panel===id?'active':''}>
@@ -584,12 +516,10 @@ export default function Admin({ session }) {
         </div>
 
         {/* MODAL: Nueva Tarjeta */}
-        {modal==='card' && (
+        {modal==='card'&&(
           <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:500,display:'flex',alignItems:'flex-end',justifyContent:'center'}} onClick={e=>e.target===e.currentTarget&&setModal(null)}>
             <div style={{background:white,borderRadius:'12px 12px 0 0',padding:'2rem',width:'100%',maxWidth:520,maxHeight:'90vh',overflowY:'auto'}}>
               <h3 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300,marginBottom:'1.5rem'}}>Nueva Tarjeta</h3>
-              
-              {/* Crear cliente nuevo */}
               <div style={{background:'rgba(184,151,90,0.05)',border:'1px solid rgba(184,151,90,0.2)',borderRadius:8,padding:'1.25rem',marginBottom:'1.25rem'}}>
                 <div style={{fontSize:'0.58rem',letterSpacing:'0.14em',textTransform:'uppercase',color:gold,marginBottom:'1rem'}}>Crear Cliente Nuevo</div>
                 <label style={lbl}>Nombre Completo</label>
@@ -604,9 +534,7 @@ export default function Admin({ session }) {
                 <input style={{...inp,marginBottom:0}} type="text" placeholder="min. 6 caracteres" value={form.new_password||''} onChange={e=>upd('new_password',e.target.value)}/>
                 <button onClick={createClient} style={{width:'100%',background:gold,color:white,border:'none',padding:'0.75rem',fontFamily:ff,fontSize:'0.62rem',letterSpacing:'0.12em',textTransform:'uppercase',borderRadius:3,cursor:'pointer',marginTop:'0.85rem'}}>Crear Cliente →</button>
               </div>
-
               <div style={{fontSize:'0.58rem',letterSpacing:'0.14em',textTransform:'uppercase',color:gray,marginBottom:'0.75rem',textAlign:'center'}}>— o selecciona uno existente —</div>
-
               <label style={lbl}>Cliente Existente</label>
               <select value={form.user_id||''} onChange={e=>upd('user_id',e.target.value)} style={inp}>
                 <option value="">Seleccionar cliente</option>
@@ -622,58 +550,19 @@ export default function Admin({ session }) {
           </div>
         )}
 
-        {panel==='clients' && <ClientsPanel
-          users={users}
-          cards={cards}
-          search={clientSearch}
-          setSearch={setClientSearch}
-          onEdit={(u)=>{setEditingClient(u);setEditForm({name:u.full_name||'',business:u.business_name||'',phone:u.phone||'',email:'',password:''});setModal('editclient')}}
-          onAddPayment={(card)=>{setPunchId(card.id);setPanel('punch')}}
-          onCreateCard={(uid)=>{setForm({user_id:uid});setModal('card')}}
-          showToast={showToast}
-          loadAll={loadAll}
-        />}
-
-        {/* MODAL: Editar Cliente */}
-        {modal==='edit' && (
-          <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:500,display:'flex',alignItems:'flex-end',justifyContent:'center'}} onClick={e=>e.target===e.currentTarget&&setModal(null)}>
-            <div style={{background:white,borderRadius:'12px 12px 0 0',padding:'2rem',width:'100%',maxWidth:520,maxHeight:'90vh',overflowY:'auto'}}>
-              <h3 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300,marginBottom:'0.35rem'}}>Editar Cliente</h3>
-              <p style={{fontSize:'0.72rem',color:gray,marginBottom:'1.5rem'}}>Actualiza la informacion del cliente.</p>
-              <label style={lbl}>Nombre Completo</label>
-              <input style={inp} type="text" placeholder="Nombre completo" value={form.edit_name||''} onChange={e=>upd('edit_name',e.target.value)}/>
-              <label style={lbl}>Nombre del Negocio</label>
-              <input style={inp} type="text" placeholder="Nombre del negocio" value={form.edit_business||''} onChange={e=>upd('edit_business',e.target.value)}/>
-              <label style={lbl}>Telefono</label>
-              <input style={inp} type="tel" placeholder="787-000-0000" value={form.edit_phone||''} onChange={e=>upd('edit_phone',e.target.value)}/>
-              <label style={lbl}>Notas</label>
-              <input style={inp} type="text" placeholder="Notas adicionales..." value={form.edit_notes||''} onChange={e=>upd('edit_notes',e.target.value)}/>
-              <div style={{display:'flex',gap:'0.75rem'}}>
-                <button onClick={saveEdit} style={{flex:1,background:black,color:white,border:'none',padding:'0.85rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Guardar</button>
-                <button onClick={()=>setModal(null)} style={{background:'rgba(14,14,12,0.06)',color:black,border:'none',padding:'0.85rem 1.25rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Cancelar</button>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* MODAL: QR */}
-        {modal==='qr' && qrCard && (
+        {modal==='qr'&&qrCard&&(
           <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:500,display:'flex',alignItems:'center',justifyContent:'center',padding:'1.25rem'}} onClick={e=>e.target===e.currentTarget&&setModal(null)}>
             <div style={{background:white,borderRadius:12,padding:'2rem',width:'100%',maxWidth:360,textAlign:'center'}}>
               <h3 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300,marginBottom:'0.25rem'}}>Codigo QR</h3>
               <p style={{fontSize:'0.72rem',color:gray,marginBottom:'0.5rem'}}>{qrCard.profiles?.business_name||qrCard.profiles?.full_name}</p>
-              <p style={{fontSize:'0.6rem',color:gray,marginBottom:'1.25rem',letterSpacing:'0.08em'}}>#{qrCard.card_number}</p>
+              <p style={{fontSize:'0.6rem',color:gray,marginBottom:'1.25rem'}}>#{qrCard.card_number}</p>
               <div style={{display:'flex',justifyContent:'center',marginBottom:'1.25rem'}}>
-                <img
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(cardUrl(qrCard))}&color=0e0e0c&bgcolor=f8f6f1`}
-                  alt="QR Code"
-                  style={{borderRadius:8,border:'1px solid '+gl,padding:8,background:white}}
-                  width={200} height={200}
-                />
+                <img src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(cardUrl(qrCard))}&color=0e0e0c&bgcolor=f8f6f1`} alt="QR" style={{borderRadius:8,border:'1px solid '+gl,padding:8,background:white}} width={200} height={200}/>
               </div>
               <p style={{fontSize:'0.58rem',color:gray,marginBottom:'1.25rem',wordBreak:'break-all',lineHeight:1.6}}>{cardUrl(qrCard)}</p>
               <div style={{display:'flex',gap:'0.75rem'}}>
-                <button onClick={()=>window.open(cardUrl(qrCard),'_blank')} style={{flex:1,background:black,color:white,border:'none',padding:'0.85rem',fontFamily:ff,fontSize:'0.62rem',letterSpacing:'0.12em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Abrir Link</button>
+                <button onClick={()=>window.open(cardUrl(qrCard),'_blank')} style={{flex:1,background:black,color:white,border:'none',padding:'0.85rem',fontFamily:ff,fontSize:'0.62rem',letterSpacing:'0.12em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Abrir</button>
                 <button onClick={()=>{navigator.clipboard.writeText(cardUrl(qrCard));showToast('Link copiado!')}} style={{flex:1,background:'rgba(184,151,90,0.1)',color:gold,border:'1px solid rgba(184,151,90,0.25)',padding:'0.85rem',fontFamily:ff,fontSize:'0.62rem',letterSpacing:'0.12em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Copiar</button>
                 <button onClick={()=>setModal(null)} style={{background:'rgba(14,14,12,0.06)',color:black,border:'none',padding:'0.85rem 0.75rem',fontFamily:ff,fontSize:'0.62rem',letterSpacing:'0.12em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>X</button>
               </div>
@@ -681,8 +570,8 @@ export default function Admin({ session }) {
           </div>
         )}
 
-        {/* MODAL: Editar Cliente Completo */}
-        {modal==='editclient' && editingClient && (
+        {/* MODAL: Editar Cliente */}
+        {modal==='editclient'&&editingClient&&(
           <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:500,display:'flex',alignItems:'flex-end',justifyContent:'center'}} onClick={e=>e.target===e.currentTarget&&setModal(null)}>
             <div style={{background:white,borderRadius:'12px 12px 0 0',padding:'2rem',width:'100%',maxWidth:520,maxHeight:'90vh',overflowY:'auto'}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1.5rem'}}>
@@ -690,21 +579,21 @@ export default function Admin({ session }) {
                 <button onClick={()=>setModal(null)} style={{background:'none',border:'none',fontSize:'1.1rem',cursor:'pointer',color:gray}}>✕</button>
               </div>
               <div style={{fontSize:'0.58rem',letterSpacing:'0.14em',textTransform:'uppercase',color:gold,marginBottom:'1rem'}}>Informacion Personal</div>
-              <label style={{fontSize:'0.56rem',letterSpacing:'0.13em',textTransform:'uppercase',color:gray,display:'block',marginBottom:'0.35rem'}}>Nombre Completo</label>
-              <input style={{width:'100%',padding:'0.78rem 1rem',border:'1px solid '+gl,borderRadius:3,background:white,fontFamily:ff,fontSize:'0.88rem',outline:'none',color:black,marginBottom:'1rem',boxSizing:'border-box'}} type="text" value={editForm.name||''} onChange={e=>setEditForm(f=>({...f,name:e.target.value}))}/>
-              <label style={{fontSize:'0.56rem',letterSpacing:'0.13em',textTransform:'uppercase',color:gray,display:'block',marginBottom:'0.35rem'}}>Nombre del Negocio</label>
-              <input style={{width:'100%',padding:'0.78rem 1rem',border:'1px solid '+gl,borderRadius:3,background:white,fontFamily:ff,fontSize:'0.88rem',outline:'none',color:black,marginBottom:'1rem',boxSizing:'border-box'}} type="text" value={editForm.business||''} onChange={e=>setEditForm(f=>({...f,business:e.target.value}))}/>
-              <label style={{fontSize:'0.56rem',letterSpacing:'0.13em',textTransform:'uppercase',color:gray,display:'block',marginBottom:'0.35rem'}}>Telefono</label>
-              <input style={{width:'100%',padding:'0.78rem 1rem',border:'1px solid '+gl,borderRadius:3,background:white,fontFamily:ff,fontSize:'0.88rem',outline:'none',color:black,marginBottom:'1.5rem',boxSizing:'border-box'}} type="tel" value={editForm.phone||''} onChange={e=>setEditForm(f=>({...f,phone:e.target.value}))}/>
+              <label style={lbl}>Nombre Completo</label>
+              <input style={inp} type="text" value={editForm.name||''} onChange={e=>setEditForm(f=>({...f,name:e.target.value}))}/>
+              <label style={lbl}>Nombre del Negocio</label>
+              <input style={inp} type="text" value={editForm.business||''} onChange={e=>setEditForm(f=>({...f,business:e.target.value}))}/>
+              <label style={lbl}>Telefono</label>
+              <input style={inp} type="tel" value={editForm.phone||''} onChange={e=>setEditForm(f=>({...f,phone:e.target.value}))}/>
               <div style={{fontSize:'0.58rem',letterSpacing:'0.14em',textTransform:'uppercase',color:gold,marginBottom:'1rem'}}>Credenciales</div>
-              <label style={{fontSize:'0.56rem',letterSpacing:'0.13em',textTransform:'uppercase',color:gray,display:'block',marginBottom:'0.35rem'}}>Nuevo Email (opcional)</label>
-              <input style={{width:'100%',padding:'0.78rem 1rem',border:'1px solid '+gl,borderRadius:3,background:white,fontFamily:ff,fontSize:'0.88rem',outline:'none',color:black,marginBottom:'1rem',boxSizing:'border-box'}} type="email" placeholder="Dejar vacio para no cambiar" value={editForm.email||''} onChange={e=>setEditForm(f=>({...f,email:e.target.value}))}/>
-              <label style={{fontSize:'0.56rem',letterSpacing:'0.13em',textTransform:'uppercase',color:gray,display:'block',marginBottom:'0.35rem'}}>Nueva Contrasena (opcional)</label>
-              <input style={{width:'100%',padding:'0.78rem 1rem',border:'1px solid '+gl,borderRadius:3,background:white,fontFamily:ff,fontSize:'0.88rem',outline:'none',color:black,marginBottom:'1.5rem',boxSizing:'border-box'}} type="text" placeholder="Dejar vacio para no cambiar" value={editForm.password||''} onChange={e=>setEditForm(f=>({...f,password:e.target.value}))}/>
+              <label style={lbl}>Nuevo Email (opcional)</label>
+              <input style={inp} type="email" placeholder="Dejar vacio para no cambiar" value={editForm.email||''} onChange={e=>setEditForm(f=>({...f,email:e.target.value}))}/>
+              <label style={lbl}>Nueva Contrasena (opcional)</label>
+              <input style={inp} type="text" placeholder="Dejar vacio para no cambiar" value={editForm.password||''} onChange={e=>setEditForm(f=>({...f,password:e.target.value}))}/>
               <div style={{display:'flex',gap:'0.75rem'}}>
                 <button onClick={async()=>{
                   await fetch('/api/admin/users',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:editingClient.id,full_name:editForm.name,business_name:editForm.business,phone:editForm.phone,email:editForm.email||null,password:editForm.password||null})})
-                  showToast('Cliente actualizado'); setModal(null); setEditingClient(null); loadAll()
+                  showToast('Cliente actualizado');setModal(null);setEditingClient(null);loadAll()
                 }} style={{flex:1,background:black,color:white,border:'none',padding:'0.85rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Guardar Cambios</button>
                 <button onClick={()=>setModal(null)} style={{background:'rgba(14,14,12,0.06)',color:black,border:'none',padding:'0.85rem 1.25rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Cancelar</button>
               </div>
@@ -713,7 +602,7 @@ export default function Admin({ session }) {
         )}
 
         {/* MODAL: Premio */}
-        {modal==='reward' && (
+        {modal==='reward'&&(
           <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:500,display:'flex',alignItems:'flex-end',justifyContent:'center'}} onClick={e=>e.target===e.currentTarget&&setModal(null)}>
             <div style={{background:white,borderRadius:'12px 12px 0 0',padding:'2rem',width:'100%',maxWidth:520,maxHeight:'90vh',overflowY:'auto'}}>
               <h3 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300,marginBottom:'0.35rem'}}>Registrar Premio</h3>
@@ -739,7 +628,7 @@ export default function Admin({ session }) {
           </div>
         )}
 
-        {toast && <div style={{position:'fixed',bottom:'5rem',right:'1rem',background:black,color:white,padding:'0.85rem 1.25rem',borderRadius:8,fontSize:'0.74rem',borderLeft:'3px solid '+gold,zIndex:9999,maxWidth:280}}>{toast}</div>}
+        {toast&&<div style={{position:'fixed',bottom:'5rem',right:'1rem',background:black,color:white,padding:'0.85rem 1.25rem',borderRadius:8,fontSize:'0.74rem',borderLeft:'3px solid '+gold,zIndex:9999,maxWidth:280}}>{toast}</div>}
       </div>
     </>
   )
