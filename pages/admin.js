@@ -6,11 +6,14 @@ const ff='DM Sans,sans-serif'
 const ffS='Cormorant Garamond,serif'
 
 function getStatus(card) {
-  if (!card||!card.stamp_history||card.stamp_history.length===0) return { label:'Nuevo', color:'#3498db', bg:'rgba(52,152,219,0.1)' }
+  if (!card) return { label:'Nuevo', color:'#8e44ad', bg:'rgba(142,68,173,0.1)' }
   const stamps = card.stamps || 0
-  const last = new Date(card.stamp_history[card.stamp_history.length-1].created_at)
-  const days = (Date.now()-last)/(1000*60*60*24)
-  if (days > 60) return { label:'Perdido', color:'#c0392b', bg:'rgba(192,57,43,0.1)' }
+  // Check last purchase date for Perdido status
+  if (card.stamp_history && card.stamp_history.length > 0) {
+    const last = new Date(card.stamp_history[card.stamp_history.length-1].created_at)
+    const days = (Date.now()-last)/(1000*60*60*24)
+    if (days > 60) return { label:'Perdido', color:'#c0392b', bg:'rgba(192,57,43,0.1)' }
+  }
   if (stamps >= 15) return { label:'VIP', color:'#b8975a', bg:'rgba(184,151,90,0.12)' }
   if (stamps >= 10) return { label:'Regular', color:'#2d8a60', bg:'rgba(45,138,96,0.1)' }
   if (stamps >= 5) return { label:'Activo', color:'#3498db', bg:'rgba(52,152,219,0.1)' }
