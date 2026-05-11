@@ -381,25 +381,25 @@ export default function Admin({session}){
         <div style={{display:'flex',paddingTop:52,minHeight:'100vh'}}>
           {/* SIDEBAR */}
           <div className="admin-sidebar" style={{width:205,background:ink,flexShrink:0,position:'fixed',top:52,left:0,bottom:0,padding:'1.5rem 0',overflowY:'auto'}}>
-            <button onClick={()=>setPanel('dashboard')} style={{display:'flex',alignItems:'center',gap:'0.65rem',padding:'0.82rem 1.5rem',fontSize:'0.66rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel==='dashboard'?gold:'rgba(255,255,255,0.32)',cursor:'pointer',background:'none',border:'none',borderLeft:panel==='dashboard'?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>
+            <button onClick={()=>setPanel('dashboard')} style={{display:'flex',alignItems:'center',gap:'0.65rem',padding:'0.82rem 1.5rem',fontSize:'0.72rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel==='dashboard'?gold:'rgba(255,255,255,0.32)',cursor:'pointer',background:'none',border:'none',borderLeft:panel==='dashboard'?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>
               <span></span>Dashboard
             </button>
             <div>
-              <button onClick={()=>setLoyaltyOpen(o=>!o)} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0.82rem 1.5rem',fontSize:'0.64rem',letterSpacing:'0.12em',textTransform:'uppercase',color:['cards','punch','rewards'].includes(panel)?gold:'rgba(255,255,255,0.45)',cursor:'pointer',background:'none',border:'none',width:'100%',textAlign:'left',fontFamily:ff}}>
+              <button onClick={()=>setLoyaltyOpen(o=>!o)} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0.82rem 1.5rem',fontSize:'0.72rem',letterSpacing:'0.1em',textTransform:'uppercase',color:['cards','punch','rewards'].includes(panel)?gold:'rgba(255,255,255,0.45)',cursor:'pointer',background:'none',border:'none',width:'100%',textAlign:'left',fontFamily:ff}}>
                 <span style={{display:'flex',alignItems:'center',gap:'0.65rem'}}><span></span>Loyalty Program</span>
                 <span style={{fontSize:'0.6rem',display:'inline-block',transform:loyaltyOpen?'rotate(180deg)':'rotate(0deg)',transition:'transform 0.2s'}}>▾</span>
               </button>
               {loyaltyOpen&&(
                 <div style={{background:'rgba(0,0,0,0.15)'}}>
-                  {[['cards','','Tarjetas'],['punch','·','Ponchar'],['rewards','','Premios']].map(([id,icon,label])=>(
-                    <button key={id} onClick={()=>setPanel(id)} style={{display:'flex',alignItems:'center',gap:'0.6rem',padding:'0.68rem 1.5rem 0.68rem 2.25rem',fontSize:'0.62rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel===id?gold:'rgba(255,255,255,0.28)',cursor:'pointer',background:'none',border:'none',borderLeft:panel===id?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>
+                  {[['cards','','Tarjetas'],['punch','','Ponchar'],['rewards','','Premios']].map(([id,icon,label])=>(
+                    <button key={id} onClick={()=>setPanel(id)} style={{display:'flex',alignItems:'center',gap:'0.6rem',padding:'0.68rem 1.5rem 0.68rem 2.25rem',fontSize:'0.70rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel===id?gold:'rgba(255,255,255,0.28)',cursor:'pointer',background:'none',border:'none',borderLeft:panel===id?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>
                       <span style={{fontSize:'0.82rem'}}>{icon}</span>{label}
                     </button>
                   ))}
                 </div>
               )}
             </div>
-            <button onClick={()=>setPanel('clients')} style={{display:'flex',alignItems:'center',gap:'0.65rem',padding:'0.82rem 1.5rem',fontSize:'0.66rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel==='clients'?gold:'rgba(255,255,255,0.32)',cursor:'pointer',background:'none',border:'none',borderLeft:panel==='clients'?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>
+            <button onClick={()=>setPanel('clients')} style={{display:'flex',alignItems:'center',gap:'0.65rem',padding:'0.82rem 1.5rem',fontSize:'0.72rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel==='clients'?gold:'rgba(255,255,255,0.32)',cursor:'pointer',background:'none',border:'none',borderLeft:panel==='clients'?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>
               <span></span>Clients
             </button>
           </div>
@@ -516,7 +516,7 @@ export default function Admin({session}){
 
         {/* MOBILE NAV */}
         <div className="mobile-nav">
-          {[['dashboard','','Dashboard'],['cards','','Tarjetas'],['punch','·','Ponchar'],['rewards','','Premios'],['clients','','Clients']].map(([id,icon,label])=>(
+          {[['dashboard','','Dashboard'],['cards','','Tarjetas'],['punch','','Ponchar'],['rewards','','Premios'],['clients','','Clients']].map(([id,icon,label])=>(
             <button key={id} onClick={()=>setPanel(id)} className={panel===id?'active':''}>
               <span>{icon}</span>{label}
             </button>
