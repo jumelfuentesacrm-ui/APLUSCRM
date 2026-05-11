@@ -73,15 +73,7 @@ function DashboardPanel({ cards, onSelectClient }) {
 
   return (
     <div>
-      {/* Stats row */}
-      <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'0.75rem',marginBottom:'1.5rem'}}>
-        {[[totalClients,'Clientes',gold],[totalStamps,'Sellos',black],[completedCycles,'Ciclos','#2d8a60']].map(([val,label,color])=>(
-          <div key={label} style={{background:white,borderRadius:8,padding:'1rem',border:'1px solid rgba(14,14,12,0.06)',textAlign:'center'}}>
-            <div style={{fontFamily:ffS,fontSize:'2rem',fontWeight:300,color,lineHeight:1}}>{val}</div>
-            <div style={{fontSize:'0.52rem',letterSpacing:'0.1em',textTransform:'uppercase',color:gray,marginTop:'0.3rem'}}>{label}</div>
-          </div>
-        ))}
-      </div>
+
 
       {/* Two donuts */}
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1rem',marginBottom:'1.5rem'}}>
@@ -246,6 +238,7 @@ export default function Admin({ session }) {
   const [qrCard, setQrCard] = useState(null)
   const [search, setSearch] = useState('')
   const [selectedClient, setSelectedClient] = useState(null)
+  const [loyaltyOpen, setLoyaltyOpen] = useState(true)
 
   useEffect(() => {
     if (!session) { window.location.href = '/login'; return }
@@ -375,30 +368,28 @@ export default function Admin({ session }) {
 
         <div style={{display:'flex',paddingTop:52,minHeight:'100vh'}}>
           <div className="admin-sidebar" style={{width:200,background:ink,flexShrink:0,position:'fixed',top:52,left:0,bottom:0,padding:'1.5rem 0',overflowY:'auto'}}>
-            {/* Dashboard */}
             <button onClick={()=>setPanel('dashboard')} style={{display:'flex',alignItems:'center',gap:'0.65rem',padding:'0.82rem 1.5rem',fontSize:'0.66rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel==='dashboard'?gold:'rgba(255,255,255,0.32)',cursor:'pointer',background:'none',border:'none',borderLeft:panel==='dashboard'?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>
               <span>📊</span>Dashboard
             </button>
-            {/* Loyalty Program */}
-            <div style={{marginTop:'0.5rem'}}>
-              <div style={{padding:'0.6rem 1.5rem',fontSize:'0.54rem',letterSpacing:'0.16em',textTransform:'uppercase',color:'rgba(184,151,90,0.5)',fontFamily:ff}}>Loyalty Program</div>
-              {[['cards','🎴','Tarjetas'],['punch','✦','Ponchar'],['rewards','🎁','Premios']].map(([id,icon,label])=>(
-                <button key={id} onClick={()=>setPanel(id)} style={{display:'flex',alignItems:'center',gap:'0.65rem',padding:'0.72rem 1.5rem 0.72rem 2rem',fontSize:'0.64rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel===id?gold:'rgba(255,255,255,0.28)',cursor:'pointer',background:'none',border:'none',borderLeft:panel===id?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>
-                  <span style={{fontSize:'0.85rem'}}>{icon}</span>{label}
-                </button>
-              ))}
+            <div style={{marginTop:'0.25rem'}}>
+              <button onClick={()=>setLoyaltyOpen(o=>!o)} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0.82rem 1.5rem',fontSize:'0.64rem',letterSpacing:'0.12em',textTransform:'uppercase',color:['cards','punch','rewards'].includes(panel)?gold:'rgba(255,255,255,0.45)',cursor:'pointer',background:'none',border:'none',width:'100%',textAlign:'left',fontFamily:ff}}>
+                <span style={{display:'flex',alignItems:'center',gap:'0.65rem'}}><span>🎯</span>Loyalty Program</span>
+                <span style={{fontSize:'0.6rem',display:'inline-block',transform:loyaltyOpen?'rotate(180deg)':'rotate(0deg)',transition:'transform 0.2s'}}>▾</span>
+              </button>
+              {loyaltyOpen && (
+                <div style={{background:'rgba(0,0,0,0.15)'}}>
+                  {[['cards','🎴','Tarjetas'],['punch','✦','Ponchar'],['rewards','🎁','Premios']].map(([id,icon,label])=>(
+                    <button key={id} onClick={()=>setPanel(id)} style={{display:'flex',alignItems:'center',gap:'0.6rem',padding:'0.68rem 1.5rem 0.68rem 2.25rem',fontSize:'0.62rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel===id?gold:'rgba(255,255,255,0.28)',cursor:'pointer',background:'none',border:'none',borderLeft:panel===id?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>
+                      <span style={{fontSize:'0.82rem'}}>{icon}</span>{label}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
           <div className="admin-main" style={{marginLeft:190,flex:1,padding:'1.75rem',maxWidth:980}}>
-            <div className="stats-grid" style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:'0.75rem',marginBottom:'1.5rem'}}>
-              {[[cards.length,'Tarjetas'],[totalStamps,'Sellos'],[withReward,'Disponibles'],[redeemed,'Canjeados']].map(([val,label])=>(
-                <div key={label} style={{background:white,borderRadius:8,padding:'1rem',border:'1px solid rgba(14,14,12,0.06)'}}>
-                  <div style={{fontFamily:ffS,fontSize:'1.75rem',fontWeight:300,color:gold,lineHeight:1}}>{val}</div>
-                  <div style={{fontSize:'0.52rem',letterSpacing:'0.1em',textTransform:'uppercase',color:gray,marginTop:'0.3rem'}}>{label}</div>
-                </div>
-              ))}
-            </div>
+
 
             {panel==='dashboard' && <DashboardPanel cards={cards} onSelectClient={(card)=>{setSelectedClient(card);setPanel('client')}}/>}
             {panel==='client' && selectedClient && <ClientProfile card={selectedClient} onBack={()=>{setSelectedClient(null);setPanel('dashboard')}} allCards={cards}/>}
