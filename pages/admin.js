@@ -51,6 +51,123 @@ function getNotifications(cards) {
   return alerts.sort((a,b) => b.days - a.days)
 }
 
+function FinancialCard() {
+  const [expanded, setExpanded] = useState(false)
+  const white='#f8f6f1', gray='#6b6b67', black='#0e0e0c', gold='#b8975a'
+  const ff='DM Sans,sans-serif', ffS='Cormorant Garamond,serif'
+
+  // Placeholder data — will be populated from Clover
+  const financial = {
+    gross_sales: 0, gross_expenses: 0, net_profit: 0,
+    avg_order_value: 0, avg_order_profit: 0,
+    revenue_new: 0, revenue_active: 0, revenue_vip: 0,
+    lifetime_data: [] // [{month:'Ene',value:0}, ...]
+  }
+
+  function SmallDonut({value, total, color, label, sublabel}) {
+    const pct = total > 0 ? value/total : 0
+    const r = 28, cx = 36, cy = 36, circ = 2*Math.PI*r
+    const dash = pct * circ
+    return (
+      <div style={{textAlign:'center'}}>
+        <svg viewBox="0 0 72 72" width={80} height={80}>
+          <circle cx={cx} cy={cy} r={r} fill="none" stroke="rgba(14,14,12,0.06)" strokeWidth={6}/>
+          <circle cx={cx} cy={cy} r={r} fill="none" stroke={color} strokeWidth={6}
+            strokeDasharray={`${dash} ${circ}`} strokeLinecap="round"
+            transform={`rotate(-90 ${cx} ${cy})`}
+            style={{transition:'stroke-dasharray 0.5s'}}/>
+          <text x={cx} y={cy+4} textAnchor="middle" style={{fontSize:10,fontFamily:ffS,fill:black}}>{total>0?'$'+value.toLocaleString():'—'}</text>
+        </svg>
+        <div style={{fontSize:'0.6rem',fontWeight:600,color:black,marginTop:'0.2rem'}}>{label}</div>
+        <div style={{fontSize:'0.54rem',color:gray}}>{sublabel}</div>
+      </div>
+    )
+  }
+
+  // Simple line chart
+  const months = financial.lifetime_data.length > 0 ? financial.lifetime_data : 
+    ['Ene','Feb','Mar','Abr','May','Jun'].map(m=>({month:m,value:0}))
+  const maxVal = Math.max(...months.map(m=>m.value), 1)
+  const w = 280, h = 80, pad = 10
+  const points = months.map((m,i)=>({
+    x: pad + (i/(months.length-1||1))*(w-pad*2),
+    y: h - pad - (m.value/maxVal)*(h-pad*2)
+  }))
+  const pathD = points.map((p,i)=>`${i===0?'M':'L'} ${p.x} ${p.y}`).join(' ')
+
+  return (
+    <div style={{background:white,borderRadius:10,border:'1px solid rgba(14,14,12,0.07)',overflow:'hidden'}}>
+      {/* Header - always visible */}
+      <div onClick={()=>setExpanded(e=>!e)} style={{padding:'1.5rem',cursor:'pointer',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+        <div>
+          <div style={{fontFamily:ffS,fontSize:'1.1rem',fontWeight:300}}>Financiero</div>
+          <div style={{fontSize:'0.56rem',color:gray,marginTop:'0.2rem',letterSpacing:'0.1em',textTransform:'uppercase'}}>Pendiente datos Clover</div>
+        </div>
+        <div style={{display:'flex',alignItems:'center',gap:'0.75rem'}}>
+          <div style={{display:'flex',gap:'0.5rem'}}>
+            {[['#2d8a60','Ventas'],['#c0392b','Gastos'],[gold,'Profit']].map(([color,label])=>(
+              <div key={label} style={{display:'flex',alignItems:'center',gap:'0.25rem'}}>
+                <div style={{width:6,height:6,borderRadius:'50%',background:color}}/>
+                <span style={{fontSize:'0.56rem',color:gray}}>{label}</span>
+              </div>
+            ))}
+          </div>
+          <span style={{fontSize:'0.75rem',color:gray,transform:expanded?'rotate(180deg)':'rotate(0deg)',transition:'transform 0.2s',display:'inline-block'}}>▾</span>
+        </div>
+      </div>
+
+      {/* Expanded content */}
+      {expanded && (
+        <div style={{borderTop:'1px solid rgba(14,14,12,0.06)',padding:'1.5rem'}}>
+          {/* Revenue by segment donuts */}
+          <div style={{fontSize:'0.6rem',letterSpacing:'0.14em',textTransform:'uppercase',color:gray,marginBottom:'1rem'}}>Revenue por Segmento</div>
+          <div style={{display:'flex',justifyContent:'space-around',flexWrap:'wrap',gap:'1rem',marginBottom:'1.5rem'}}>
+            <SmallDonut value={financial.revenue_new} total={financial.gross_sales} color="#8e44ad" label="Nuevos" sublabel="Revenue"/>
+            <SmallDonut value={financial.revenue_active} total={financial.gross_sales} color="#3498db" label="Activos" sublabel="Revenue"/>
+            <SmallDonut value={financial.revenue_vip} total={financial.gross_sales} color={gold} label="VIP" sublabel="Revenue"/>
+          </div>
+
+          {/* Avg order donuts */}
+          <div style={{fontSize:'0.6rem',letterSpacing:'0.14em',textTransform:'uppercase',color:gray,marginBottom:'1rem'}}>Promedios</div>
+          <div style={{display:'flex',justifyContent:'space-around',flexWrap:'wrap',gap:'1rem',marginBottom:'1.5rem'}}>
+            <SmallDonut value={financial.avg_order_value} total={financial.avg_order_value||1} color="#2d8a60" label="Avg Order" sublabel="Value"/>
+            <SmallDonut value={financial.avg_order_profit} total={financial.avg_order_value||1} color={gold} label="Avg Order" sublabel="Profit"/>
+          </div>
+
+          {/* Lifetime value line chart */}
+          <div style={{fontSize:'0.6rem',letterSpacing:'0.14em',textTransform:'uppercase',color:gray,marginBottom:'0.75rem'}}>Avg Client Lifetime Value</div>
+          <div style={{background:'rgba(14,14,12,0.02)',borderRadius:8,padding:'1rem',border:'1px solid rgba(14,14,12,0.05)'}}>
+            <svg viewBox={`0 0 ${w} ${h}`} style={{width:'100%',height:'auto'}}>
+              {/* Grid lines */}
+              {[0.25,0.5,0.75,1].map(pct=>(
+                <line key={pct} x1={pad} y1={h-pad-(pct*(h-pad*2))} x2={w-pad} y2={h-pad-(pct*(h-pad*2))}
+                  stroke="rgba(14,14,12,0.06)" strokeWidth={1}/>
+              ))}
+              {/* Line */}
+              {financial.lifetime_data.length > 0 ? (
+                <path d={pathD} fill="none" stroke={gold} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"/>
+              ) : (
+                <text x={w/2} y={h/2} textAnchor="middle" style={{fontSize:9,fontFamily:ff,fill:gray}}>Sin datos — pendiente Clover</text>
+              )}
+              {/* Dots */}
+              {financial.lifetime_data.length > 0 && points.map((p,i)=>(
+                <circle key={i} cx={p.x} cy={p.y} r={3} fill={gold}/>
+              ))}
+            </svg>
+            <div style={{display:'flex',justifyContent:'space-between',marginTop:'0.25rem'}}>
+              {months.map((m,i)=><span key={i} style={{fontSize:'0.52rem',color:gray}}>{m.month}</span>)}
+            </div>
+          </div>
+
+          <div style={{marginTop:'1rem',padding:'0.75rem',background:'rgba(184,151,90,0.05)',borderRadius:6,border:'1px solid rgba(184,151,90,0.15)',textAlign:'center'}}>
+            <div style={{fontSize:'0.6rem',color:gray,letterSpacing:'0.1em',textTransform:'uppercase'}}>Conecta Clover para activar el dashboard financiero en tiempo real</div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function DashboardPanel({ cards, onSelectClient }) {
   const totalClients=cards.length
   const sorted=[...cards].sort((a,b)=>(b.stamps||0)-(a.stamps||0))
@@ -71,9 +188,6 @@ function DashboardPanel({ cards, onSelectClient }) {
     {label:'Cancelado',value:statusCounts.find(s=>s.label==='Cancelado')?.value||0,color:'#c0392b'},
   ].filter(d=>d.value>0)
 
-  const finDonut=[
-    {label:'Sin datos',value:1,color:'rgba(14,14,12,0.08)'},
-  ]
 
   function makeSegs(data) {
     const total=data.reduce((a,d)=>a+d.value,0)||1
@@ -96,7 +210,6 @@ function DashboardPanel({ cards, onSelectClient }) {
     )
   }
   const clientSegs=makeSegs(clientDonut)
-  const finSegs=makeSegs(finDonut)
 
   return(
     <div>
@@ -116,22 +229,7 @@ function DashboardPanel({ cards, onSelectClient }) {
             </div>
           </div>
         </div>
-        <div style={{background:white,borderRadius:10,padding:'1.5rem',border:'1px solid rgba(14,14,12,0.07)',position:'relative'}}>
-          <div style={{fontFamily:ffS,fontSize:'1.1rem',fontWeight:300,marginBottom:'1.25rem'}}>Financiero</div>
-          <div style={{display:'flex',alignItems:'center',gap:'1rem'}}>
-            <Donut segs={finSegs} center={<text x="50" y="54" textAnchor="middle" style={{fontSize:8,fontFamily:ff,fill:gray}}>Clover</text>}/>
-            <div style={{flex:1}}>
-              {[['Gross Sales','#2d8a60',0],['Gross Exp.','#c0392b',0],['Net Profit',gold,0]].map(([label,color,val])=>(
-                <div key={label} style={{display:'flex',alignItems:'center',gap:'0.4rem',marginBottom:'0.4rem'}}>
-                  <div style={{width:7,height:7,borderRadius:'50%',background:color,flexShrink:0}}/>
-                  <span style={{fontSize:'0.62rem',color:gray,flex:1}}>{label}</span>
-                  <span style={{fontSize:'0.62rem',color:'rgba(14,14,12,0.25)'}}>—</span>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div style={{position:'absolute',bottom:'1rem',left:0,right:0,textAlign:'center',fontSize:'0.54rem',color:'rgba(14,14,12,0.3)',letterSpacing:'0.1em',textTransform:'uppercase'}}>Pendiente datos Clover</div>
-        </div>
+        <FinancialCard/>
       </div>
       <div style={{background:white,borderRadius:10,padding:'1.5rem',border:'1px solid rgba(14,14,12,0.07)',marginBottom:'1.5rem'}}>
         <div style={{fontFamily:ffS,fontSize:'1.1rem',fontWeight:300,marginBottom:'1.25rem'}}>Top Clientes</div>
