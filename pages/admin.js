@@ -8,12 +8,18 @@ const ffS='Cormorant Garamond,serif'
 function getStatus(card) {
   if (!card) return { label:'Nuevo', color:'#8e44ad', bg:'rgba(142,68,173,0.1)' }
   const stamps = card.stamps || 0
-  // Check last purchase date for Perdido status
+  let days = null
   if (card.stamp_history && card.stamp_history.length > 0) {
     const last = new Date(card.stamp_history[card.stamp_history.length-1].created_at)
-    const days = (Date.now()-last)/(1000*60*60*24)
-    if (days > 60) return { label:'Perdido', color:'#c0392b', bg:'rgba(192,57,43,0.1)' }
+    days = (Date.now()-last)/(1000*60*60*24)
   }
+  // Billing cycle overrides stamp status
+  if (days !== null) {
+    if (days >= 66) return { label:'Cancelado', color:'#c0392b', bg:'rgba(192,57,43,0.1)' }
+    if (days >= 38) return { label:'Recargo', color:'#e74c3c', bg:'rgba(231,76,60,0.1)' }
+    if (days >= 35) return { label:'Gracia', color:'#e67e22', bg:'rgba(230,126,34,0.1)' }
+  }
+  // Stamp-based status
   if (stamps >= 15) return { label:'VIP', color:'#b8975a', bg:'rgba(184,151,90,0.12)' }
   if (stamps >= 10) return { label:'Regular', color:'#2d8a60', bg:'rgba(45,138,96,0.1)' }
   if (stamps >= 5) return { label:'Activo', color:'#3498db', bg:'rgba(52,152,219,0.1)' }
@@ -32,13 +38,14 @@ function getNotifications(cards) {
     const days = getDaysSinceLastPurchase(card)
     if (days === null) return
     const name = card.profiles?.business_name || card.profiles?.full_name || 'Cliente'
-    // Alert at 9, 18, 27 days (max 3)
-    if (days >= 27) {
-      alerts.push({ card, days, level: 3, msg: `${name} lleva ${days} dias sin comprar — 3ra alerta` })
-    } else if (days >= 18) {
-      alerts.push({ card, days, level: 2, msg: `${name} lleva ${days} dias sin comprar — 2da alerta` })
-    } else if (days >= 9) {
-      alerts.push({ card, days, level: 1, msg: `${name} lleva ${days} dias sin comprar — 1ra alerta` })
+    if (days >= 66) {
+      alerts.push({ card, days, level: 3, msg: `${name} — Servicio cancelado (${days} dias sin pago)` })
+    } else if (days >= 38) {
+      alerts.push({ card, days, level: 3, msg: `${name} — Recargo de $30 aplicado (${days} dias)` })
+    } else if (days >= 35) {
+      alerts.push({ card, days, level: 2, msg: `${name} — En periodo de gracia, 3 dias para pagar (${days} dias)` })
+    } else if (days >= 30) {
+      alerts.push({ card, days, level: 1, msg: `${name} — Pago vence pronto (${days} dias)` })
     }
   })
   return alerts.sort((a,b) => b.days - a.days)
@@ -51,17 +58,17 @@ function DashboardPanel({ cards, onSelectClient }) {
   const maxStamps=top5[0]?.stamps||1
   const financial={gross_sales:0,gross_expenses:0,net_profit:0}
 
-  const vipClients=cards.filter(c=>getStatus(c).label==='VIP').length
-  const regularClients=cards.filter(c=>getStatus(c).label==='Regular').length
-  const activoClients=cards.filter(c=>getStatus(c).label==='Activo').length
-  const nuevoClients=cards.filter(c=>getStatus(c).label==='Nuevo').length
-  const perdidoClients=cards.filter(c=>getStatus(c).label==='Perdido').length
+  const statusCounts = ['VIP','Regular','Activo','Nuevo','Gracia','Recargo','Cancelado'].map(l=>({
+    label:l, value:cards.filter(c=>getStatus(c).label===l).length
+  }))
   const clientDonut=[
-    {label:'VIP',value:vipClients,color:'#b8975a'},
-    {label:'Regular',value:regularClients,color:'#2d8a60'},
-    {label:'Activo',value:activoClients,color:'#3498db'},
-    {label:'Nuevo',value:nuevoClients,color:'#8e44ad'},
-    {label:'Perdido',value:perdidoClients,color:'#c0392b'},
+    {label:'VIP',value:statusCounts.find(s=>s.label==='VIP')?.value||0,color:'#b8975a'},
+    {label:'Regular',value:statusCounts.find(s=>s.label==='Regular')?.value||0,color:'#2d8a60'},
+    {label:'Activo',value:statusCounts.find(s=>s.label==='Activo')?.value||0,color:'#3498db'},
+    {label:'Nuevo',value:statusCounts.find(s=>s.label==='Nuevo')?.value||0,color:'#8e44ad'},
+    {label:'Gracia',value:statusCounts.find(s=>s.label==='Gracia')?.value||0,color:'#e67e22'},
+    {label:'Recargo',value:statusCounts.find(s=>s.label==='Recargo')?.value||0,color:'#e74c3c'},
+    {label:'Cancelado',value:statusCounts.find(s=>s.label==='Cancelado')?.value||0,color:'#c0392b'},
   ].filter(d=>d.value>0)
 
   const finDonut=[
@@ -351,31 +358,34 @@ function CampaignsPanel({ cards, users }) {
   const [sent, setSent] = useState(false)
 
   function classifyClient(card) {
-    if (!card.stamp_history || card.stamp_history.length === 0) return 'nuevos'
-    const stamps = card.stamps || 0
-    const last = new Date(card.stamp_history[card.stamp_history.length-1].created_at)
-    const days = (Date.now() - last) / (1000*60*60*24)
-    if (days > 60) return 'perdidos'
-    if (stamps >= 15) return 'vip'
-    if (stamps >= 10) return 'regulares'
-    if (stamps >= 5) return 'espontaneos'
+    const status = getStatus(card).label
+    if (status === 'Cancelado') return 'cancelados'
+    if (status === 'Recargo') return 'recargo'
+    if (status === 'Gracia') return 'gracia'
+    if (status === 'VIP') return 'vip'
+    if (status === 'Regular') return 'regulares'
+    if (status === 'Activo') return 'activos'
     return 'nuevos'
   }
 
   const groups = {
-    vip:         { label:'VIP',         desc:'2+ ciclos completados',          color:'#b8975a', bg:'rgba(184,151,90,0.12)', cards: cards.filter(c=>classifyClient(c)==='vip') },
-    regulares:   { label:'Regulares',   desc:'1 ciclo completo, activos',       color:'#2d8a60', bg:'rgba(45,138,96,0.1)',   cards: cards.filter(c=>classifyClient(c)==='regulares') },
-    espontaneos: { label:'Espontaneos', desc:'Activos sin ciclo completo',      color:'#3498db', bg:'rgba(52,152,219,0.1)',  cards: cards.filter(c=>classifyClient(c)==='espontaneos') },
-    nuevos:      { label:'Nuevos',      desc:'Solo 1 pago registrado',          color:'#8e44ad', bg:'rgba(142,68,173,0.1)',  cards: cards.filter(c=>classifyClient(c)==='nuevos') },
-    perdidos:    { label:'Perdidos',    desc:'Sin actividad +60 dias',          color:'#c0392b', bg:'rgba(192,57,43,0.1)',   cards: cards.filter(c=>classifyClient(c)==='perdidos') },
+    vip:        { label:'VIP',        desc:'15+ sellos, al dia',             color:'#b8975a', bg:'rgba(184,151,90,0.12)', cards: cards.filter(c=>classifyClient(c)==='vip') },
+    regulares:  { label:'Regulares',  desc:'10-14 sellos, al dia',           color:'#2d8a60', bg:'rgba(45,138,96,0.1)',   cards: cards.filter(c=>classifyClient(c)==='regulares') },
+    activos:    { label:'Activos',    desc:'5-9 sellos, al dia',             color:'#3498db', bg:'rgba(52,152,219,0.1)',  cards: cards.filter(c=>classifyClient(c)==='activos') },
+    nuevos:     { label:'Nuevos',     desc:'1-4 sellos, al dia',             color:'#8e44ad', bg:'rgba(142,68,173,0.1)',  cards: cards.filter(c=>classifyClient(c)==='nuevos') },
+    gracia:     { label:'Gracia',     desc:'35-37 dias sin pago',            color:'#e67e22', bg:'rgba(230,126,34,0.1)',  cards: cards.filter(c=>classifyClient(c)==='gracia') },
+    recargo:    { label:'Recargo',    desc:'38-65 dias — $30 aplicado',      color:'#e74c3c', bg:'rgba(231,76,60,0.1)',   cards: cards.filter(c=>classifyClient(c)==='recargo') },
+    cancelados: { label:'Cancelados', desc:'66+ dias sin pago',              color:'#c0392b', bg:'rgba(192,57,43,0.1)',   cards: cards.filter(c=>classifyClient(c)==='cancelados') },
   }
 
   const defaultMessages = {
-    vip:         'Hola [nombre], como cliente VIP de [negocio] queremos agradecerte tu lealtad. Tienes un beneficio especial esperandote!',
-    regulares:   'Hola [nombre], gracias por ser cliente regular de [negocio]. Cada pago te acerca a tu proximo premio!',
-    espontaneos: 'Hola [nombre], recuerda que tienes sellos acumulados en tu tarjeta de lealtad de [negocio]. No los dejes perder!',
-    nuevos:      'Hola [nombre], bienvenido a [negocio]! Acabas de comenzar tu camino hacia premios exclusivos con tu tarjeta digital.',
-    perdidos:    'Hola [nombre], hace tiempo que no sabemos de ti en [negocio]. Tenemos algo especial para que regreses!',
+    vip:        'Hola [nombre]! Gracias por ser VIP de [negocio]. Tu lealtad significa todo para nosotros 🙌',
+    regulares:  'Hola [nombre]! Sigues sumando con [negocio]. Cada pago te acerca mas a tu proximo premio 💪',
+    activos:    'Hola [nombre]! Ya tienes sellos acumulados en [negocio]. Sigue asi, vas bien! ⭐',
+    nuevos:     'Hola [nombre]! Bienvenido a [negocio]. Empezaste tu tarjeta de lealtad, vamos por mas! 🎉',
+    gracia:     'Hola [nombre], tu pago de [negocio] esta en periodo de gracia. Tienes hasta manana para evitar el recargo. Cualquier duda nos avisas!',
+    recargo:    'Hola [nombre], se aplico un recargo de $30 a tu cuenta de [negocio] por pago tardio. Ponerse al dia evita la suspension. Gracias!',
+    cancelados: 'Hola [nombre], tu servicio de [negocio] esta suspendido por falta de pago. Contactanos para reactivarlo. Estamos aqui para ayudarte!',
   }
 
   function selectGroup(key) {
@@ -724,7 +734,7 @@ export default function Admin({session}){
 
         {/* MOBILE NAV */}
         <div className="mobile-nav">
-          {[['dashboard','Dashboard'],['loyalty','Loyalty'],['clients','Clients'],['campaigns','Campaigns']].map(([id,label])=>(
+          {[['notifications','Alerts'],['loyalty','Loyalty'],['dashboard','Dashboard'],['clients','Clients'],['campaigns','Campaigns']].map(([id,label])=>(
             <button key={id} onClick={()=>setPanel(id)} className={panel===id||(['cards','punch','rewards'].includes(panel)&&id==='loyalty')?'active':''}>
               {label}
             </button>
