@@ -63,7 +63,7 @@ function DashboardPanel({ cards, onSelectClient }) {
 
   return(
     <div>
-      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1rem',marginBottom:'1.5rem'}}>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1rem',marginBottom:'1.5rem'}} className='donut-grid'>
         <div style={{background:white,borderRadius:10,padding:'1.5rem',border:'1px solid rgba(14,14,12,0.07)'}}>
           <div style={{fontFamily:ffS,fontSize:'1.1rem',fontWeight:300,marginBottom:'1.25rem'}}>Clientes</div>
           <div style={{display:'flex',alignItems:'center',gap:'1rem'}}>
@@ -240,7 +240,7 @@ function ClientsPanel({users,cards,search,setSearch,onEdit,onAddPayment,onCreate
                 )}
               </div>
               <div style={{padding:'0.85rem 1.25rem',display:'flex',gap:'0.5rem',flexWrap:'wrap',alignItems:'center'}}>
-                <button onClick={()=>onEdit(user)} style={{padding:'0.45rem 0.85rem',background:'rgba(14,14,12,0.06)',color:black,border:'none',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.58rem',letterSpacing:'0.07em',textTransform:'uppercase'}}>✏️ Editar</button>
+                <button onClick={()=>onEdit(user)} style={{padding:'0.45rem 0.85rem',background:'rgba(14,14,12,0.06)',color:black,border:'none',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.58rem',letterSpacing:'0.07em',textTransform:'uppercase'}}>Editar</button>
                 {card
                   ?<button onClick={()=>onAddPayment(card)} style={{padding:'0.45rem 0.85rem',background:black,color:white,border:'none',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.58rem',letterSpacing:'0.07em',textTransform:'uppercase'}}>+ Pago</button>
                   :<button onClick={()=>onCreateCard(user.id)} style={{padding:'0.45rem 0.85rem',background:'rgba(184,151,90,0.1)',color:gold,border:'1px solid rgba(184,151,90,0.25)',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.58rem',letterSpacing:'0.07em',textTransform:'uppercase'}}>+ Tarjeta</button>
@@ -359,11 +359,13 @@ export default function Admin({session}){
       <style>{`
         @media(max-width:700px){
           .admin-sidebar{display:none!important;}
-          .admin-main{margin-left:0!important;padding:1.25rem!important;}
+          .admin-main{margin-left:0!important;padding:1rem!important;}
           .cards-grid{grid-template-columns:1fr!important;}
           .punch-row{grid-template-columns:1fr!important;}
           .mobile-nav{display:flex!important;}
+          .donut-grid{grid-template-columns:1fr!important;}
         }
+        html,body{background:#f2f0eb;overscroll-behavior:none;}
         .mobile-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:${ink};z-index:200;border-top:1px solid rgba(184,151,90,0.15);}
         .mobile-nav button{flex:1;padding:0.75rem 0.1rem;background:none;border:none;color:rgba(255,255,255,0.4);font-family:${ff};font-size:0.5rem;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:0.2rem;}
         .mobile-nav button.active{color:${gold};}
@@ -380,16 +382,16 @@ export default function Admin({session}){
           {/* SIDEBAR */}
           <div className="admin-sidebar" style={{width:205,background:ink,flexShrink:0,position:'fixed',top:52,left:0,bottom:0,padding:'1.5rem 0',overflowY:'auto'}}>
             <button onClick={()=>setPanel('dashboard')} style={{display:'flex',alignItems:'center',gap:'0.65rem',padding:'0.82rem 1.5rem',fontSize:'0.66rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel==='dashboard'?gold:'rgba(255,255,255,0.32)',cursor:'pointer',background:'none',border:'none',borderLeft:panel==='dashboard'?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>
-              <span>📊</span>Dashboard
+              <span></span>Dashboard
             </button>
             <div>
               <button onClick={()=>setLoyaltyOpen(o=>!o)} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0.82rem 1.5rem',fontSize:'0.64rem',letterSpacing:'0.12em',textTransform:'uppercase',color:['cards','punch','rewards'].includes(panel)?gold:'rgba(255,255,255,0.45)',cursor:'pointer',background:'none',border:'none',width:'100%',textAlign:'left',fontFamily:ff}}>
-                <span style={{display:'flex',alignItems:'center',gap:'0.65rem'}}><span>🎯</span>Loyalty Program</span>
+                <span style={{display:'flex',alignItems:'center',gap:'0.65rem'}}><span></span>Loyalty Program</span>
                 <span style={{fontSize:'0.6rem',display:'inline-block',transform:loyaltyOpen?'rotate(180deg)':'rotate(0deg)',transition:'transform 0.2s'}}>▾</span>
               </button>
               {loyaltyOpen&&(
                 <div style={{background:'rgba(0,0,0,0.15)'}}>
-                  {[['cards','🎴','Tarjetas'],['punch','✦','Ponchar'],['rewards','🎁','Premios']].map(([id,icon,label])=>(
+                  {[['cards','','Tarjetas'],['punch','·','Ponchar'],['rewards','','Premios']].map(([id,icon,label])=>(
                     <button key={id} onClick={()=>setPanel(id)} style={{display:'flex',alignItems:'center',gap:'0.6rem',padding:'0.68rem 1.5rem 0.68rem 2.25rem',fontSize:'0.62rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel===id?gold:'rgba(255,255,255,0.28)',cursor:'pointer',background:'none',border:'none',borderLeft:panel===id?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>
                       <span style={{fontSize:'0.82rem'}}>{icon}</span>{label}
                     </button>
@@ -398,7 +400,7 @@ export default function Admin({session}){
               )}
             </div>
             <button onClick={()=>setPanel('clients')} style={{display:'flex',alignItems:'center',gap:'0.65rem',padding:'0.82rem 1.5rem',fontSize:'0.66rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel==='clients'?gold:'rgba(255,255,255,0.32)',cursor:'pointer',background:'none',border:'none',borderLeft:panel==='clients'?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>
-              <span>👥</span>Clients
+              <span></span>Clients
             </button>
           </div>
 
@@ -440,7 +442,7 @@ export default function Admin({session}){
                       <div style={{padding:'0.85rem 1rem'}}>
                         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.5rem'}}>
                           <div style={{fontSize:'0.68rem',color:gray}}><strong style={{color:black}}>{cur}/5</strong> · Ciclo {cycle}</div>
-                          <div style={{fontSize:'0.54rem',padding:'0.15rem 0.55rem',borderRadius:20,background:'rgba(184,151,90,0.1)',color:gold}}>{hasR?'🎁 Premio':'#'+card.card_number}</div>
+                          <div style={{fontSize:'0.54rem',padding:'0.15rem 0.55rem',borderRadius:20,background:'rgba(184,151,90,0.1)',color:gold}}>{hasR?' Premio':'#'+card.card_number}</div>
                         </div>
                         <div style={{fontSize:'0.62rem',color:gray,marginBottom:'0.65rem'}}>{card.profiles?.full_name}</div>
                         <div style={{display:'flex',gap:'0.4rem'}}>
@@ -514,7 +516,7 @@ export default function Admin({session}){
 
         {/* MOBILE NAV */}
         <div className="mobile-nav">
-          {[['dashboard','📊','Dashboard'],['cards','🎴','Tarjetas'],['punch','✦','Ponchar'],['rewards','🎁','Premios'],['clients','👥','Clients']].map(([id,icon,label])=>(
+          {[['dashboard','','Dashboard'],['cards','','Tarjetas'],['punch','·','Ponchar'],['rewards','','Premios'],['clients','','Clients']].map(([id,icon,label])=>(
             <button key={id} onClick={()=>setPanel(id)} className={panel===id?'active':''}>
               <span>{icon}</span>{label}
             </button>
