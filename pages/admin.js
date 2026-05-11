@@ -6,6 +6,87 @@ const ff='DM Sans,sans-serif'
 const ffS='Cormorant Garamond,serif'
 
 
+function ClientsPanel({ users, cards, search, setSearch, onEdit, onAddPayment, onCreateCard, showToast, loadAll }) {
+  const ff='DM Sans,sans-serif', ffS='Cormorant Garamond,serif'
+  const gold='#b8975a', black='#0e0e0c', white='#f8f6f1', gray='#6b6b67', gl='#e8e5de'
+
+  const filtered = users.filter(u=>
+    (u.full_name||'').toLowerCase().includes(search.toLowerCase()) ||
+    (u.business_name||'').toLowerCase().includes(search.toLowerCase())
+  )
+
+  function getCard(userId) {
+    return cards.find(c=>c.user_id===userId)
+  }
+
+  function getStatus(card) {
+    if (!card) return { label:'Sin Tarjeta', color:gray, bg:'rgba(14,14,12,0.06)' }
+    if (!card.stamp_history||card.stamp_history.length===0) return { label:'Nuevo', color:'#3498db', bg:'rgba(52,152,219,0.1)' }
+    const last = new Date(card.stamp_history[card.stamp_history.length-1].created_at)
+    const days = (Date.now()-last)/(1000*60*60*24)
+    if (days<=35) return { label:'Activo', color:'#2d8a60', bg:'rgba(45,138,96,0.1)' }
+    if (days<=60) return { label:'En Riesgo', color:gold, bg:'rgba(184,151,90,0.1)' }
+    return { label:'Inactivo', color:'#c0392b', bg:'rgba(192,57,43,0.1)' }
+  }
+
+  return (
+    <div>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1.25rem'}}>
+        <h2 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300}}>Clients</h2>
+        <div style={{fontSize:'0.62rem',color:gray,letterSpacing:'0.08em'}}>{users.length} clientes registrados</div>
+      </div>
+
+      <input type="text" placeholder="Buscar por nombre o negocio..." value={search} onChange={e=>setSearch(e.target.value)}
+        style={{width:'100%',padding:'0.7rem 1rem',border:'1px solid '+gl,borderRadius:3,fontFamily:ff,fontSize:'0.82rem',outline:'none',marginBottom:'1.25rem',boxSizing:'border-box',background:white}}/>
+
+      <div style={{display:'flex',flexDirection:'column',gap:'0.75rem'}}>
+        {filtered.map(user=>{
+          const card = getCard(user.id)
+          const status = getStatus(card)
+          const cur = card ? (card.stamps%5===0&&card.stamps>0?5:card.stamps%5) : 0
+          return (
+            <div key={user.id} style={{background:white,borderRadius:10,border:'1px solid rgba(14,14,12,0.07)',overflow:'hidden'}}>
+              {/* Header */}
+              <div style={{background:'linear-gradient(135deg,#1a1917,#252320)',padding:'1rem 1.25rem',color:white}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
+                  <div>
+                    <div style={{fontFamily:ffS,fontSize:'1.05rem',marginBottom:'0.15rem'}}>{user.full_name}</div>
+                    <div style={{fontSize:'0.68rem',color:'rgba(255,255,255,0.5)'}}>{user.business_name||'—'}</div>
+                    {user.phone && <div style={{fontSize:'0.65rem',color:'rgba(255,255,255,0.4)',marginTop:'0.1rem'}}>{user.phone}</div>}
+                  </div>
+                  <span style={{fontSize:'0.56rem',padding:'0.2rem 0.65rem',borderRadius:20,background:status.bg,color:status.color,whiteSpace:'nowrap',border:'1px solid '+status.color+'33'}}>{status.label}</span>
+                </div>
+                {card && (
+                  <div style={{display:'flex',gap:3,marginTop:'0.75rem'}}>
+                    {Array.from({length:5},(_,i)=><div key={i} style={{width:11,height:11,borderRadius:'50%',border:'1px solid rgba(184,151,90,0.22)',background:i<cur?gold:'transparent'}}/>)}
+                    <span style={{fontSize:'0.56rem',color:'rgba(184,151,90,0.7)',marginLeft:'0.4rem'}}>{cur}/5 sellos · #{card.card_number}</span>
+                  </div>
+                )}
+              </div>
+              {/* Actions */}
+              <div style={{padding:'0.85rem 1.25rem',display:'flex',gap:'0.5rem',flexWrap:'wrap'}}>
+                <button onClick={()=>onEdit(user)} style={{padding:'0.45rem 0.85rem',background:'rgba(14,14,12,0.06)',color:black,border:'none',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.58rem',letterSpacing:'0.07em',textTransform:'uppercase'}}>✏️ Editar</button>
+                {card
+                  ? <button onClick={()=>onAddPayment(card)} style={{padding:'0.45rem 0.85rem',background:black,color:white,border:'none',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.58rem',letterSpacing:'0.07em',textTransform:'uppercase'}}>+ Pago</button>
+                  : <button onClick={()=>onCreateCard(user.id)} style={{padding:'0.45rem 0.85rem',background:'rgba(184,151,90,0.1)',color:gold,border:'1px solid rgba(184,151,90,0.25)',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.58rem',letterSpacing:'0.07em',textTransform:'uppercase'}}>+ Tarjeta</button>
+                }
+                {card && card.stamp_history?.length > 0 && (
+                  <div style={{flex:1,minWidth:'100%',marginTop:'0.25rem'}}>
+                    <div style={{fontSize:'0.56rem',color:gray,letterSpacing:'0.08em',textTransform:'uppercase',marginBottom:'0.3rem'}}>Ultimo pago</div>
+                    <div style={{fontSize:'0.72rem',color:black}}>{new Date(card.stamp_history[card.stamp_history.length-1].created_at).toLocaleDateString('es-PR',{day:'numeric',month:'long',year:'numeric'})}</div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )
+        })}
+        {filtered.length===0 && <div style={{background:white,borderRadius:10,padding:'2rem',textAlign:'center',color:gray,fontSize:'0.82rem',border:'1px solid rgba(14,14,12,0.07)'}}>No se encontraron clientes.</div>}
+      </div>
+    </div>
+  )
+}
+
+
 function getStatus(card) {
   if (!card.stamp_history || card.stamp_history.length === 0) return { label:'Nuevo', color:'#3498db', bg:'rgba(52,152,219,0.1)' }
   const last = new Date(card.stamp_history[card.stamp_history.length-1].created_at)
@@ -91,6 +172,9 @@ function DashboardPanel({ cards, onSelectClient }) {
                 </div>
               ))}
             </div>
+            <button onClick={()=>setPanel('clients')} style={{display:'flex',alignItems:'center',gap:'0.65rem',padding:'0.82rem 1.5rem',marginTop:'0.25rem',fontSize:'0.66rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel==='clients'?gold:'rgba(255,255,255,0.32)',cursor:'pointer',background:'none',border:'none',borderLeft:panel==='clients'?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>
+              <span>👥</span>Clients
+            </button>
           </div>
         </div>
 
@@ -239,6 +323,9 @@ export default function Admin({ session }) {
   const [search, setSearch] = useState('')
   const [selectedClient, setSelectedClient] = useState(null)
   const [loyaltyOpen, setLoyaltyOpen] = useState(true)
+  const [clientSearch, setClientSearch] = useState('')
+  const [editingClient, setEditingClient] = useState(null)
+  const [editForm, setEditForm] = useState({})
 
   useEffect(() => {
     if (!session) { window.location.href = '/login'; return }
@@ -489,7 +576,7 @@ export default function Admin({ session }) {
 
         {/* Mobile bottom nav */}
         <div className="mobile-nav">
-          {[['dashboard','📊','Dashboard'],['cards','🎴','Tarjetas'],['punch','✦','Ponchar'],['rewards','🎁','Premios']].map(([id,icon,label])=>(
+          {[['dashboard','📊','Dashboard'],['cards','🎴','Tarjetas'],['punch','✦','Ponchar'],['rewards','🎁','Premios'],['clients','👥','Clients']].map(([id,icon,label])=>(
             <button key={id} onClick={()=>setPanel(id)} className={panel===id?'active':''}>
               <span>{icon}</span>{label}
             </button>
@@ -535,7 +622,19 @@ export default function Admin({ session }) {
           </div>
         )}
 
-        {/* MODAL: Editar Cliente */}
+        {panel==='clients' && <ClientsPanel
+          users={users}
+          cards={cards}
+          search={clientSearch}
+          setSearch={setClientSearch}
+          onEdit={(u)=>{setEditingClient(u);setEditForm({name:u.full_name||'',business:u.business_name||'',phone:u.phone||'',email:'',password:''});setModal('editclient')}}
+          onAddPayment={(card)=>{setPunchId(card.id);setPanel('punch')}}
+          onCreateCard={(uid)=>{setForm({user_id:uid});setModal('card')}}
+          showToast={showToast}
+          loadAll={loadAll}
+        />}
+
+        {/* MODAL: Editar Cliente */}}
         {modal==='edit' && (
           <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:500,display:'flex',alignItems:'flex-end',justifyContent:'center'}} onClick={e=>e.target===e.currentTarget&&setModal(null)}>
             <div style={{background:white,borderRadius:'12px 12px 0 0',padding:'2rem',width:'100%',maxWidth:520,maxHeight:'90vh',overflowY:'auto'}}>
@@ -582,7 +681,38 @@ export default function Admin({ session }) {
           </div>
         )}
 
-        {/* MODAL: Premio */}
+        {/* MODAL: Editar Cliente Completo */}
+        {modal==='editclient' && editingClient && (
+          <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:500,display:'flex',alignItems:'flex-end',justifyContent:'center'}} onClick={e=>e.target===e.currentTarget&&setModal(null)}>
+            <div style={{background:white,borderRadius:'12px 12px 0 0',padding:'2rem',width:'100%',maxWidth:520,maxHeight:'90vh',overflowY:'auto'}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1.5rem'}}>
+                <h3 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300}}>Editar Cliente</h3>
+                <button onClick={()=>setModal(null)} style={{background:'none',border:'none',fontSize:'1.1rem',cursor:'pointer',color:gray}}>✕</button>
+              </div>
+              <div style={{fontSize:'0.58rem',letterSpacing:'0.14em',textTransform:'uppercase',color:gold,marginBottom:'1rem'}}>Informacion Personal</div>
+              <label style={{fontSize:'0.56rem',letterSpacing:'0.13em',textTransform:'uppercase',color:gray,display:'block',marginBottom:'0.35rem'}}>Nombre Completo</label>
+              <input style={{width:'100%',padding:'0.78rem 1rem',border:'1px solid '+gl,borderRadius:3,background:white,fontFamily:ff,fontSize:'0.88rem',outline:'none',color:black,marginBottom:'1rem',boxSizing:'border-box'}} type="text" value={editForm.name||''} onChange={e=>setEditForm(f=>({...f,name:e.target.value}))}/>
+              <label style={{fontSize:'0.56rem',letterSpacing:'0.13em',textTransform:'uppercase',color:gray,display:'block',marginBottom:'0.35rem'}}>Nombre del Negocio</label>
+              <input style={{width:'100%',padding:'0.78rem 1rem',border:'1px solid '+gl,borderRadius:3,background:white,fontFamily:ff,fontSize:'0.88rem',outline:'none',color:black,marginBottom:'1rem',boxSizing:'border-box'}} type="text" value={editForm.business||''} onChange={e=>setEditForm(f=>({...f,business:e.target.value}))}/>
+              <label style={{fontSize:'0.56rem',letterSpacing:'0.13em',textTransform:'uppercase',color:gray,display:'block',marginBottom:'0.35rem'}}>Telefono</label>
+              <input style={{width:'100%',padding:'0.78rem 1rem',border:'1px solid '+gl,borderRadius:3,background:white,fontFamily:ff,fontSize:'0.88rem',outline:'none',color:black,marginBottom:'1.5rem',boxSizing:'border-box'}} type="tel" value={editForm.phone||''} onChange={e=>setEditForm(f=>({...f,phone:e.target.value}))}/>
+              <div style={{fontSize:'0.58rem',letterSpacing:'0.14em',textTransform:'uppercase',color:gold,marginBottom:'1rem'}}>Credenciales</div>
+              <label style={{fontSize:'0.56rem',letterSpacing:'0.13em',textTransform:'uppercase',color:gray,display:'block',marginBottom:'0.35rem'}}>Nuevo Email (opcional)</label>
+              <input style={{width:'100%',padding:'0.78rem 1rem',border:'1px solid '+gl,borderRadius:3,background:white,fontFamily:ff,fontSize:'0.88rem',outline:'none',color:black,marginBottom:'1rem',boxSizing:'border-box'}} type="email" placeholder="Dejar vacio para no cambiar" value={editForm.email||''} onChange={e=>setEditForm(f=>({...f,email:e.target.value}))}/>
+              <label style={{fontSize:'0.56rem',letterSpacing:'0.13em',textTransform:'uppercase',color:gray,display:'block',marginBottom:'0.35rem'}}>Nueva Contrasena (opcional)</label>
+              <input style={{width:'100%',padding:'0.78rem 1rem',border:'1px solid '+gl,borderRadius:3,background:white,fontFamily:ff,fontSize:'0.88rem',outline:'none',color:black,marginBottom:'1.5rem',boxSizing:'border-box'}} type="text" placeholder="Dejar vacio para no cambiar" value={editForm.password||''} onChange={e=>setEditForm(f=>({...f,password:e.target.value}))}/>
+              <div style={{display:'flex',gap:'0.75rem'}}>
+                <button onClick={async()=>{
+                  await fetch('/api/admin/users',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:editingClient.id,full_name:editForm.name,business_name:editForm.business,phone:editForm.phone,email:editForm.email||null,password:editForm.password||null})})
+                  showToast('Cliente actualizado'); setModal(null); setEditingClient(null); loadAll()
+                }} style={{flex:1,background:black,color:white,border:'none',padding:'0.85rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Guardar Cambios</button>
+                <button onClick={()=>setModal(null)} style={{background:'rgba(14,14,12,0.06)',color:black,border:'none',padding:'0.85rem 1.25rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Cancelar</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL: Premio */}}
         {modal==='reward' && (
           <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:500,display:'flex',alignItems:'flex-end',justifyContent:'center'}} onClick={e=>e.target===e.currentTarget&&setModal(null)}>
             <div style={{background:white,borderRadius:'12px 12px 0 0',padding:'2rem',width:'100%',maxWidth:520,maxHeight:'90vh',overflowY:'auto'}}>
