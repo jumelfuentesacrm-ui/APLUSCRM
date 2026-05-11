@@ -77,7 +77,7 @@ function CampaignsPanel({ cards, users }) {
   return (
     <div>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1.5rem'}}>
-        <h2 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300}}>Campanas WhatsApp</h2>
+        <h2 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300}}>Campaigns WhatsApp</h2>
         <div style={{fontSize:'0.62rem',color:gray}}>{cards.length} clientes totales</div>
       </div>
 
@@ -521,7 +521,7 @@ export default function Admin({session}){
         }
         html,body{background:#f2f0eb;overscroll-behavior:none;}
         .mobile-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:${ink};z-index:200;border-top:1px solid rgba(184,151,90,0.15);}
-        .mobile-nav button{flex:1;padding:0.75rem 0.1rem;background:none;border:none;color:rgba(255,255,255,0.4);font-family:${ff};font-size:0.5rem;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:0.2rem;}
+        .mobile-nav button{flex:1;padding:0.75rem 0.1rem;background:none;border:none;color:rgba(255,255,255,0.4);font-family:${ff};font-size:0.65rem;letter-spacing:0.04em;text-transform:uppercase;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:0.2rem;}
         .mobile-nav button.active{color:${gold};}
         .mobile-nav button span{font-size:1rem;}
       `}</style>
@@ -564,6 +564,26 @@ export default function Admin({session}){
             {panel==='client'&&selectedClient&&<ClientProfile card={selectedClient} onBack={()=>{setSelectedClient(null);setPanel('dashboard')}}/>}
 
             {panel==='campaigns'&&<CampaignsPanel cards={cards} users={users}/>}
+            {panel==='loyalty'&&(
+              <div>
+                <h2 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300,marginBottom:'1.5rem'}}>Loyalty Program</h2>
+                <div style={{display:'flex',flexDirection:'column',gap:'0.75rem'}}>
+                  {[
+                    ['cards','Tarjetas','Crear y gestionar tarjetas de lealtad'],
+                    ['punch','Ponchar','Registrar pagos y sellos'],
+                    ['rewards','Premios','Registrar y ver premios canjeados']
+                  ].map(([id,label,desc])=>(
+                    <div key={id} onClick={()=>setPanel(id)} style={{background:white,borderRadius:10,padding:'1.25rem 1.5rem',border:'1px solid rgba(14,14,12,0.07)',cursor:'pointer',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                      <div>
+                        <div style={{fontFamily:ffS,fontSize:'1.1rem',fontWeight:300,color:black,marginBottom:'0.2rem'}}>{label}</div>
+                        <div style={{fontSize:'0.68rem',color:gray}}>{desc}</div>
+                      </div>
+                      <div style={{color:gold,fontSize:'1rem'}}>›</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             {panel==='clients'&&<ClientsPanel
               users={users}
               cards={cards}
@@ -671,7 +691,7 @@ export default function Admin({session}){
 
         {/* MOBILE NAV */}
         <div className="mobile-nav">
-          {[['dashboard','','Dashboard'],['cards','','Tarjetas'],['punch','','Ponchar'],['rewards','','Premios'],['clients','','Clients'],['campaigns','','Campanas']].map(([id,icon,label])=>(
+          {[['dashboard','','Dashboard'],['loyalty','','Loyalty'],['clients','','Clients'],['campaigns','','Campaigns']].map(([id,icon,label])=>(
             <button key={id} onClick={()=>setPanel(id)} className={panel===id?'active':''}>
               <span>{icon}</span>{label}
             </button>
