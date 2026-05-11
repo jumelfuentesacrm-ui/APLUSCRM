@@ -7,29 +7,58 @@ const ffS='Cormorant Garamond,serif'
 
 function getStatus(card) {
   if (!card||!card.stamp_history||card.stamp_history.length===0) return { label:'Nuevo', color:'#3498db', bg:'rgba(52,152,219,0.1)' }
+  const stamps = card.stamps || 0
   const last = new Date(card.stamp_history[card.stamp_history.length-1].created_at)
   const days = (Date.now()-last)/(1000*60*60*24)
-  if (days<=35) return { label:'Activo', color:'#2d8a60', bg:'rgba(45,138,96,0.1)' }
-  if (days<=60) return { label:'En Riesgo', color:gold, bg:'rgba(184,151,90,0.1)' }
-  return { label:'Inactivo', color:'#c0392b', bg:'rgba(192,57,43,0.1)' }
+  if (days > 60) return { label:'Perdido', color:'#c0392b', bg:'rgba(192,57,43,0.1)' }
+  if (stamps >= 15) return { label:'VIP', color:'#b8975a', bg:'rgba(184,151,90,0.12)' }
+  if (stamps >= 10) return { label:'Regular', color:'#2d8a60', bg:'rgba(45,138,96,0.1)' }
+  if (stamps >= 5) return { label:'Activo', color:'#3498db', bg:'rgba(52,152,219,0.1)' }
+  return { label:'Nuevo', color:'#8e44ad', bg:'rgba(142,68,173,0.1)' }
+}
+
+function getDaysSinceLastPurchase(card) {
+  if (!card||!card.stamp_history||card.stamp_history.length===0) return null
+  const last = new Date(card.stamp_history[card.stamp_history.length-1].created_at)
+  return Math.floor((Date.now()-last)/(1000*60*60*24))
+}
+
+function getNotifications(cards) {
+  const alerts = []
+  cards.forEach(card => {
+    const days = getDaysSinceLastPurchase(card)
+    if (days === null) return
+    const name = card.profiles?.business_name || card.profiles?.full_name || 'Cliente'
+    // Alert at 9, 18, 27 days (max 3)
+    if (days >= 27) {
+      alerts.push({ card, days, level: 3, msg: `${name} lleva ${days} dias sin comprar — 3ra alerta` })
+    } else if (days >= 18) {
+      alerts.push({ card, days, level: 2, msg: `${name} lleva ${days} dias sin comprar — 2da alerta` })
+    } else if (days >= 9) {
+      alerts.push({ card, days, level: 1, msg: `${name} lleva ${days} dias sin comprar — 1ra alerta` })
+    }
+  })
+  return alerts.sort((a,b) => b.days - a.days)
 }
 
 function DashboardPanel({ cards, onSelectClient }) {
   const totalClients=cards.length
-  const activeClients=cards.filter(c=>getStatus(c).label==='Activo').length
-  const atRisk=cards.filter(c=>getStatus(c).label==='En Riesgo').length
-  const inactive=cards.filter(c=>getStatus(c).label==='Inactivo').length
-  const newClients=totalClients-activeClients-atRisk-inactive
   const sorted=[...cards].sort((a,b)=>(b.stamps||0)-(a.stamps||0))
   const top5=sorted.slice(0,5)
   const maxStamps=top5[0]?.stamps||1
   const financial={gross_sales:0,gross_expenses:0,net_profit:0}
 
+  const vipClients=cards.filter(c=>getStatus(c).label==='VIP').length
+  const regularClients=cards.filter(c=>getStatus(c).label==='Regular').length
+  const activoClients=cards.filter(c=>getStatus(c).label==='Activo').length
+  const nuevoClients=cards.filter(c=>getStatus(c).label==='Nuevo').length
+  const perdidoClients=cards.filter(c=>getStatus(c).label==='Perdido').length
   const clientDonut=[
-    {label:'Activos',value:activeClients,color:'#2d8a60'},
-    {label:'En Riesgo',value:atRisk,color:gold},
-    {label:'Inactivos',value:inactive,color:'#c0392b'},
-    {label:'Nuevos',value:newClients,color:'#3498db'},
+    {label:'VIP',value:vipClients,color:'#b8975a'},
+    {label:'Regular',value:regularClients,color:'#2d8a60'},
+    {label:'Activo',value:activoClients,color:'#3498db'},
+    {label:'Nuevo',value:nuevoClients,color:'#8e44ad'},
+    {label:'Perdido',value:perdidoClients,color:'#c0392b'},
   ].filter(d=>d.value>0)
 
   const finDonut=[
@@ -258,6 +287,61 @@ function ClientsPanel({users,cards,search,setSearch,onEdit,onAddPayment,onCreate
   )
 }
 
+function NotificationsPanel({ cards, users }) {
+  const alerts = getNotifications(cards)
+  const levelColor = { 1: '#b8975a', 2: '#e67e22', 3: '#c0392b' }
+  const levelBg = { 1: 'rgba(184,151,90,0.08)', 2: 'rgba(230,126,34,0.08)', 3: 'rgba(192,57,43,0.08)' }
+
+  return (
+    <div>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1.5rem'}}>
+        <h2 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300}}>Alerts</h2>
+        <div style={{fontSize:'0.62rem',color:gray}}>{alerts.length} alerta{alerts.length!==1?'s':''} activa{alerts.length!==1?'s':''}</div>
+      </div>
+      {alerts.length===0 ? (
+        <div style={{background:white,borderRadius:10,padding:'2rem',textAlign:'center',border:'1px solid rgba(14,14,12,0.07)',color:gray,fontSize:'0.82rem'}}>
+          Sin alertas — todos los clientes han comprado recientemente.
+        </div>
+      ) : (
+        <div style={{display:'flex',flexDirection:'column',gap:'0.75rem'}}>
+          {alerts.map((alert,i)=>{
+            const user = users.find(u=>u.id===alert.card.user_id)
+            return(
+              <div key={i} style={{background:white,borderRadius:10,border:'1px solid rgba(14,14,12,0.07)',overflow:'hidden'}}>
+                <div style={{background:levelBg[alert.level],borderLeft:'3px solid '+levelColor[alert.level],padding:'1rem 1.25rem',display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
+                  <div>
+                    <div style={{fontFamily:ffS,fontSize:'1rem',fontWeight:300,color:black,marginBottom:'0.2rem'}}>{alert.card.profiles?.business_name||alert.card.profiles?.full_name}</div>
+                    <div style={{fontSize:'0.7rem',color:gray}}>{alert.msg}</div>
+                    {user?.phone&&<div style={{fontSize:'0.68rem',color:gray,marginTop:'0.2rem'}}>{user.phone}</div>}
+                  </div>
+                  <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:'0.4rem',flexShrink:0,marginLeft:'1rem'}}>
+                    <span style={{fontSize:'0.58rem',padding:'0.2rem 0.65rem',borderRadius:20,background:levelBg[alert.level],color:levelColor[alert.level],border:'1px solid '+levelColor[alert.level]+'44',whiteSpace:'nowrap'}}>
+                      Alerta {alert.level}/3
+                    </span>
+                    <span style={{fontSize:'0.62rem',color:levelColor[alert.level],fontWeight:600}}>{alert.days} dias</span>
+                  </div>
+                </div>
+                {user?.phone&&(
+                  <div style={{padding:'0.75rem 1.25rem',borderTop:'1px solid rgba(14,14,12,0.05)'}}>
+                    <button onClick={()=>{
+                      const phone=user.phone.replace(/[^0-9]/g,'')
+                      const fullPhone=phone.startsWith('1')?phone:'1'+phone
+                      const msg=`Hola ${alert.card.profiles?.full_name||''}, te echamos de menos en ${alert.card.profiles?.business_name||''}. Han pasado ${alert.days} dias desde tu ultima visita. Te esperamos!`
+                      window.open(`https://wa.me/${fullPhone}?text=${encodeURIComponent(msg)}`,'_blank')
+                    }} style={{padding:'0.4rem 1rem',background:black,color:white,border:'none',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.58rem',letterSpacing:'0.08em',textTransform:'uppercase'}}>
+                      Enviar WhatsApp
+                    </button>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function CampaignsPanel({ cards, users }) {
   const [selectedGroup, setSelectedGroup] = useState(null)
   const [message, setMessage] = useState('')
@@ -266,14 +350,13 @@ function CampaignsPanel({ cards, users }) {
   function classifyClient(card) {
     if (!card.stamp_history || card.stamp_history.length === 0) return 'nuevos'
     const stamps = card.stamps || 0
-    const cycles = Math.floor(stamps / 5)
     const last = new Date(card.stamp_history[card.stamp_history.length-1].created_at)
     const days = (Date.now() - last) / (1000*60*60*24)
     if (days > 60) return 'perdidos'
-    if (card.stamp_history.length === 1) return 'nuevos'
-    if (cycles >= 2) return 'vip'
-    if (cycles >= 1) return 'regulares'
-    return 'espontaneos'
+    if (stamps >= 15) return 'vip'
+    if (stamps >= 10) return 'regulares'
+    if (stamps >= 5) return 'espontaneos'
+    return 'nuevos'
   }
 
   const groups = {
@@ -499,6 +582,10 @@ export default function Admin({session}){
               <span>Loyalty Program</span>
               <span style={{fontSize:'0.6rem',display:'inline-block',transform:loyaltyOpen?'rotate(180deg)':'rotate(0deg)',transition:'transform 0.2s'}}>▾</span>
             </button>
+            <button onClick={()=>setPanel('notifications')} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0.82rem 1.5rem',fontSize:'0.72rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel==='notifications'?gold:'rgba(255,255,255,0.32)',cursor:'pointer',background:'none',border:'none',borderLeft:panel==='notifications'?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>
+              <span>Alerts</span>
+              {getNotifications(cards).length>0&&<span style={{background:'#c0392b',color:'white',borderRadius:20,padding:'0.1rem 0.5rem',fontSize:'0.55rem',fontWeight:600}}>{getNotifications(cards).length}</span>}
+            </button>
             {loyaltyOpen&&(
               <div style={{background:'rgba(0,0,0,0.15)'}}>
                 {[['cards','Tarjetas'],['punch','Ponchar'],['rewards','Premios']].map(([id,label])=>(
@@ -514,6 +601,7 @@ export default function Admin({session}){
           <div className="admin-main" style={{marginLeft:205,flex:1,padding:'1.75rem',maxWidth:980}}>
             {panel==='dashboard'&&<DashboardPanel cards={cards} onSelectClient={(card)=>{setSelectedClient(card);setPanel('client')}}/>}
             {panel==='client'&&selectedClient&&<ClientProfile card={selectedClient} onBack={()=>{setSelectedClient(null);setPanel('dashboard')}}/>}
+            {panel==='notifications'&&<NotificationsPanel cards={cards} users={users}/>}
             {panel==='campaigns'&&<CampaignsPanel cards={cards} users={users}/>}
             {panel==='clients'&&<ClientsPanel
               users={users} cards={cards} search={clientSearch} setSearch={setClientSearch}
