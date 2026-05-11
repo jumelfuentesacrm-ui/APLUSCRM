@@ -194,7 +194,7 @@ function ClientProfile({card,onBack}){
   )
 }
 
-function ClientsPanel({users,cards,search,setSearch,onEdit,onAddPayment,onCreateCard}){
+function ClientsPanel({users,cards,search,setSearch,onEdit,onAddPayment,onCreateCard,onCreateNew,onDelete}){
   const filtered=users.filter(u=>
     (u.full_name||'').toLowerCase().includes(search.toLowerCase())||
     (u.business_name||'').toLowerCase().includes(search.toLowerCase())
@@ -209,7 +209,10 @@ function ClientsPanel({users,cards,search,setSearch,onEdit,onAddPayment,onCreate
     <div>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1.25rem'}}>
         <h2 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300}}>Clients</h2>
-        <div style={{fontSize:'0.62rem',color:gray}}>{users.length} registrados</div>
+        <div style={{display:'flex',alignItems:'center',gap:'0.75rem'}}>
+          <div style={{fontSize:'0.62rem',color:gray}}>{users.length} registrados</div>
+          <button onClick={onCreateNew} style={{background:black,color:white,border:'none',padding:'0.6rem 1.1rem',fontFamily:ff,fontSize:'0.6rem',letterSpacing:'0.12em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>+ Nuevo</button>
+        </div>
       </div>
       <input type="text" placeholder="Buscar por nombre o negocio..." value={search} onChange={e=>setSearch(e.target.value)}
         style={{width:'100%',padding:'0.7rem 1rem',border:'1px solid '+gl,borderRadius:3,fontFamily:ff,fontSize:'0.82rem',outline:'none',marginBottom:'1.25rem',boxSizing:'border-box',background:white}}/>
@@ -242,6 +245,7 @@ function ClientsPanel({users,cards,search,setSearch,onEdit,onAddPayment,onCreate
                   ?<button onClick={()=>onAddPayment(card)} style={{padding:'0.45rem 0.85rem',background:black,color:white,border:'none',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.58rem',letterSpacing:'0.07em',textTransform:'uppercase'}}>+ Pago</button>
                   :<button onClick={()=>onCreateCard(user.id)} style={{padding:'0.45rem 0.85rem',background:'rgba(184,151,90,0.1)',color:gold,border:'1px solid rgba(184,151,90,0.25)',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.58rem',letterSpacing:'0.07em',textTransform:'uppercase'}}>+ Tarjeta</button>
                 }
+                <button onClick={()=>onDelete(user.id)} style={{padding:'0.45rem 0.85rem',background:'rgba(192,57,43,0.08)',color:'#a93226',border:'none',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.58rem',letterSpacing:'0.07em',textTransform:'uppercase'}}>Borrar</button>
                 {card&&card.stamp_history?.length>0&&(
                   <span style={{fontSize:'0.65rem',color:gray,marginLeft:'auto'}}>Ultimo pago: {new Date(card.stamp_history[card.stamp_history.length-1].created_at).toLocaleDateString('es-PR',{day:'numeric',month:'short',year:'numeric'})}</span>
                 )}
@@ -411,6 +415,8 @@ export default function Admin({session}){
               onEdit={(u)=>{setEditingClient(u);setEditForm({name:u.full_name||'',business:u.business_name||'',phone:u.phone||'',email:'',password:''});setModal('editclient')}}
               onAddPayment={(card)=>{setPunchId(card.id);setPanel('punch')}}
               onCreateCard={(uid)=>{setForm({user_id:uid});setModal('card')}}
+              onCreateNew={()=>{setForm({});setModal('card')}}
+              onDelete={async(uid)=>{if(!confirm('Eliminar este cliente?'))return;await fetch('/api/admin/users',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:uid})});showToast('Cliente eliminado');loadAll()}}
             />}
 
             {panel==='cards'&&<>
