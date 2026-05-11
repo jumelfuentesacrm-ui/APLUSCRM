@@ -5,6 +5,160 @@ const gold='#b8975a',black='#0e0e0c',white='#f8f6f1',gray='#6b6b67',gl='#e8e5de'
 const ff='DM Sans,sans-serif'
 const ffS='Cormorant Garamond,serif'
 
+function CampaignsPanel({ cards, users }) {
+  const ff='DM Sans,sans-serif', ffS='Cormorant Garamond,serif'
+  const gold='#b8975a', black='#0e0e0c', white='#f8f6f1', gray='#6b6b67', gl='#e8e5de'
+
+  const [selectedGroup, setSelectedGroup] = useState(null)
+  const [message, setMessage] = useState('')
+  const [sent, setSent] = useState(false)
+
+  function classifyClient(card) {
+    if (!card.stamp_history || card.stamp_history.length === 0) return 'nuevos'
+    const stamps = card.stamps || 0
+    const cycles = Math.floor(stamps / 5)
+    const last = new Date(card.stamp_history[card.stamp_history.length-1].created_at)
+    const days = (Date.now() - last) / (1000*60*60*24)
+    if (days > 60) return 'perdidos'
+    if (card.stamp_history.length === 1) return 'nuevos'
+    if (cycles >= 2) return 'vip'
+    if (cycles >= 1) return 'regulares'
+    return 'espontaneos'
+  }
+
+  const groups = {
+    vip:         { label:'VIP',         desc:'2+ ciclos completados',           color:'#b8975a', bg:'rgba(184,151,90,0.1)',   cards: cards.filter(c=>classifyClient(c)==='vip') },
+    regulares:   { label:'Regulares',   desc:'1 ciclo completo, activos',        color:'#2d8a60', bg:'rgba(45,138,96,0.1)',    cards: cards.filter(c=>classifyClient(c)==='regulares') },
+    espontaneos: { label:'Espontaneos', desc:'Activos, sin ciclo completo',      color:'#3498db', bg:'rgba(52,152,219,0.1)',   cards: cards.filter(c=>classifyClient(c)==='espontaneos') },
+    nuevos:      { label:'Nuevos',      desc:'Solo 1 pago registrado',           color:'#8e44ad', bg:'rgba(142,68,173,0.1)',   cards: cards.filter(c=>classifyClient(c)==='nuevos') },
+    perdidos:    { label:'Perdidos',    desc:'Sin actividad en mas de 60 dias',  color:'#c0392b', bg:'rgba(192,57,43,0.1)',    cards: cards.filter(c=>classifyClient(c)==='perdidos') },
+  }
+
+  const defaultMessages = {
+    vip:         'Hola [nombre], como cliente VIP de [negocio] queremos agradecerte tu lealtad. Tienes un beneficio especial esperandote. Contactanos pronto!',
+    regulares:   'Hola [nombre], gracias por ser un cliente regular de [negocio]. Recuerda que cada pago a tiempo te acerca a tu proximo premio. Nos vemos pronto!',
+    espontaneos: 'Hola [nombre], te echamos de menos en [negocio]. Recuerda que tienes sellos acumulados en tu tarjeta de lealtad. No los dejes perder!',
+    nuevos:      'Hola [nombre], bienvenido a [negocio]! Acabas de comenzar tu camino hacia premios exclusivos con tu tarjeta de lealtad digital. Gracias por tu primer pago!',
+    perdidos:    'Hola [nombre], hace tiempo que no sabemos de ti en [negocio]. Te extrannamos y tenemos algo especial para que regreses. Contactanos!',
+  }
+
+  function selectGroup(key) {
+    setSelectedGroup(key)
+    setMessage(defaultMessages[key])
+    setSent(false)
+  }
+
+  const group = selectedGroup ? groups[selectedGroup] : null
+  const recipients = group ? group.cards.filter(c => {
+    const user = users.find(u => u.id === c.user_id)
+    return user?.phone
+  }) : []
+  const noPhone = group ? group.cards.filter(c => {
+    const user = users.find(u => u.id === c.user_id)
+    return !user?.phone
+  }) : []
+
+  function sendViaWhatsApp() {
+    if (!selectedGroup || !message) return
+    recipients.forEach(card => {
+      const user = users.find(u => u.id === card.user_id)
+      if (!user?.phone) return
+      const phone = user.phone.replace(/\D/g, '')
+      const fullPhone = phone.startsWith('1') ? phone : '1'+phone
+      const personalizedMsg = message
+        .replace('[nombre]', user.full_name || user.business_name || '')
+        .replace('[negocio]', user.business_name || user.full_name || '')
+      const url = `https://wa.me/${fullPhone}?text=${encodeURIComponent(personalizedMsg)}`
+      window.open(url, '_blank')
+    })
+    setSent(true)
+  }
+
+  return (
+    <div>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1.5rem'}}>
+        <h2 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300}}>Campanas WhatsApp</h2>
+        <div style={{fontSize:'0.62rem',color:gray}}>{cards.length} clientes totales</div>
+      </div>
+
+      {/* Group selection */}
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:'0.75rem',marginBottom:'1.5rem'}}>
+        {Object.entries(groups).map(([key, g]) => (
+          <div key={key} onClick={()=>selectGroup(key)} style={{background:selectedGroup===key?g.color:white,borderRadius:10,padding:'1.1rem',border:'2px solid '+(selectedGroup===key?g.color:'rgba(14,14,12,0.07)'),cursor:'pointer',transition:'all 0.15s'}}>
+            <div style={{fontSize:'1.4rem',marginBottom:'0.35rem'}}>
+              {key==='vip'?'★':key==='regulares'?'↑':key==='espontaneos'?'~':key==='nuevos'?'+':'↓'}
+            </div>
+            <div style={{fontSize:'0.78rem',fontWeight:600,color:selectedGroup===key?white:black,marginBottom:'0.2rem'}}>{g.label}</div>
+            <div style={{fontSize:'0.6rem',color:selectedGroup===key?'rgba(255,255,255,0.75)':gray,lineHeight:1.4}}>{g.desc}</div>
+            <div style={{marginTop:'0.5rem',fontSize:'0.68rem',fontWeight:600,color:selectedGroup===key?white:g.color}}>{g.cards.length} clientes</div>
+          </div>
+        ))}
+      </div>
+
+      {selectedGroup && group && (
+        <>
+          {/* Recipients */}
+          <div style={{background:white,borderRadius:10,border:'1px solid rgba(14,14,12,0.07)',padding:'1.25rem',marginBottom:'1rem'}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.85rem'}}>
+              <div style={{fontFamily:ffS,fontSize:'1rem',fontWeight:300}}>Destinatarios — {group.label}</div>
+              <div style={{display:'flex',gap:'0.75rem',fontSize:'0.65rem'}}>
+                <span style={{color:'#2d8a60'}}>{recipients.length} con telefono</span>
+                {noPhone.length > 0 && <span style={{color:'#c0392b'}}>{noPhone.length} sin telefono</span>}
+              </div>
+            </div>
+            <div style={{display:'flex',flexWrap:'wrap',gap:'0.4rem'}}>
+              {group.cards.map(card => {
+                const user = users.find(u => u.id === card.user_id)
+                const hasPhone = !!user?.phone
+                return (
+                  <span key={card.id} style={{fontSize:'0.62rem',padding:'0.2rem 0.65rem',borderRadius:20,background:hasPhone?'rgba(45,138,96,0.1)':'rgba(192,57,43,0.06)',color:hasPhone?'#2d8a60':'#c0392b',border:'1px solid '+(hasPhone?'rgba(45,138,96,0.2)':'rgba(192,57,43,0.15)')}}>
+                    {user?.business_name||user?.full_name||'Sin nombre'} {!hasPhone&&'(sin tel)'}
+                  </span>
+                )
+              })}
+              {group.cards.length === 0 && <span style={{fontSize:'0.78rem',color:gray}}>No hay clientes en este grupo.</span>}
+            </div>
+          </div>
+
+          {/* Message */}
+          <div style={{background:white,borderRadius:10,border:'1px solid rgba(14,14,12,0.07)',padding:'1.25rem',marginBottom:'1rem'}}>
+            <div style={{fontFamily:ffS,fontSize:'1rem',fontWeight:300,marginBottom:'0.85rem'}}>Mensaje</div>
+            <div style={{fontSize:'0.6rem',color:gray,marginBottom:'0.5rem'}}>Usa [nombre] y [negocio] para personalizar automaticamente</div>
+            <textarea
+              value={message}
+              onChange={e=>setMessage(e.target.value)}
+              rows={5}
+              style={{width:'100%',padding:'0.85rem',border:'1px solid '+gl,borderRadius:3,fontFamily:ff,fontSize:'0.82rem',color:black,outline:'none',resize:'vertical',boxSizing:'border-box',lineHeight:1.6}}
+            />
+          </div>
+
+          {/* Send */}
+          {recipients.length > 0 ? (
+            <div>
+              {sent && <div style={{background:'rgba(45,138,96,0.08)',border:'1px solid rgba(45,138,96,0.2)',borderRadius:8,padding:'0.85rem 1.25rem',marginBottom:'0.85rem',fontSize:'0.78rem',color:'#2d8a60'}}>Se abrieron {recipients.length} conversaciones de WhatsApp. Revisa las pestanas del browser.</div>}
+              <button onClick={sendViaWhatsApp} style={{width:'100%',background:black,color:white,border:'none',padding:'1rem',fontFamily:ff,fontSize:'0.68rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>
+                Enviar via WhatsApp a {recipients.length} cliente{recipients.length!==1?'s':''}
+              </button>
+              {noPhone.length > 0 && <div style={{marginTop:'0.6rem',fontSize:'0.65rem',color:gray,textAlign:'center'}}>{noPhone.length} cliente{noPhone.length!==1?'s':''} sin numero de telefono registrado — no recibiran el mensaje</div>}
+            </div>
+          ) : (
+            <div style={{background:'rgba(192,57,43,0.05)',border:'1px solid rgba(192,57,43,0.15)',borderRadius:8,padding:'1rem',textAlign:'center',fontSize:'0.78rem',color:'#c0392b'}}>
+              Ningun cliente en este grupo tiene telefono registrado. Agrega telefonos en la seccion Clients.
+            </div>
+          )}
+        </>
+      )}
+
+      {!selectedGroup && (
+        <div style={{background:white,borderRadius:10,padding:'2rem',textAlign:'center',border:'1px solid rgba(14,14,12,0.07)',color:gray,fontSize:'0.82rem'}}>
+          Selecciona un grupo arriba para ver los destinatarios y enviar el mensaje.
+        </div>
+      )}
+    </div>
+  )
+}
+
+
 function getStatus(card) {
   if (!card||!card.stamp_history||card.stamp_history.length===0) return { label:'Nuevo', color:'#3498db', bg:'rgba(52,152,219,0.1)' }
   const last = new Date(card.stamp_history[card.stamp_history.length-1].created_at)
@@ -409,6 +563,7 @@ export default function Admin({session}){
             {panel==='dashboard'&&<DashboardPanel cards={cards} onSelectClient={(card)=>{setSelectedClient(card);setPanel('client')}}/>}
             {panel==='client'&&selectedClient&&<ClientProfile card={selectedClient} onBack={()=>{setSelectedClient(null);setPanel('dashboard')}}/>}
 
+            {panel==='campaigns'&&<CampaignsPanel cards={cards} users={users}/>}
             {panel==='clients'&&<ClientsPanel
               users={users}
               cards={cards}
@@ -516,7 +671,7 @@ export default function Admin({session}){
 
         {/* MOBILE NAV */}
         <div className="mobile-nav">
-          {[['dashboard','','Dashboard'],['cards','','Tarjetas'],['punch','','Ponchar'],['rewards','','Premios'],['clients','','Clients']].map(([id,icon,label])=>(
+          {[['dashboard','','Dashboard'],['cards','','Tarjetas'],['punch','','Ponchar'],['rewards','','Premios'],['clients','','Clients'],['campaigns','','Campanas']].map(([id,icon,label])=>(
             <button key={id} onClick={()=>setPanel(id)} className={panel===id?'active':''}>
               <span>{icon}</span>{label}
             </button>
