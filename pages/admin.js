@@ -5,6 +5,234 @@ const gold='#b8975a',black='#0e0e0c',white='#f8f6f1',gray='#6b6b67',gl='#e8e5de'
 const ff='DM Sans,sans-serif'
 const ffS='Cormorant Garamond,serif'
 
+
+function getStatus(card) {
+  if (!card.stamp_history || card.stamp_history.length === 0) return { label:'Nuevo', color:'#3498db', bg:'rgba(52,152,219,0.1)' }
+  const last = new Date(card.stamp_history[card.stamp_history.length-1].created_at)
+  const daysSince = (Date.now() - last) / (1000*60*60*24)
+  if (daysSince <= 35) return { label:'Activo', color:'#2d8a60', bg:'rgba(45,138,96,0.1)' }
+  if (daysSince <= 60) return { label:'En Riesgo', color:'#b8975a', bg:'rgba(184,151,90,0.1)' }
+  return { label:'Inactivo', color:'#c0392b', bg:'rgba(192,57,43,0.1)' }
+}
+
+function DashboardPanel({ cards, onSelectClient }) {
+  const ff='DM Sans,sans-serif', ffS='Cormorant Garamond,serif'
+  const gold='#b8975a', black='#0e0e0c', white='#f8f6f1', gray='#6b6b67'
+  const totalClients = cards.length
+  const activeClients = cards.filter(c=>getStatus(c).label==='Activo').length
+  const atRisk = cards.filter(c=>getStatus(c).label==='En Riesgo').length
+  const inactive = cards.filter(c=>getStatus(c).label==='Inactivo').length
+  const newClients = totalClients-activeClients-atRisk-inactive
+  const totalStamps = cards.reduce((a,c)=>a+(c.stamps||0),0)
+  const completedCycles = cards.reduce((a,c)=>a+Math.floor((c.stamps||0)/5),0)
+  const sorted = [...cards].sort((a,b)=>(b.stamps||0)-(a.stamps||0))
+  const top5 = sorted.slice(0,5)
+  const maxStamps = top5[0]?.stamps||1
+
+  // Financial data - placeholders until CSV is loaded
+  const financial = { gross_sales:0, gross_expenses:0, net_profit:0 }
+
+  const clientDonut = [
+    { label:'Activos', value:activeClients, color:'#2d8a60' },
+    { label:'En Riesgo', value:atRisk, color:gold },
+    { label:'Inactivos', value:inactive, color:'#c0392b' },
+    { label:'Nuevos', value:newClients, color:'#3498db' },
+  ].filter(d=>d.value>0)
+
+  const finDonut = [
+    { label:'Gastos', value:financial.gross_expenses||1, color:'#c0392b' },
+    { label:'Ganancia', value:Math.max(financial.net_profit,0)||0, color:'#2d8a60' },
+    { label:'Sin datos', value:financial.gross_sales===0?1:0, color:'rgba(14,14,12,0.1)' },
+  ].filter(d=>d.value>0)
+
+  function makeSegs(data) {
+    const total = data.reduce((a,d)=>a+d.value,0)||1
+    let cum=0
+    return data.map(d=>{ const s=cum; cum+=d.value/total; return {...d,start:s,pct:d.value/total} })
+  }
+
+  function polar(pct) { const a=pct*2*Math.PI-Math.PI/2; return {x:50+35*Math.cos(a),y:50+35*Math.sin(a)} }
+  function arc(start,pct) {
+    if(pct>=1) return 'M 50 15 A 35 35 0 1 1 49.99 15 Z'
+    const s=polar(start),e=polar(start+pct),lg=pct>0.5?1:0
+    return `M 50 50 L ${s.x} ${s.y} A 35 35 0 ${lg} 1 ${e.x} ${e.y} Z`
+  }
+
+  function Donut({ segs, center }) {
+    return (
+      <svg viewBox="0 0 100 100" style={{width:100,height:100,flexShrink:0}}>
+        {segs.map((d,i)=><path key={i} d={arc(d.start,d.pct)} fill={d.color} opacity={0.85}/>)}
+        <circle cx="50" cy="50" r="22" fill={white}/>
+        {center}
+      </svg>
+    )
+  }
+
+  const clientSegs = makeSegs(clientDonut)
+  const finSegs = makeSegs(finDonut)
+
+  return (
+    <div>
+      {/* Stats row */}
+      <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'0.75rem',marginBottom:'1.5rem'}}>
+        {[[totalClients,'Clientes',gold],[totalStamps,'Sellos',black],[completedCycles,'Ciclos','#2d8a60']].map(([val,label,color])=>(
+          <div key={label} style={{background:white,borderRadius:8,padding:'1rem',border:'1px solid rgba(14,14,12,0.06)',textAlign:'center'}}>
+            <div style={{fontFamily:ffS,fontSize:'2rem',fontWeight:300,color,lineHeight:1}}>{val}</div>
+            <div style={{fontSize:'0.52rem',letterSpacing:'0.1em',textTransform:'uppercase',color:gray,marginTop:'0.3rem'}}>{label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Two donuts */}
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1rem',marginBottom:'1.5rem'}}>
+        {/* Donut 1 - Clients */}
+        <div style={{background:white,borderRadius:10,padding:'1.5rem',border:'1px solid rgba(14,14,12,0.07)'}}>
+          <div style={{fontFamily:ffS,fontSize:'1.1rem',fontWeight:300,marginBottom:'1.25rem'}}>Clientes</div>
+          <div style={{display:'flex',alignItems:'center',gap:'1rem'}}>
+            <Donut segs={clientSegs} center={<text x="50" y="54" textAnchor="middle" style={{fontSize:14,fontFamily:ffS,fill:black}}>{totalClients}</text>}/>
+            <div style={{flex:1}}>
+              {clientDonut.map(d=>(
+                <div key={d.label} style={{display:'flex',alignItems:'center',gap:'0.4rem',marginBottom:'0.4rem'}}>
+                  <div style={{width:7,height:7,borderRadius:'50%',background:d.color,flexShrink:0}}/>
+                  <span style={{fontSize:'0.62rem',color:gray,flex:1}}>{d.label}</span>
+                  <span style={{fontSize:'0.62rem',fontWeight:500,color:black}}>{d.value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Donut 2 - Financial */}
+        <div style={{background:white,borderRadius:10,padding:'1.5rem',border:'1px solid rgba(14,14,12,0.07)',position:'relative'}}>
+          <div style={{fontFamily:ffS,fontSize:'1.1rem',fontWeight:300,marginBottom:'1.25rem'}}>Financiero</div>
+          <div style={{display:'flex',alignItems:'center',gap:'1rem'}}>
+            <Donut segs={finSegs} center={<text x="50" y="54" textAnchor="middle" style={{fontSize:8,fontFamily:ff,fill:gray}}>Clover</text>}/>
+            <div style={{flex:1}}>
+              {[['Gross Sales','#2d8a60',financial.gross_sales],['Gross Exp.','#c0392b',financial.gross_expenses],['Net Profit',gold,financial.net_profit]].map(([label,color,val])=>(
+                <div key={label} style={{display:'flex',alignItems:'center',gap:'0.4rem',marginBottom:'0.4rem'}}>
+                  <div style={{width:7,height:7,borderRadius:'50%',background:color,flexShrink:0}}/>
+                  <span style={{fontSize:'0.62rem',color:gray,flex:1}}>{label}</span>
+                  <span style={{fontSize:'0.62rem',fontWeight:500,color:val>0?black:'rgba(14,14,12,0.25)'}}>{val>0?'$'+val.toLocaleString():'—'}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          {financial.gross_sales===0 && (
+            <div style={{position:'absolute',bottom:'1rem',left:0,right:0,textAlign:'center',fontSize:'0.54rem',color:'rgba(14,14,12,0.3)',letterSpacing:'0.1em',textTransform:'uppercase'}}>Pendiente datos Clover</div>
+          )}
+        </div>
+      </div>
+
+      {/* Top clients */}
+      <div style={{background:white,borderRadius:10,padding:'1.5rem',border:'1px solid rgba(14,14,12,0.07)',marginBottom:'1.5rem'}}>
+        <div style={{fontFamily:ffS,fontSize:'1.1rem',fontWeight:300,marginBottom:'1.25rem'}}>Top Clientes</div>
+        {top5.map((card,i)=>(
+          <div key={card.id} onClick={()=>onSelectClient(card)} style={{display:'flex',alignItems:'center',gap:'0.6rem',marginBottom:'0.75rem',cursor:'pointer'}}>
+            <div style={{width:18,height:18,borderRadius:'50%',background:i===0?gold:'rgba(14,14,12,0.06)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'0.58rem',fontWeight:600,color:i===0?black:gray,flexShrink:0}}>{i+1}</div>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:'0.72rem',color:black,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{card.profiles?.business_name||card.profiles?.full_name}</div>
+              <div style={{height:3,background:'rgba(14,14,12,0.06)',borderRadius:2,marginTop:'0.25rem'}}>
+                <div style={{height:'100%',width:((card.stamps||0)/maxStamps*100)+'%',background:i===0?gold:'rgba(14,14,12,0.15)',borderRadius:2}}/>
+              </div>
+            </div>
+            <div style={{fontSize:'0.65rem',color:gray,flexShrink:0}}>{card.stamps}</div>
+          </div>
+        ))}
+        {top5.length===0 && <div style={{fontSize:'0.82rem',color:gray,textAlign:'center',padding:'1rem 0'}}>Sin clientes aun.</div>}
+      </div>
+
+      {/* All clients */}
+      <div style={{background:white,borderRadius:10,border:'1px solid rgba(14,14,12,0.07)',overflow:'hidden'}}>
+        <div style={{padding:'1rem 1.25rem',borderBottom:'1px solid rgba(14,14,12,0.06)',fontFamily:ffS,fontSize:'1.1rem',fontWeight:300}}>Todos los Clientes</div>
+        {sorted.map(card=>{
+          const status=getStatus(card)
+          const cur=card.stamps%5===0&&card.stamps>0?5:card.stamps%5
+          return (
+            <div key={card.id} onClick={()=>onSelectClient(card)} style={{display:'flex',alignItems:'center',gap:'0.75rem',padding:'0.85rem 1.25rem',borderBottom:'1px solid rgba(14,14,12,0.04)',cursor:'pointer'}}>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:'0.78rem',color:black,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{card.profiles?.business_name||card.profiles?.full_name}</div>
+                <div style={{fontSize:'0.62rem',color:gray,marginTop:'0.1rem'}}>#{card.card_number}</div>
+              </div>
+              <div style={{display:'flex',gap:2,flexShrink:0}}>{Array.from({length:5},(_,j)=><div key={j} style={{width:7,height:7,borderRadius:'50%',background:j<cur?gold:'rgba(14,14,12,0.08)'}}/>)}</div>
+              <span style={{fontSize:'0.56rem',padding:'0.18rem 0.6rem',borderRadius:20,background:status.bg,color:status.color,whiteSpace:'nowrap',flexShrink:0}}>{status.label}</span>
+              <div style={{color:gray,fontSize:'0.75rem'}}>›</div>
+            </div>
+          )
+        })}
+        {sorted.length===0 && <div style={{padding:'2rem',textAlign:'center',color:gray,fontSize:'0.82rem'}}>No hay clientes aun.</div>}
+      </div>
+    </div>
+  )
+}
+
+function PLACEHOLDER_OLD_DASHBOARD() 
+
+function ClientProfile({ card, onBack }) {
+  const ff='DM Sans,sans-serif', ffS='Cormorant Garamond,serif'
+  const gold='#b8975a', black='#0e0e0c', white='#f8f6f1', gray='#6b6b67'
+  if (!card) return null
+  const cur = card.stamps%5===0&&card.stamps>0?5:card.stamps%5
+  const cycle = Math.ceil((card.stamps||1)/5)||1
+  const totalPaid = card.stamp_history?.length||0
+  const rewardsClaimed = card.rewards?.filter(r=>r.status==='Canjeado').length||0
+
+  return (
+    <div>
+      <button onClick={onBack} style={{display:'flex',alignItems:'center',gap:'0.5rem',background:'none',border:'none',cursor:'pointer',color:gray,fontFamily:ff,fontSize:'0.65rem',letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:'1.5rem',padding:0}}>
+        ← Volver al Dashboard
+      </button>
+      <div style={{background:black,borderRadius:12,padding:'1.75rem',marginBottom:'1.25rem',position:'relative',overflow:'hidden'}}>
+        <div style={{position:'absolute',inset:0,background:'radial-gradient(ellipse 60% 50% at 0% 50%,rgba(184,151,90,0.08) 0%,transparent 70%)'}}/>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',flexWrap:'wrap',gap:'1rem',marginBottom:'1.25rem'}}>
+          <div>
+            <div style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300,color:white,marginBottom:'0.2rem'}}>{card.profiles?.full_name}</div>
+            <div style={{fontSize:'0.7rem',color:'rgba(255,255,255,0.4)'}}>{card.profiles?.business_name} · #{card.card_number}</div>
+            {card.profiles?.phone && <div style={{fontSize:'0.68rem',color:'rgba(255,255,255,0.35)',marginTop:'0.2rem'}}>{card.profiles?.phone}</div>}
+          </div>
+          <div style={{display:'flex',gap:'0.5rem',flexWrap:'wrap'}}>
+            {[['Ciclo',cycle],['Sellos',cur+'/5'],['Pagos',totalPaid],['Premios',rewardsClaimed]].map(([label,val])=>(
+              <div key={label} style={{textAlign:'center',background:'rgba(255,255,255,0.05)',borderRadius:8,padding:'0.6rem 0.85rem',border:'1px solid rgba(184,151,90,0.1)'}}>
+                <div style={{fontFamily:ffS,fontSize:'1.2rem',fontWeight:300,color:gold,lineHeight:1}}>{val}</div>
+                <div style={{fontSize:'0.5rem',letterSpacing:'0.1em',textTransform:'uppercase',color:'rgba(255,255,255,0.3)',marginTop:'0.2rem'}}>{label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div style={{display:'flex',gap:'0.4rem'}}>
+          {Array.from({length:5},(_,i)=><div key={i} style={{flex:1,height:5,borderRadius:3,background:i<cur?gold:'rgba(255,255,255,0.08)'}}/>)}
+        </div>
+        <div style={{fontSize:'0.58rem',color:'rgba(255,255,255,0.3)',marginTop:'0.4rem'}}>{cur===0&&card.stamps>0?'Premio disponible':cur+'/5 sellos en ciclo actual'}</div>
+      </div>
+      <div style={{background:white,borderRadius:10,border:'1px solid rgba(14,14,12,0.07)',overflow:'hidden',marginBottom:'1rem'}}>
+        <div style={{padding:'1rem 1.25rem',borderBottom:'1px solid rgba(14,14,12,0.06)',fontFamily:ffS,fontSize:'1.1rem',fontWeight:300}}>Historial de Pagos</div>
+        {card.stamp_history?.length > 0 ? [...card.stamp_history].reverse().map((h,i)=>(
+          <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'0.85rem 1.25rem',borderBottom:'1px solid rgba(14,14,12,0.04)'}}>
+            <div>
+              <div style={{fontSize:'0.78rem',color:black}}>Pago registrado{h.payment_amount?' · '+h.payment_amount:''}</div>
+              <div style={{fontSize:'0.62rem',color:gray,marginTop:'0.1rem'}}>{new Date(h.created_at).toLocaleDateString('es-PR',{day:'numeric',month:'long',year:'numeric'})}</div>
+            </div>
+            <span style={{fontSize:'0.58rem',padding:'0.2rem 0.65rem',borderRadius:20,background:'rgba(184,151,90,0.1)',color:gold,border:'1px solid rgba(184,151,90,0.2)'}}>+1 sello</span>
+          </div>
+        )) : <div style={{padding:'1.5rem',textAlign:'center',color:gray,fontSize:'0.82rem'}}>Sin historial aun.</div>}
+      </div>
+      {card.rewards?.length > 0 && (
+        <div style={{background:white,borderRadius:10,border:'1px solid rgba(14,14,12,0.07)',overflow:'hidden'}}>
+          <div style={{padding:'1rem 1.25rem',borderBottom:'1px solid rgba(14,14,12,0.06)',fontFamily:ffS,fontSize:'1.1rem',fontWeight:300}}>Premios</div>
+          {card.rewards.map((r,i)=>(
+            <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'0.85rem 1.25rem',borderBottom:'1px solid rgba(14,14,12,0.04)'}}>
+              <div>
+                <div style={{fontSize:'0.78rem',color:black}}>{r.reward_type}</div>
+                {r.reward_cost && <div style={{fontSize:'0.65rem',color:gold,marginTop:'0.1rem'}}>{r.reward_cost}</div>}
+              </div>
+              <span style={{fontSize:'0.58rem',padding:'0.2rem 0.65rem',borderRadius:20,background:'rgba(45,138,96,0.1)',color:'#2d8a60'}}>{r.status}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function Admin({ session }) {
   const [panel, setPanel] = useState('cards')
   const [cards, setCards] = useState([])
@@ -18,6 +246,7 @@ export default function Admin({ session }) {
   const [toast, setToast] = useState('')
   const [qrCard, setQrCard] = useState(null)
   const [search, setSearch] = useState('')
+  const [selectedClient, setSelectedClient] = useState(null)
 
   useEffect(() => {
     if (!session) { window.location.href = '/login'; return }
@@ -146,12 +375,20 @@ export default function Admin({ session }) {
         </div>
 
         <div style={{display:'flex',paddingTop:52,minHeight:'100vh'}}>
-          <div className="admin-sidebar" style={{width:190,background:ink,flexShrink:0,position:'fixed',top:52,left:0,bottom:0,padding:'1.5rem 0'}}>
-            {[['cards','🎴','Tarjetas'],['punch','✦','Ponchar'],['rewards','🎁','Premios']].map(([id,icon,label])=>(
-              <button key={id} onClick={()=>setPanel(id)} style={{display:'flex',alignItems:'center',gap:'0.65rem',padding:'0.82rem 1.5rem',fontSize:'0.66rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel===id?gold:'rgba(255,255,255,0.32)',cursor:'pointer',background:'none',border:'none',borderLeft:panel===id?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>
-                <span>{icon}</span>{label}
-              </button>
-            ))}
+          <div className="admin-sidebar" style={{width:200,background:ink,flexShrink:0,position:'fixed',top:52,left:0,bottom:0,padding:'1.5rem 0',overflowY:'auto'}}>
+            {/* Dashboard */}
+            <button onClick={()=>setPanel('dashboard')} style={{display:'flex',alignItems:'center',gap:'0.65rem',padding:'0.82rem 1.5rem',fontSize:'0.66rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel==='dashboard'?gold:'rgba(255,255,255,0.32)',cursor:'pointer',background:'none',border:'none',borderLeft:panel==='dashboard'?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>
+              <span>📊</span>Dashboard
+            </button>
+            {/* Loyalty Program */}
+            <div style={{marginTop:'0.5rem'}}>
+              <div style={{padding:'0.6rem 1.5rem',fontSize:'0.54rem',letterSpacing:'0.16em',textTransform:'uppercase',color:'rgba(184,151,90,0.5)',fontFamily:ff}}>Loyalty Program</div>
+              {[['cards','🎴','Tarjetas'],['punch','✦','Ponchar'],['rewards','🎁','Premios']].map(([id,icon,label])=>(
+                <button key={id} onClick={()=>setPanel(id)} style={{display:'flex',alignItems:'center',gap:'0.65rem',padding:'0.72rem 1.5rem 0.72rem 2rem',fontSize:'0.64rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel===id?gold:'rgba(255,255,255,0.28)',cursor:'pointer',background:'none',border:'none',borderLeft:panel===id?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>
+                  <span style={{fontSize:'0.85rem'}}>{icon}</span>{label}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="admin-main" style={{marginLeft:190,flex:1,padding:'1.75rem',maxWidth:980}}>
@@ -164,6 +401,8 @@ export default function Admin({ session }) {
               ))}
             </div>
 
+            {panel==='dashboard' && <DashboardPanel cards={cards} onSelectClient={(card)=>{setSelectedClient(card);setPanel('client')}}/>}
+            {panel==='client' && selectedClient && <ClientProfile card={selectedClient} onBack={()=>{setSelectedClient(null);setPanel('dashboard')}} allCards={cards}/>}
             {panel==='cards' && <>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1rem'}}>
                 <h2 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300}}>Tarjetas</h2>
@@ -260,7 +499,7 @@ export default function Admin({ session }) {
 
         {/* Mobile bottom nav */}
         <div className="mobile-nav">
-          {[['cards','🎴','Tarjetas'],['punch','✦','Ponchar'],['rewards','🎁','Premios']].map(([id,icon,label])=>(
+          {[['dashboard','📊','Dashboard'],['cards','🎴','Tarjetas'],['punch','✦','Ponchar'],['rewards','🎁','Premios']].map(([id,icon,label])=>(
             <button key={id} onClick={()=>setPanel(id)} className={panel===id?'active':''}>
               <span>{icon}</span>{label}
             </button>
