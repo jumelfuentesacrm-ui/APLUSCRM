@@ -5,160 +5,6 @@ const gold='#b8975a',black='#0e0e0c',white='#f8f6f1',gray='#6b6b67',gl='#e8e5de'
 const ff='DM Sans,sans-serif'
 const ffS='Cormorant Garamond,serif'
 
-function CampaignsPanel({ cards, users }) {
-  const ff='DM Sans,sans-serif', ffS='Cormorant Garamond,serif'
-  const gold='#b8975a', black='#0e0e0c', white='#f8f6f1', gray='#6b6b67', gl='#e8e5de'
-
-  const [selectedGroup, setSelectedGroup] = useState(null)
-  const [message, setMessage] = useState('')
-  const [sent, setSent] = useState(false)
-
-  function classifyClient(card) {
-    if (!card.stamp_history || card.stamp_history.length === 0) return 'nuevos'
-    const stamps = card.stamps || 0
-    const cycles = Math.floor(stamps / 5)
-    const last = new Date(card.stamp_history[card.stamp_history.length-1].created_at)
-    const days = (Date.now() - last) / (1000*60*60*24)
-    if (days > 60) return 'perdidos'
-    if (card.stamp_history.length === 1) return 'nuevos'
-    if (cycles >= 2) return 'vip'
-    if (cycles >= 1) return 'regulares'
-    return 'espontaneos'
-  }
-
-  const groups = {
-    vip:         { label:'VIP',         desc:'2+ ciclos completados',           color:'#b8975a', bg:'rgba(184,151,90,0.1)',   cards: cards.filter(c=>classifyClient(c)==='vip') },
-    regulares:   { label:'Regulares',   desc:'1 ciclo completo, activos',        color:'#2d8a60', bg:'rgba(45,138,96,0.1)',    cards: cards.filter(c=>classifyClient(c)==='regulares') },
-    espontaneos: { label:'Espontaneos', desc:'Activos, sin ciclo completo',      color:'#3498db', bg:'rgba(52,152,219,0.1)',   cards: cards.filter(c=>classifyClient(c)==='espontaneos') },
-    nuevos:      { label:'Nuevos',      desc:'Solo 1 pago registrado',           color:'#8e44ad', bg:'rgba(142,68,173,0.1)',   cards: cards.filter(c=>classifyClient(c)==='nuevos') },
-    perdidos:    { label:'Perdidos',    desc:'Sin actividad en mas de 60 dias',  color:'#c0392b', bg:'rgba(192,57,43,0.1)',    cards: cards.filter(c=>classifyClient(c)==='perdidos') },
-  }
-
-  const defaultMessages = {
-    vip:         'Hola [nombre], como cliente VIP de [negocio] queremos agradecerte tu lealtad. Tienes un beneficio especial esperandote. Contactanos pronto!',
-    regulares:   'Hola [nombre], gracias por ser un cliente regular de [negocio]. Recuerda que cada pago a tiempo te acerca a tu proximo premio. Nos vemos pronto!',
-    espontaneos: 'Hola [nombre], te echamos de menos en [negocio]. Recuerda que tienes sellos acumulados en tu tarjeta de lealtad. No los dejes perder!',
-    nuevos:      'Hola [nombre], bienvenido a [negocio]! Acabas de comenzar tu camino hacia premios exclusivos con tu tarjeta de lealtad digital. Gracias por tu primer pago!',
-    perdidos:    'Hola [nombre], hace tiempo que no sabemos de ti en [negocio]. Te extrannamos y tenemos algo especial para que regreses. Contactanos!',
-  }
-
-  function selectGroup(key) {
-    setSelectedGroup(key)
-    setMessage(defaultMessages[key])
-    setSent(false)
-  }
-
-  const group = selectedGroup ? groups[selectedGroup] : null
-  const recipients = group ? group.cards.filter(c => {
-    const user = users.find(u => u.id === c.user_id)
-    return user?.phone
-  }) : []
-  const noPhone = group ? group.cards.filter(c => {
-    const user = users.find(u => u.id === c.user_id)
-    return !user?.phone
-  }) : []
-
-  function sendViaWhatsApp() {
-    if (!selectedGroup || !message) return
-    recipients.forEach(card => {
-      const user = users.find(u => u.id === card.user_id)
-      if (!user?.phone) return
-      const phone = user.phone.replace(/\D/g, '')
-      const fullPhone = phone.startsWith('1') ? phone : '1'+phone
-      const personalizedMsg = message
-        .replace('[nombre]', user.full_name || user.business_name || '')
-        .replace('[negocio]', user.business_name || user.full_name || '')
-      const url = `https://wa.me/${fullPhone}?text=${encodeURIComponent(personalizedMsg)}`
-      window.open(url, '_blank')
-    })
-    setSent(true)
-  }
-
-  return (
-    <div>
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1.5rem'}}>
-        <h2 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300}}>Campaigns WhatsApp</h2>
-        <div style={{fontSize:'0.62rem',color:gray}}>{cards.length} clientes totales</div>
-      </div>
-
-      {/* Group selection */}
-      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:'0.75rem',marginBottom:'1.5rem'}}>
-        {Object.entries(groups).map(([key, g]) => (
-          <div key={key} onClick={()=>selectGroup(key)} style={{background:selectedGroup===key?g.color:white,borderRadius:10,padding:'1.1rem',border:'2px solid '+(selectedGroup===key?g.color:'rgba(14,14,12,0.07)'),cursor:'pointer',transition:'all 0.15s'}}>
-            <div style={{fontSize:'1.4rem',marginBottom:'0.35rem'}}>
-              {key==='vip'?'★':key==='regulares'?'↑':key==='espontaneos'?'~':key==='nuevos'?'+':'↓'}
-            </div>
-            <div style={{fontSize:'0.78rem',fontWeight:600,color:selectedGroup===key?white:black,marginBottom:'0.2rem'}}>{g.label}</div>
-            <div style={{fontSize:'0.6rem',color:selectedGroup===key?'rgba(255,255,255,0.75)':gray,lineHeight:1.4}}>{g.desc}</div>
-            <div style={{marginTop:'0.5rem',fontSize:'0.68rem',fontWeight:600,color:selectedGroup===key?white:g.color}}>{g.cards.length} clientes</div>
-          </div>
-        ))}
-      </div>
-
-      {selectedGroup && group && (
-        <>
-          {/* Recipients */}
-          <div style={{background:white,borderRadius:10,border:'1px solid rgba(14,14,12,0.07)',padding:'1.25rem',marginBottom:'1rem'}}>
-            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.85rem'}}>
-              <div style={{fontFamily:ffS,fontSize:'1rem',fontWeight:300}}>Destinatarios — {group.label}</div>
-              <div style={{display:'flex',gap:'0.75rem',fontSize:'0.65rem'}}>
-                <span style={{color:'#2d8a60'}}>{recipients.length} con telefono</span>
-                {noPhone.length > 0 && <span style={{color:'#c0392b'}}>{noPhone.length} sin telefono</span>}
-              </div>
-            </div>
-            <div style={{display:'flex',flexWrap:'wrap',gap:'0.4rem'}}>
-              {group.cards.map(card => {
-                const user = users.find(u => u.id === card.user_id)
-                const hasPhone = !!user?.phone
-                return (
-                  <span key={card.id} style={{fontSize:'0.62rem',padding:'0.2rem 0.65rem',borderRadius:20,background:hasPhone?'rgba(45,138,96,0.1)':'rgba(192,57,43,0.06)',color:hasPhone?'#2d8a60':'#c0392b',border:'1px solid '+(hasPhone?'rgba(45,138,96,0.2)':'rgba(192,57,43,0.15)')}}>
-                    {user?.business_name||user?.full_name||'Sin nombre'} {!hasPhone&&'(sin tel)'}
-                  </span>
-                )
-              })}
-              {group.cards.length === 0 && <span style={{fontSize:'0.78rem',color:gray}}>No hay clientes en este grupo.</span>}
-            </div>
-          </div>
-
-          {/* Message */}
-          <div style={{background:white,borderRadius:10,border:'1px solid rgba(14,14,12,0.07)',padding:'1.25rem',marginBottom:'1rem'}}>
-            <div style={{fontFamily:ffS,fontSize:'1rem',fontWeight:300,marginBottom:'0.85rem'}}>Mensaje</div>
-            <div style={{fontSize:'0.6rem',color:gray,marginBottom:'0.5rem'}}>Usa [nombre] y [negocio] para personalizar automaticamente</div>
-            <textarea
-              value={message}
-              onChange={e=>setMessage(e.target.value)}
-              rows={5}
-              style={{width:'100%',padding:'0.85rem',border:'1px solid '+gl,borderRadius:3,fontFamily:ff,fontSize:'0.82rem',color:black,outline:'none',resize:'vertical',boxSizing:'border-box',lineHeight:1.6}}
-            />
-          </div>
-
-          {/* Send */}
-          {recipients.length > 0 ? (
-            <div>
-              {sent && <div style={{background:'rgba(45,138,96,0.08)',border:'1px solid rgba(45,138,96,0.2)',borderRadius:8,padding:'0.85rem 1.25rem',marginBottom:'0.85rem',fontSize:'0.78rem',color:'#2d8a60'}}>Se abrieron {recipients.length} conversaciones de WhatsApp. Revisa las pestanas del browser.</div>}
-              <button onClick={sendViaWhatsApp} style={{width:'100%',background:black,color:white,border:'none',padding:'1rem',fontFamily:ff,fontSize:'0.68rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>
-                Enviar via WhatsApp a {recipients.length} cliente{recipients.length!==1?'s':''}
-              </button>
-              {noPhone.length > 0 && <div style={{marginTop:'0.6rem',fontSize:'0.65rem',color:gray,textAlign:'center'}}>{noPhone.length} cliente{noPhone.length!==1?'s':''} sin numero de telefono registrado — no recibiran el mensaje</div>}
-            </div>
-          ) : (
-            <div style={{background:'rgba(192,57,43,0.05)',border:'1px solid rgba(192,57,43,0.15)',borderRadius:8,padding:'1rem',textAlign:'center',fontSize:'0.78rem',color:'#c0392b'}}>
-              Ningun cliente en este grupo tiene telefono registrado. Agrega telefonos en la seccion Clients.
-            </div>
-          )}
-        </>
-      )}
-
-      {!selectedGroup && (
-        <div style={{background:white,borderRadius:10,padding:'2rem',textAlign:'center',border:'1px solid rgba(14,14,12,0.07)',color:gray,fontSize:'0.82rem'}}>
-          Selecciona un grupo arriba para ver los destinatarios y enviar el mensaje.
-        </div>
-      )}
-    </div>
-  )
-}
-
-
 function getStatus(card) {
   if (!card||!card.stamp_history||card.stamp_history.length===0) return { label:'Nuevo', color:'#3498db', bg:'rgba(52,152,219,0.1)' }
   const last = new Date(card.stamp_history[card.stamp_history.length-1].created_at)
@@ -187,10 +33,8 @@ function DashboardPanel({ cards, onSelectClient }) {
   ].filter(d=>d.value>0)
 
   const finDonut=[
-    {label:'Gastos',value:financial.gross_expenses||0,color:'#c0392b'},
-    {label:'Ganancia',value:Math.max(financial.net_profit,0)||0,color:'#2d8a60'},
-    {label:'Sin datos',value:financial.gross_sales===0?1:0,color:'rgba(14,14,12,0.08)'},
-  ].filter(d=>d.value>0)
+    {label:'Sin datos',value:1,color:'rgba(14,14,12,0.08)'},
+  ]
 
   function makeSegs(data) {
     const total=data.reduce((a,d)=>a+d.value,0)||1
@@ -217,7 +61,7 @@ function DashboardPanel({ cards, onSelectClient }) {
 
   return(
     <div>
-      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1rem',marginBottom:'1.5rem'}} className='donut-grid'>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1rem',marginBottom:'1.5rem'}} className="donut-grid">
         <div style={{background:white,borderRadius:10,padding:'1.5rem',border:'1px solid rgba(14,14,12,0.07)'}}>
           <div style={{fontFamily:ffS,fontSize:'1.1rem',fontWeight:300,marginBottom:'1.25rem'}}>Clientes</div>
           <div style={{display:'flex',alignItems:'center',gap:'1rem'}}>
@@ -238,11 +82,11 @@ function DashboardPanel({ cards, onSelectClient }) {
           <div style={{display:'flex',alignItems:'center',gap:'1rem'}}>
             <Donut segs={finSegs} center={<text x="50" y="54" textAnchor="middle" style={{fontSize:8,fontFamily:ff,fill:gray}}>Clover</text>}/>
             <div style={{flex:1}}>
-              {[['Gross Sales','#2d8a60',financial.gross_sales],['Gross Exp.','#c0392b',financial.gross_expenses],['Net Profit',gold,financial.net_profit]].map(([label,color,val])=>(
+              {[['Gross Sales','#2d8a60',0],['Gross Exp.','#c0392b',0],['Net Profit',gold,0]].map(([label,color,val])=>(
                 <div key={label} style={{display:'flex',alignItems:'center',gap:'0.4rem',marginBottom:'0.4rem'}}>
                   <div style={{width:7,height:7,borderRadius:'50%',background:color,flexShrink:0}}/>
                   <span style={{fontSize:'0.62rem',color:gray,flex:1}}>{label}</span>
-                  <span style={{fontSize:'0.62rem',fontWeight:500,color:'rgba(14,14,12,0.25)'}}>—</span>
+                  <span style={{fontSize:'0.62rem',color:'rgba(14,14,12,0.25)'}}>—</span>
                 </div>
               ))}
             </div>
@@ -348,7 +192,7 @@ function ClientProfile({card,onBack}){
   )
 }
 
-function ClientsPanel({users,cards,search,setSearch,onEdit,onAddPayment,onCreateCard,onCreateNew,onDelete}){
+function ClientsPanel({users,cards,search,setSearch,onEdit,onAddPayment,onCreateCard,onCreateNew,onDelete,onFiles}){
   const filtered=users.filter(u=>
     (u.full_name||'').toLowerCase().includes(search.toLowerCase())||
     (u.business_name||'').toLowerCase().includes(search.toLowerCase())
@@ -399,6 +243,7 @@ function ClientsPanel({users,cards,search,setSearch,onEdit,onAddPayment,onCreate
                   ?<button onClick={()=>onAddPayment(card)} style={{padding:'0.45rem 0.85rem',background:black,color:white,border:'none',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.58rem',letterSpacing:'0.07em',textTransform:'uppercase'}}>+ Pago</button>
                   :<button onClick={()=>onCreateCard(user.id)} style={{padding:'0.45rem 0.85rem',background:'rgba(184,151,90,0.1)',color:gold,border:'1px solid rgba(184,151,90,0.25)',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.58rem',letterSpacing:'0.07em',textTransform:'uppercase'}}>+ Tarjeta</button>
                 }
+                <button onClick={()=>onFiles(user)} style={{padding:'0.45rem 0.85rem',background:'rgba(52,152,219,0.08)',color:'#2980b9',border:'1px solid rgba(52,152,219,0.2)',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.58rem',letterSpacing:'0.07em',textTransform:'uppercase'}}>Files</button>
                 <button onClick={()=>onDelete(user.id)} style={{padding:'0.45rem 0.85rem',background:'rgba(192,57,43,0.08)',color:'#a93226',border:'none',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.58rem',letterSpacing:'0.07em',textTransform:'uppercase'}}>Borrar</button>
                 {card&&card.stamp_history?.length>0&&(
                   <span style={{fontSize:'0.65rem',color:gray,marginLeft:'auto'}}>Ultimo pago: {new Date(card.stamp_history[card.stamp_history.length-1].created_at).toLocaleDateString('es-PR',{day:'numeric',month:'short',year:'numeric'})}</span>
@@ -409,6 +254,117 @@ function ClientsPanel({users,cards,search,setSearch,onEdit,onAddPayment,onCreate
         })}
         {filtered.length===0&&<div style={{background:white,borderRadius:10,padding:'2rem',textAlign:'center',color:gray,fontSize:'0.82rem',border:'1px solid rgba(14,14,12,0.07)'}}>No se encontraron clientes.</div>}
       </div>
+    </div>
+  )
+}
+
+function CampaignsPanel({ cards, users }) {
+  const [selectedGroup, setSelectedGroup] = useState(null)
+  const [message, setMessage] = useState('')
+  const [sent, setSent] = useState(false)
+
+  function classifyClient(card) {
+    if (!card.stamp_history || card.stamp_history.length === 0) return 'nuevos'
+    const stamps = card.stamps || 0
+    const cycles = Math.floor(stamps / 5)
+    const last = new Date(card.stamp_history[card.stamp_history.length-1].created_at)
+    const days = (Date.now() - last) / (1000*60*60*24)
+    if (days > 60) return 'perdidos'
+    if (card.stamp_history.length === 1) return 'nuevos'
+    if (cycles >= 2) return 'vip'
+    if (cycles >= 1) return 'regulares'
+    return 'espontaneos'
+  }
+
+  const groups = {
+    vip:         { label:'VIP',         desc:'2+ ciclos completados',          color:'#b8975a', bg:'rgba(184,151,90,0.12)', cards: cards.filter(c=>classifyClient(c)==='vip') },
+    regulares:   { label:'Regulares',   desc:'1 ciclo completo, activos',       color:'#2d8a60', bg:'rgba(45,138,96,0.1)',   cards: cards.filter(c=>classifyClient(c)==='regulares') },
+    espontaneos: { label:'Espontaneos', desc:'Activos sin ciclo completo',      color:'#3498db', bg:'rgba(52,152,219,0.1)',  cards: cards.filter(c=>classifyClient(c)==='espontaneos') },
+    nuevos:      { label:'Nuevos',      desc:'Solo 1 pago registrado',          color:'#8e44ad', bg:'rgba(142,68,173,0.1)',  cards: cards.filter(c=>classifyClient(c)==='nuevos') },
+    perdidos:    { label:'Perdidos',    desc:'Sin actividad +60 dias',          color:'#c0392b', bg:'rgba(192,57,43,0.1)',   cards: cards.filter(c=>classifyClient(c)==='perdidos') },
+  }
+
+  const defaultMessages = {
+    vip:         'Hola [nombre], como cliente VIP de [negocio] queremos agradecerte tu lealtad. Tienes un beneficio especial esperandote!',
+    regulares:   'Hola [nombre], gracias por ser cliente regular de [negocio]. Cada pago te acerca a tu proximo premio!',
+    espontaneos: 'Hola [nombre], recuerda que tienes sellos acumulados en tu tarjeta de lealtad de [negocio]. No los dejes perder!',
+    nuevos:      'Hola [nombre], bienvenido a [negocio]! Acabas de comenzar tu camino hacia premios exclusivos con tu tarjeta digital.',
+    perdidos:    'Hola [nombre], hace tiempo que no sabemos de ti en [negocio]. Tenemos algo especial para que regreses!',
+  }
+
+  function selectGroup(key) {
+    setSelectedGroup(key)
+    setMessage(defaultMessages[key])
+    setSent(false)
+  }
+
+  const group = selectedGroup ? groups[selectedGroup] : null
+  const recipients = group ? group.cards.filter(c => users.find(u=>u.id===c.user_id)?.phone) : []
+  const noPhone = group ? group.cards.filter(c => !users.find(u=>u.id===c.user_id)?.phone) : []
+
+  function sendViaWhatsApp() {
+    recipients.forEach(card => {
+      const user = users.find(u=>u.id===card.user_id)
+      if (!user?.phone) return
+      const phone = user.phone.replace(/[^0-9]/g, '')
+      const fullPhone = phone.startsWith('1') ? phone : '1'+phone
+      const msg = message.replace(/\[nombre\]/g, user.full_name||'').replace(/\[negocio\]/g, user.business_name||user.full_name||'')
+      window.open(`https://wa.me/${fullPhone}?text=${encodeURIComponent(msg)}`, '_blank')
+    })
+    setSent(true)
+  }
+
+  return (
+    <div>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1.5rem'}}>
+        <h2 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300}}>WhatsApp Campaigns</h2>
+        <div style={{fontSize:'0.62rem',color:gray}}>{cards.length} clientes totales</div>
+      </div>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(150px,1fr))',gap:'0.75rem',marginBottom:'1.5rem'}}>
+        {Object.entries(groups).map(([key,g])=>(
+          <div key={key} onClick={()=>selectGroup(key)} style={{background:selectedGroup===key?g.color:white,borderRadius:10,padding:'1.1rem',border:'2px solid '+(selectedGroup===key?g.color:'rgba(14,14,12,0.07)'),cursor:'pointer'}}>
+            <div style={{fontSize:'0.78rem',fontWeight:600,color:selectedGroup===key?white:black,marginBottom:'0.2rem'}}>{g.label}</div>
+            <div style={{fontSize:'0.6rem',color:selectedGroup===key?'rgba(255,255,255,0.75)':gray,lineHeight:1.4,marginBottom:'0.5rem'}}>{g.desc}</div>
+            <div style={{fontSize:'0.72rem',fontWeight:600,color:selectedGroup===key?white:g.color}}>{g.cards.length} clientes</div>
+          </div>
+        ))}
+      </div>
+      {selectedGroup && group && <>
+        <div style={{background:white,borderRadius:10,border:'1px solid rgba(14,14,12,0.07)',padding:'1.25rem',marginBottom:'1rem'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.85rem'}}>
+            <div style={{fontFamily:ffS,fontSize:'1rem',fontWeight:300}}>Destinatarios — {group.label}</div>
+            <div style={{display:'flex',gap:'0.75rem',fontSize:'0.65rem'}}>
+              <span style={{color:'#2d8a60'}}>{recipients.length} con telefono</span>
+              {noPhone.length>0&&<span style={{color:'#c0392b'}}>{noPhone.length} sin telefono</span>}
+            </div>
+          </div>
+          <div style={{display:'flex',flexWrap:'wrap',gap:'0.4rem'}}>
+            {group.cards.map(card=>{
+              const user=users.find(u=>u.id===card.user_id)
+              const hasPhone=!!user?.phone
+              return(
+                <span key={card.id} style={{fontSize:'0.62rem',padding:'0.2rem 0.65rem',borderRadius:20,background:hasPhone?'rgba(45,138,96,0.1)':'rgba(192,57,43,0.06)',color:hasPhone?'#2d8a60':'#c0392b'}}>
+                  {user?.business_name||user?.full_name||'Sin nombre'}{!hasPhone?' (sin tel)':''}
+                </span>
+              )
+            })}
+            {group.cards.length===0&&<span style={{fontSize:'0.78rem',color:gray}}>No hay clientes en este grupo.</span>}
+          </div>
+        </div>
+        <div style={{background:white,borderRadius:10,border:'1px solid rgba(14,14,12,0.07)',padding:'1.25rem',marginBottom:'1rem'}}>
+          <div style={{fontFamily:ffS,fontSize:'1rem',fontWeight:300,marginBottom:'0.5rem'}}>Mensaje</div>
+          <div style={{fontSize:'0.6rem',color:gray,marginBottom:'0.5rem'}}>Usa [nombre] y [negocio] para personalizar</div>
+          <textarea value={message} onChange={e=>setMessage(e.target.value)} rows={5}
+            style={{width:'100%',padding:'0.85rem',border:'1px solid '+gl,borderRadius:3,fontFamily:ff,fontSize:'0.82rem',color:black,outline:'none',resize:'vertical',boxSizing:'border-box',lineHeight:1.6}}/>
+        </div>
+        {sent&&<div style={{background:'rgba(45,138,96,0.08)',border:'1px solid rgba(45,138,96,0.2)',borderRadius:8,padding:'0.85rem 1.25rem',marginBottom:'0.85rem',fontSize:'0.78rem',color:'#2d8a60'}}>Se abrieron {recipients.length} conversaciones de WhatsApp.</div>}
+        {recipients.length>0
+          ?<button onClick={sendViaWhatsApp} style={{width:'100%',background:black,color:white,border:'none',padding:'1rem',fontFamily:ff,fontSize:'0.68rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Enviar via WhatsApp a {recipients.length} cliente{recipients.length!==1?'s':''}</button>
+          :<div style={{background:'rgba(192,57,43,0.05)',border:'1px solid rgba(192,57,43,0.15)',borderRadius:8,padding:'1rem',textAlign:'center',fontSize:'0.78rem',color:'#c0392b'}}>Ningun cliente tiene telefono registrado.</div>
+        }
+        {noPhone.length>0&&<div style={{marginTop:'0.6rem',fontSize:'0.65rem',color:gray,textAlign:'center'}}>{noPhone.length} cliente{noPhone.length!==1?'s':''} sin telefono no recibiran el mensaje</div>}
+      </>}
+      {!selectedGroup&&<div style={{background:white,borderRadius:10,padding:'2rem',textAlign:'center',border:'1px solid rgba(14,14,12,0.07)',color:gray,fontSize:'0.82rem'}}>Selecciona un grupo arriba para ver los destinatarios.</div>}
     </div>
   )
 }
@@ -431,6 +387,7 @@ export default function Admin({session}){
   const [clientSearch,setClientSearch]=useState('')
   const [editingClient,setEditingClient]=useState(null)
   const [editForm,setEditForm]=useState({})
+  const [filesClient,setFilesClient]=useState(null)
 
   useEffect(()=>{
     if(!session){window.location.href='/login';return}
@@ -498,8 +455,6 @@ export default function Admin({session}){
 
   const signOut=async()=>{await supabase.auth.signOut();window.location.href='/login'}
   const upd=(k,v)=>setForm(f=>({...f,[k]:v}))
-  const withReward=cards.filter(c=>c.stamps>0&&c.stamps%5===0).length
-  const redeemed=rewards.filter(r=>r.status==='Canjeado').length
   const cardUrl=(card)=>`https://app.accountingpluscrm.com/c/${card?.card_number}`
 
   const inp={width:'100%',padding:'0.75rem 0.9rem',border:'1px solid '+gl,borderRadius:3,background:white,fontFamily:ff,fontSize:'0.88rem',outline:'none',color:black,marginBottom:'1rem',boxSizing:'border-box'}
@@ -511,19 +466,18 @@ export default function Admin({session}){
     <>
       <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,400&family=DM+Sans:wght@300;400&display=swap" rel="stylesheet"/>
       <style>{`
+        html,body{background:#f2f0eb;overscroll-behavior:none;}
         @media(max-width:700px){
           .admin-sidebar{display:none!important;}
           .admin-main{margin-left:0!important;padding:1rem!important;}
           .cards-grid{grid-template-columns:1fr!important;}
           .punch-row{grid-template-columns:1fr!important;}
-          .mobile-nav{display:flex!important;}
           .donut-grid{grid-template-columns:1fr!important;}
+          .mobile-nav{display:flex!important;}
         }
-        html,body{background:#f2f0eb;overscroll-behavior:none;}
         .mobile-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:${ink};z-index:200;border-top:1px solid rgba(184,151,90,0.15);}
-        .mobile-nav button{flex:1;padding:0.75rem 0.1rem;background:none;border:none;color:rgba(255,255,255,0.4);font-family:${ff};font-size:0.65rem;letter-spacing:0.04em;text-transform:uppercase;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:0.2rem;}
+        .mobile-nav button{flex:1;padding:0.75rem 0.1rem;background:none;border:none;color:rgba(255,255,255,0.4);font-family:${ff};font-size:0.62rem;letter-spacing:0.04em;text-transform:uppercase;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:0.2rem;}
         .mobile-nav button.active{color:${gold};}
-        .mobile-nav button span{font-size:1rem;}
       `}</style>
 
       <div style={{background:'#f2f0eb',minHeight:'100vh',fontFamily:ff,paddingBottom:70}}>
@@ -535,44 +489,46 @@ export default function Admin({session}){
         <div style={{display:'flex',paddingTop:52,minHeight:'100vh'}}>
           {/* SIDEBAR */}
           <div className="admin-sidebar" style={{width:205,background:ink,flexShrink:0,position:'fixed',top:52,left:0,bottom:0,padding:'1.5rem 0',overflowY:'auto'}}>
-            <button onClick={()=>setPanel('dashboard')} style={{display:'flex',alignItems:'center',gap:'0.65rem',padding:'0.82rem 1.5rem',fontSize:'0.72rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel==='dashboard'?gold:'rgba(255,255,255,0.32)',cursor:'pointer',background:'none',border:'none',borderLeft:panel==='dashboard'?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>
-              <span></span>Dashboard
-            </button>
-            <div>
-              <button onClick={()=>setLoyaltyOpen(o=>!o)} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0.82rem 1.5rem',fontSize:'0.72rem',letterSpacing:'0.1em',textTransform:'uppercase',color:['cards','punch','rewards'].includes(panel)?gold:'rgba(255,255,255,0.45)',cursor:'pointer',background:'none',border:'none',width:'100%',textAlign:'left',fontFamily:ff}}>
-                <span style={{display:'flex',alignItems:'center',gap:'0.65rem'}}><span></span>Loyalty Program</span>
-                <span style={{fontSize:'0.6rem',display:'inline-block',transform:loyaltyOpen?'rotate(180deg)':'rotate(0deg)',transition:'transform 0.2s'}}>▾</span>
+            {[['dashboard','Dashboard'],['clients','Clients'],['campaigns','Campaigns']].map(([id,label])=>(
+              <button key={id} onClick={()=>setPanel(id)} style={{display:'flex',alignItems:'center',padding:'0.82rem 1.5rem',fontSize:'0.72rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel===id?gold:'rgba(255,255,255,0.32)',cursor:'pointer',background:'none',border:'none',borderLeft:panel===id?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>
+                {label}
               </button>
-              {loyaltyOpen&&(
-                <div style={{background:'rgba(0,0,0,0.15)'}}>
-                  {[['cards','','Tarjetas'],['punch','','Ponchar'],['rewards','','Premios']].map(([id,icon,label])=>(
-                    <button key={id} onClick={()=>setPanel(id)} style={{display:'flex',alignItems:'center',gap:'0.6rem',padding:'0.68rem 1.5rem 0.68rem 2.25rem',fontSize:'0.70rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel===id?gold:'rgba(255,255,255,0.28)',cursor:'pointer',background:'none',border:'none',borderLeft:panel===id?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>
-                      <span style={{fontSize:'0.82rem'}}>{icon}</span>{label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-            <button onClick={()=>setPanel('clients')} style={{display:'flex',alignItems:'center',gap:'0.65rem',padding:'0.82rem 1.5rem',fontSize:'0.72rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel==='clients'?gold:'rgba(255,255,255,0.32)',cursor:'pointer',background:'none',border:'none',borderLeft:panel==='clients'?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>
-              <span></span>Clients
+            ))}
+            <div style={{height:'1px',background:'rgba(255,255,255,0.06)',margin:'0.5rem 1.5rem'}}/>
+            <button onClick={()=>setLoyaltyOpen(o=>!o)} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0.82rem 1.5rem',fontSize:'0.72rem',letterSpacing:'0.1em',textTransform:'uppercase',color:['cards','punch','rewards'].includes(panel)?gold:'rgba(255,255,255,0.45)',cursor:'pointer',background:'none',border:'none',width:'100%',textAlign:'left',fontFamily:ff}}>
+              <span>Loyalty Program</span>
+              <span style={{fontSize:'0.6rem',display:'inline-block',transform:loyaltyOpen?'rotate(180deg)':'rotate(0deg)',transition:'transform 0.2s'}}>▾</span>
             </button>
+            {loyaltyOpen&&(
+              <div style={{background:'rgba(0,0,0,0.15)'}}>
+                {[['cards','Tarjetas'],['punch','Ponchar'],['rewards','Premios']].map(([id,label])=>(
+                  <button key={id} onClick={()=>setPanel(id)} style={{display:'flex',alignItems:'center',padding:'0.68rem 1.5rem 0.68rem 2.25rem',fontSize:'0.68rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel===id?gold:'rgba(255,255,255,0.28)',cursor:'pointer',background:'none',border:'none',borderLeft:panel===id?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* MAIN */}
           <div className="admin-main" style={{marginLeft:205,flex:1,padding:'1.75rem',maxWidth:980}}>
             {panel==='dashboard'&&<DashboardPanel cards={cards} onSelectClient={(card)=>{setSelectedClient(card);setPanel('client')}}/>}
             {panel==='client'&&selectedClient&&<ClientProfile card={selectedClient} onBack={()=>{setSelectedClient(null);setPanel('dashboard')}}/>}
-
             {panel==='campaigns'&&<CampaignsPanel cards={cards} users={users}/>}
+            {panel==='clients'&&<ClientsPanel
+              users={users} cards={cards} search={clientSearch} setSearch={setClientSearch}
+              onEdit={(u)=>{setEditingClient(u);setEditForm({name:u.full_name||'',business:u.business_name||'',phone:u.phone||'',email:'',password:''});setModal('editclient')}}
+              onAddPayment={(card)=>{setPunchId(card.id);setPanel('punch')}}
+              onCreateCard={(uid)=>{setForm({user_id:uid});setModal('card')}}
+              onCreateNew={()=>{setForm({});setModal('card')}}
+              onDelete={async(uid)=>{if(!confirm('Eliminar este cliente?'))return;await fetch('/api/admin/users',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:uid})});showToast('Cliente eliminado');loadAll()}}
+              onFiles={(u)=>{setFilesClient(u);setModal('files')}}
+            />}
             {panel==='loyalty'&&(
               <div>
                 <h2 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300,marginBottom:'1.5rem'}}>Loyalty Program</h2>
                 <div style={{display:'flex',flexDirection:'column',gap:'0.75rem'}}>
-                  {[
-                    ['cards','Tarjetas','Crear y gestionar tarjetas de lealtad'],
-                    ['punch','Ponchar','Registrar pagos y sellos'],
-                    ['rewards','Premios','Registrar y ver premios canjeados']
-                  ].map(([id,label,desc])=>(
+                  {[['cards','Tarjetas','Crear y gestionar tarjetas de lealtad'],['punch','Ponchar','Registrar pagos y sellos'],['rewards','Premios','Registrar y ver premios canjeados']].map(([id,label,desc])=>(
                     <div key={id} onClick={()=>setPanel(id)} style={{background:white,borderRadius:10,padding:'1.25rem 1.5rem',border:'1px solid rgba(14,14,12,0.07)',cursor:'pointer',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
                       <div>
                         <div style={{fontFamily:ffS,fontSize:'1.1rem',fontWeight:300,color:black,marginBottom:'0.2rem'}}>{label}</div>
@@ -584,18 +540,6 @@ export default function Admin({session}){
                 </div>
               </div>
             )}
-            {panel==='clients'&&<ClientsPanel
-              users={users}
-              cards={cards}
-              search={clientSearch}
-              setSearch={setClientSearch}
-              onEdit={(u)=>{setEditingClient(u);setEditForm({name:u.full_name||'',business:u.business_name||'',phone:u.phone||'',email:'',password:''});setModal('editclient')}}
-              onAddPayment={(card)=>{setPunchId(card.id);setPanel('punch')}}
-              onCreateCard={(uid)=>{setForm({user_id:uid});setModal('card')}}
-              onCreateNew={()=>{setForm({});setModal('card')}}
-              onDelete={async(uid)=>{if(!confirm('Eliminar este cliente?'))return;await fetch('/api/admin/users',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:uid})});showToast('Cliente eliminado');loadAll()}}
-            />}
-
             {panel==='cards'&&<>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1rem'}}>
                 <h2 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300}}>Tarjetas</h2>
@@ -617,7 +561,7 @@ export default function Admin({session}){
                       <div style={{padding:'0.85rem 1rem'}}>
                         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.5rem'}}>
                           <div style={{fontSize:'0.68rem',color:gray}}><strong style={{color:black}}>{cur}/5</strong> · Ciclo {cycle}</div>
-                          <div style={{fontSize:'0.54rem',padding:'0.15rem 0.55rem',borderRadius:20,background:'rgba(184,151,90,0.1)',color:gold}}>{hasR?' Premio':'#'+card.card_number}</div>
+                          <div style={{fontSize:'0.54rem',padding:'0.15rem 0.55rem',borderRadius:20,background:'rgba(184,151,90,0.1)',color:gold}}>{hasR?'Premio':'#'+card.card_number}</div>
                         </div>
                         <div style={{fontSize:'0.62rem',color:gray,marginBottom:'0.65rem'}}>{card.profiles?.full_name}</div>
                         <div style={{display:'flex',gap:'0.4rem'}}>
@@ -632,7 +576,6 @@ export default function Admin({session}){
                 {cards.length===0&&<p style={{color:gray,fontSize:'0.85rem'}}>No hay tarjetas aun.</p>}
               </div>
             </>}
-
             {panel==='punch'&&<>
               <h2 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300,marginBottom:'1.25rem'}}>Ponchar Tarjeta</h2>
               <div style={{background:white,borderRadius:10,padding:'1.5rem',border:'1px solid rgba(14,14,12,0.07)'}}>
@@ -660,7 +603,6 @@ export default function Admin({session}){
                 <button onClick={doPunch} style={{width:'100%',background:black,color:white,border:'none',padding:'0.85rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Dar Sello</button>
               </div>
             </>}
-
             {panel==='rewards'&&<>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1.25rem'}}>
                 <h2 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300}}>Premios</h2>
@@ -671,16 +613,16 @@ export default function Admin({session}){
                 {rewards.map((r,i)=>(
                   <div key={r.id} style={{background:white,borderRadius:10,padding:'1.1rem 1.25rem',border:'1px solid rgba(14,14,12,0.07)',display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:'1rem'}}>
                     <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontSize:'0.78rem',fontWeight:500,color:black,marginBottom:'0.25rem',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{r.profiles?.business_name||r.profiles?.full_name}</div>
+                      <div style={{fontSize:'0.78rem',fontWeight:500,color:black,marginBottom:'0.25rem'}}>{r.profiles?.business_name||r.profiles?.full_name}</div>
                       <div style={{fontSize:'0.72rem',color:gray,marginBottom:'0.25rem'}}>{r.reward_type}</div>
-                      <div style={{display:'flex',gap:'0.75rem',alignItems:'center'}}>
+                      <div style={{display:'flex',gap:'0.75rem'}}>
                         <span style={{fontSize:'0.72rem',color:gold,fontWeight:500}}>{r.reward_cost||'—'}</span>
                         <span style={{fontSize:'0.65rem',color:gray}}>{r.redeemed_at?new Date(r.redeemed_at).toLocaleDateString('es-PR'):'—'}</span>
                       </div>
                     </div>
                     <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:'0.5rem',flexShrink:0}}>
                       <span style={{fontSize:'0.58rem',padding:'0.2rem 0.65rem',borderRadius:20,background:'rgba(45,150,100,0.1)',color:'#2d8a60',whiteSpace:'nowrap'}}>{r.status}</span>
-                      <button onClick={()=>deleteReward(r.id)} style={{background:'none',border:'none',cursor:'pointer',color:'rgba(192,57,43,0.5)',fontSize:'0.75rem',padding:0}}>✕</button>
+                      <button onClick={()=>deleteReward(r.id)} style={{background:'none',border:'none',cursor:'pointer',color:'rgba(192,57,43,0.5)',fontSize:'0.75rem',padding:0}}>x</button>
                     </div>
                   </div>
                 ))}
@@ -691,9 +633,9 @@ export default function Admin({session}){
 
         {/* MOBILE NAV */}
         <div className="mobile-nav">
-          {[['dashboard','','Dashboard'],['loyalty','','Loyalty'],['clients','','Clients'],['campaigns','','Campaigns']].map(([id,icon,label])=>(
-            <button key={id} onClick={()=>setPanel(id)} className={panel===id?'active':''}>
-              <span>{icon}</span>{label}
+          {[['dashboard','Dashboard'],['loyalty','Loyalty'],['clients','Clients'],['campaigns','Campaigns']].map(([id,label])=>(
+            <button key={id} onClick={()=>setPanel(id)} className={panel===id||(['cards','punch','rewards'].includes(panel)&&id==='loyalty')?'active':''}>
+              {label}
             </button>
           ))}
         </div>
@@ -715,7 +657,7 @@ export default function Admin({session}){
                 <input style={inp} type="email" placeholder="correo@negocio.com" value={form.new_email||''} onChange={e=>upd('new_email',e.target.value)}/>
                 <label style={lbl}>Password temporal</label>
                 <input style={{...inp,marginBottom:0}} type="text" placeholder="min. 6 caracteres" value={form.new_password||''} onChange={e=>upd('new_password',e.target.value)}/>
-                <button onClick={createClient} style={{width:'100%',background:gold,color:white,border:'none',padding:'0.75rem',fontFamily:ff,fontSize:'0.62rem',letterSpacing:'0.12em',textTransform:'uppercase',borderRadius:3,cursor:'pointer',marginTop:'0.85rem'}}>Crear Cliente →</button>
+                <button onClick={createClient} style={{width:'100%',background:gold,color:white,border:'none',padding:'0.75rem',fontFamily:ff,fontSize:'0.62rem',letterSpacing:'0.12em',textTransform:'uppercase',borderRadius:3,cursor:'pointer',marginTop:'0.85rem'}}>Crear Cliente</button>
               </div>
               <div style={{fontSize:'0.58rem',letterSpacing:'0.14em',textTransform:'uppercase',color:gray,marginBottom:'0.75rem',textAlign:'center'}}>— o selecciona uno existente —</div>
               <label style={lbl}>Cliente Existente</label>
@@ -759,7 +701,7 @@ export default function Admin({session}){
             <div style={{background:white,borderRadius:'12px 12px 0 0',padding:'2rem',width:'100%',maxWidth:520,maxHeight:'90vh',overflowY:'auto'}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1.5rem'}}>
                 <h3 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300}}>Editar Cliente</h3>
-                <button onClick={()=>setModal(null)} style={{background:'none',border:'none',fontSize:'1.1rem',cursor:'pointer',color:gray}}>✕</button>
+                <button onClick={()=>setModal(null)} style={{background:'none',border:'none',fontSize:'1.1rem',cursor:'pointer',color:gray}}>x</button>
               </div>
               <div style={{fontSize:'0.58rem',letterSpacing:'0.14em',textTransform:'uppercase',color:gold,marginBottom:'1rem'}}>Informacion Personal</div>
               <label style={lbl}>Nombre Completo</label>
@@ -777,9 +719,38 @@ export default function Admin({session}){
                 <button onClick={async()=>{
                   await fetch('/api/admin/users',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:editingClient.id,full_name:editForm.name,business_name:editForm.business,phone:editForm.phone,email:editForm.email||null,password:editForm.password||null})})
                   showToast('Cliente actualizado');setModal(null);setEditingClient(null);loadAll()
-                }} style={{flex:1,background:black,color:white,border:'none',padding:'0.85rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Guardar Cambios</button>
+                }} style={{flex:1,background:black,color:white,border:'none',padding:'0.85rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Guardar</button>
                 <button onClick={()=>setModal(null)} style={{background:'rgba(14,14,12,0.06)',color:black,border:'none',padding:'0.85rem 1.25rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Cancelar</button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL: Files */}
+        {modal==='files'&&filesClient&&(
+          <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:500,display:'flex',alignItems:'flex-end',justifyContent:'center'}} onClick={e=>e.target===e.currentTarget&&setModal(null)}>
+            <div style={{background:white,borderRadius:'12px 12px 0 0',padding:'2rem',width:'100%',maxWidth:520,maxHeight:'90vh',overflowY:'auto'}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1.5rem'}}>
+                <h3 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300}}>Files — {filesClient.business_name||filesClient.full_name}</h3>
+                <button onClick={()=>setModal(null)} style={{background:'none',border:'none',fontSize:'1.1rem',cursor:'pointer',color:gray}}>x</button>
+              </div>
+              <div style={{border:'2px dashed rgba(184,151,90,0.3)',borderRadius:8,padding:'2rem',textAlign:'center',marginBottom:'1.25rem',background:'rgba(184,151,90,0.03)'}}>
+                <div style={{fontSize:'1.5rem',marginBottom:'0.5rem'}}>+</div>
+                <div style={{fontSize:'0.78rem',color:gray,marginBottom:'0.75rem'}}>Arrastra archivos aqui o click para seleccionar</div>
+                <input type="file" multiple accept=".pdf,.doc,.docx,.jpg,.png,.csv,.xlsx" onChange={async(e)=>{
+                  const files=Array.from(e.target.files)
+                  for(const file of files){
+                    const path=`clients/${filesClient.id}/${Date.now()}_${file.name}`
+                    const {error}=await supabase.storage.from('client-files').upload(path,file)
+                    if(!error)showToast(file.name+' subido')
+                    else showToast('Error: '+error.message)
+                  }
+                  e.target.value=''
+                  setModal(null);setModal('files')
+                }} style={{display:'none'}} id="file-input"/>
+                <label htmlFor="file-input" style={{background:black,color:white,padding:'0.6rem 1.25rem',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.62rem',letterSpacing:'0.12em',textTransform:'uppercase'}}>Seleccionar Archivos</label>
+              </div>
+              <FilesListForClient userId={filesClient.id} showToast={showToast}/>
             </div>
           </div>
         )}
@@ -814,5 +785,44 @@ export default function Admin({session}){
         {toast&&<div style={{position:'fixed',bottom:'5rem',right:'1rem',background:black,color:white,padding:'0.85rem 1.25rem',borderRadius:8,fontSize:'0.74rem',borderLeft:'3px solid '+gold,zIndex:9999,maxWidth:280}}>{toast}</div>}
       </div>
     </>
+  )
+}
+
+function FilesListForClient({ userId, showToast }) {
+  const [files, setFiles] = useState([])
+  const ff='DM Sans,sans-serif'
+  const gray='#6b6b67', black='#0e0e0c', gold='#b8975a'
+
+  useEffect(()=>{
+    supabase.storage.from('client-files').list('clients/'+userId, { sortBy:{column:'created_at',order:'desc'} })
+      .then(({data})=>setFiles(data||[]))
+  },[userId])
+
+  async function deleteFile(name) {
+    await supabase.storage.from('client-files').remove([`clients/${userId}/${name}`])
+    setFiles(f=>f.filter(x=>x.name!==name))
+    showToast('Archivo eliminado')
+  }
+
+  async function downloadFile(name) {
+    const {data}=await supabase.storage.from('client-files').createSignedUrl(`clients/${userId}/${name}`,60)
+    if(data?.signedUrl) window.open(data.signedUrl,'_blank')
+  }
+
+  if(files.length===0) return <div style={{textAlign:'center',color:gray,fontSize:'0.78rem',padding:'1rem 0'}}>No hay archivos guardados aun.</div>
+
+  return(
+    <div>
+      <div style={{fontSize:'0.56rem',letterSpacing:'0.13em',textTransform:'uppercase',color:gray,marginBottom:'0.75rem'}}>Archivos guardados</div>
+      {files.map(f=>(
+        <div key={f.name} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0.75rem 0',borderBottom:'1px solid rgba(14,14,12,0.06)'}}>
+          <div style={{fontSize:'0.78rem',color:black,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',flex:1,marginRight:'1rem'}}>{f.name.replace(/^\d+_/,'')}</div>
+          <div style={{display:'flex',gap:'0.4rem',flexShrink:0}}>
+            <button onClick={()=>downloadFile(f.name)} style={{padding:'0.3rem 0.65rem',background:'rgba(184,151,90,0.1)',color:gold,border:'1px solid rgba(184,151,90,0.25)',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.56rem',textTransform:'uppercase'}}>Ver</button>
+            <button onClick={()=>deleteFile(f.name)} style={{padding:'0.3rem 0.65rem',background:'rgba(192,57,43,0.08)',color:'#a93226',border:'none',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.56rem',textTransform:'uppercase'}}>x</button>
+          </div>
+        </div>
+      ))}
+    </div>
   )
 }
