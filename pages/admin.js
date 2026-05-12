@@ -1081,7 +1081,7 @@ export default function Admin({session}){
           </div>
         )}
 
-        {/* MODAL: Premio */}}
+        {/* MODAL: Premio */}
         {modal==='reward'&&(
           <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:500,display:'flex',alignItems:'flex-end',justifyContent:'center'}} onClick={e=>e.target===e.currentTarget&&setModal(null)}>
             <div style={{background:white,borderRadius:'12px 12px 0 0',padding:'2rem',width:'100%',maxWidth:520,maxHeight:'90vh',overflowY:'auto'}}>
