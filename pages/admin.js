@@ -5,6 +5,89 @@ const gold='#b8975a',black='#0e0e0c',white='#f8f6f1',gray='#6b6b67',gl='#e8e5de'
 const ff='DM Sans,sans-serif'
 const ffS='Cormorant Garamond,serif'
 
+function CatalogPanel({ catalog, onSetCost }) {
+  const ff='DM Sans,sans-serif', ffS='Cormorant Garamond,serif'
+  const gold='#b8975a', black='#0e0e0c', white='#f8f6f1', gray='#6b6b67', gl='#e8e5de'
+
+  function getMargin(item) {
+    const price = item.catalog_prices?.find(p => p.active)?.amount || 0
+    const cost = item.catalog_costs?.[0]?.cost || 0
+    if (!price || !cost) return null
+    return Math.round(((price - cost) / price) * 100)
+  }
+
+  function formatPrice(item) {
+    const prices = item.catalog_prices?.filter(p => p.active) || []
+    if (prices.length === 0) return '—'
+    return prices.map(p => {
+      const amt = '$' + (p.amount || 0).toFixed(2)
+      return p.interval ? amt + '/' + p.interval : amt
+    }).join(' · ')
+  }
+
+  return (
+    <div>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1.5rem'}}>
+        <h2 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300}}>Catalogo de Servicios</h2>
+        <div style={{fontSize:'0.62rem',color:gray}}>{catalog.length} servicios</div>
+      </div>
+
+      <style>{`
+        @media(max-width:700px){
+          .catalog-grid{grid-template-columns:1fr!important;}
+        }
+      `}</style>
+
+      <div className="catalog-grid" style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(300px,1fr))',gap:'1rem'}}>
+        {catalog.map(item=>{
+          const margin = getMargin(item)
+          const cost = item.catalog_costs?.[0]?.cost
+          const price = item.catalog_prices?.find(p=>p.active)?.amount || 0
+          const marginColor = margin === null ? gray : margin >= 60 ? '#2d8a60' : margin >= 40 ? gold : '#c0392b'
+
+          return(
+            <div key={item.id} style={{background:white,borderRadius:10,border:'1px solid rgba(14,14,12,0.07)',overflow:'hidden'}}>
+              <div style={{background:item.active?'linear-gradient(135deg,#1a1917,#252320)':'rgba(14,14,12,0.06)',padding:'1rem 1.25rem'}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'0.5rem'}}>
+                  <div style={{fontFamily:ffS,fontSize:'0.95rem',color:item.active?white:gray,flex:1,marginRight:'0.5rem'}}>{item.name}</div>
+                  <span style={{fontSize:'0.52rem',padding:'0.15rem 0.55rem',borderRadius:20,background:item.active?'rgba(45,138,96,0.2)':'rgba(192,57,43,0.15)',color:item.active?'#52b788':'#c0392b',whiteSpace:'nowrap',flexShrink:0}}>{item.active?'Activo':'Inactivo'}</span>
+                </div>
+                {item.description&&<div style={{fontSize:'0.62rem',color:item.active?'rgba(255,255,255,0.45)':'rgba(14,14,12,0.4)',lineHeight:1.5}}>{item.description.substring(0,80)}{item.description.length>80?'...':''}</div>}
+              </div>
+              <div style={{padding:'1rem 1.25rem'}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.75rem'}}>
+                  <div>
+                    <div style={{fontSize:'0.52rem',color:gray,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:'0.2rem'}}>Precio</div>
+                    <div style={{fontSize:'0.88rem',fontWeight:600,color:black}}>{formatPrice(item)}</div>
+                  </div>
+                  <div style={{textAlign:'right'}}>
+                    <div style={{fontSize:'0.52rem',color:gray,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:'0.2rem'}}>Costo</div>
+                    <div style={{fontSize:'0.88rem',color:cost?black:'rgba(14,14,12,0.3)'}}>{cost?'$'+parseFloat(cost).toFixed(2):'Sin definir'}</div>
+                  </div>
+                  <div style={{textAlign:'right'}}>
+                    <div style={{fontSize:'0.52rem',color:gray,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:'0.2rem'}}>Margen</div>
+                    <div style={{fontSize:'0.88rem',fontWeight:600,color:marginColor}}>{margin!==null?margin+'%':'—'}</div>
+                  </div>
+                </div>
+                {margin!==null&&(
+                  <div style={{height:3,background:'rgba(14,14,12,0.06)',borderRadius:2,marginBottom:'0.75rem'}}>
+                    <div style={{height:'100%',width:Math.min(margin,100)+'%',background:marginColor,borderRadius:2}}/>
+                  </div>
+                )}
+                <button onClick={()=>onSetCost(item)} style={{width:'100%',padding:'0.55rem',background:'rgba(184,151,90,0.08)',color:gold,border:'1px solid rgba(184,151,90,0.25)',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.62rem',letterSpacing:'0.1em',textTransform:'uppercase'}}>
+                  {cost?'Editar Costo':'Establecer Costo'}
+                </button>
+              </div>
+            </div>
+          )
+        })}
+        {catalog.length===0&&<div style={{background:white,borderRadius:10,padding:'2rem',textAlign:'center',color:gray,fontSize:'0.82rem',border:'1px solid rgba(14,14,12,0.07)',gridColumn:'1/-1'}}>Sin productos en el catalogo.</div>}
+      </div>
+    </div>
+  )
+}
+
+
 function getStatus(card) {
   if (!card) return { label:'Nuevo', color:'#8e44ad', bg:'rgba(142,68,173,0.1)' }
   const stamps = card.stamps || 0
@@ -582,6 +665,9 @@ export default function Admin({session}){
   const [editingClient,setEditingClient]=useState(null)
   const [editForm,setEditForm]=useState({})
   const [filesClient,setFilesClient]=useState(null)
+  const [catalog,setCatalog]=useState([])
+  const [editCost,setEditCost]=useState(null)
+  const [costForm,setCostForm]=useState({cost:'',notes:''})
 
   useEffect(()=>{
     if(!session){window.location.href='/login';return}
@@ -594,12 +680,13 @@ export default function Admin({session}){
 
   async function loadAll(){
     setLoading(true)
-    const [c,u,r]=await Promise.all([
+    const [c,u,r,cat]=await Promise.all([
       fetch('/api/admin/cards').then(r=>r.json()),
       fetch('/api/admin/users').then(r=>r.json()),
-      fetch('/api/admin/rewards').then(r=>r.json())
+      fetch('/api/admin/rewards').then(r=>r.json()),
+      fetch('/api/admin/catalog').then(r=>r.json())
     ])
-    setCards(c.cards||[]);setUsers(u.users||[]);setRewards(r.rewards||[])
+    setCards(c.cards||[]);setUsers(u.users||[]);setRewards(r.rewards||[]);setCatalog(cat.items||[])
     setLoading(false)
   }
 
@@ -714,6 +801,10 @@ export default function Admin({session}){
                 ))}
               </div>
             )}
+            <div style={{height:'1px',background:'rgba(255,255,255,0.06)',margin:'0.25rem 1.5rem'}}/>
+            <button onClick={()=>setPanel('catalog')} style={{display:'flex',alignItems:'center',padding:'0.82rem 1.5rem',fontSize:'0.72rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel==='catalog'?gold:'rgba(255,255,255,0.32)',cursor:'pointer',background:'none',border:'none',borderLeft:panel==='catalog'?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>
+              Catalogo
+            </button>
           </div>
 
           {/* MAIN */}
@@ -722,6 +813,7 @@ export default function Admin({session}){
             {panel==='client'&&selectedClient&&<ClientProfile card={selectedClient} onBack={()=>{setSelectedClient(null);setPanel('dashboard')}}/>}
             {panel==='notifications'&&<NotificationsPanel cards={cards} users={users}/>}
             {panel==='campaigns'&&<CampaignsPanel cards={cards} users={users}/>}
+            {panel==='catalog'&&<CatalogPanel catalog={catalog} onSetCost={(item)=>{setEditCost(item);setCostForm({cost:item.catalog_costs?.[0]?.cost||'',notes:item.catalog_costs?.[0]?.notes||''});setModal('cost')}} />}
             {panel==='clients'&&<ClientsPanel
               users={users} cards={cards} search={clientSearch} setSearch={setClientSearch}
               onEdit={(u)=>{setEditingClient(u);setEditForm({name:u.full_name||'',business:u.business_name||'',phone:u.phone||'',email:'',password:''});setModal('editclient')}}
@@ -840,7 +932,7 @@ export default function Admin({session}){
 
         {/* MOBILE NAV */}
         <div className="mobile-nav">
-          {[['notifications','Alerts'],['loyalty','Loyalty'],['dashboard','Dashboard'],['clients','Clients'],['campaigns','Campaigns']].map(([id,label])=>(
+          {[['notifications','Alerts'],['loyalty','Loyalty'],['dashboard','Dashboard'],['clients','Clients'],['campaigns','Campaigns'],['catalog','Catalogo']].map(([id,label])=>(
             <button key={id} onClick={()=>setPanel(id)} className={panel===id||(['cards','punch','rewards'].includes(panel)&&id==='loyalty')?'active':''}>
               {label}
             </button>
@@ -965,7 +1057,31 @@ export default function Admin({session}){
           </div>
         )}
 
-        {/* MODAL: Premio */}
+        {/* MODAL: Costo */}
+        {modal==='cost'&&editCost&&(
+          <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:500,display:'flex',alignItems:'flex-end',justifyContent:'center'}} onClick={e=>e.target===e.currentTarget&&setModal(null)}>
+            <div style={{background:white,borderRadius:'12px 12px 0 0',padding:'2rem',width:'100%',maxWidth:520,maxHeight:'90vh',overflowY:'auto'}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1.5rem'}}>
+                <h3 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300}}>Establecer Costo</h3>
+                <button onClick={()=>setModal(null)} style={{background:'none',border:'none',fontSize:'1.1rem',cursor:'pointer',color:gray}}>x</button>
+              </div>
+              <div style={{fontSize:'0.72rem',color:gray,marginBottom:'1.5rem'}}>{editCost.name}</div>
+              <label style={{fontSize:'0.56rem',letterSpacing:'0.13em',textTransform:'uppercase',color:gray,display:'block',marginBottom:'0.35rem'}}>Costo Interno ($)</label>
+              <input style={{width:'100%',padding:'0.78rem 1rem',border:'1px solid '+gl,borderRadius:3,background:white,fontFamily:ff,fontSize:'0.88rem',outline:'none',color:black,marginBottom:'1rem',boxSizing:'border-box'}} type="number" step="0.01" placeholder="0.00" value={costForm.cost} onChange={e=>setCostForm(f=>({...f,cost:e.target.value}))}/>
+              <label style={{fontSize:'0.56rem',letterSpacing:'0.13em',textTransform:'uppercase',color:gray,display:'block',marginBottom:'0.35rem'}}>Notas (opcional)</label>
+              <input style={{width:'100%',padding:'0.78rem 1rem',border:'1px solid '+gl,borderRadius:3,background:white,fontFamily:ff,fontSize:'0.88rem',outline:'none',color:black,marginBottom:'1.5rem',boxSizing:'border-box'}} type="text" placeholder="ej: hosting $5, dominio $1.50/mes..." value={costForm.notes} onChange={e=>setCostForm(f=>({...f,notes:e.target.value}))}/>
+              <div style={{display:'flex',gap:'0.75rem'}}>
+                <button onClick={async()=>{
+                  await fetch('/api/admin/catalog',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({product_id:editCost.id,cost:costForm.cost,notes:costForm.notes})})
+                  showToast('Costo guardado');setModal(null);loadAll()
+                }} style={{flex:1,background:black,color:white,border:'none',padding:'0.85rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Guardar</button>
+                <button onClick={()=>setModal(null)} style={{background:'rgba(14,14,12,0.06)',color:black,border:'none',padding:'0.85rem 1.25rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Cancelar</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL: Premio */}}
         {modal==='reward'&&(
           <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:500,display:'flex',alignItems:'flex-end',justifyContent:'center'}} onClick={e=>e.target===e.currentTarget&&setModal(null)}>
             <div style={{background:white,borderRadius:'12px 12px 0 0',padding:'2rem',width:'100%',maxWidth:520,maxHeight:'90vh',overflowY:'auto'}}>
