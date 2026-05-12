@@ -153,7 +153,7 @@ function ClientsPanel({users,cards,search,setSearch,onEdit,onAddPayment,onCreate
           const cur=card?(card.stamps%5===0&&card.stamps>0?5:card.stamps%5):0
           const lastPay=card?.stamp_history?.length>0?new Date(card.stamp_history[card.stamp_history.length-1].created_at).toLocaleDateString('en-US',{month:'short',day:'numeric'}):null
           return(
-            <div key={user.id} style={{display:'grid',gridTemplateColumns:'2fr 1fr 1fr auto',padding:'0.85rem 1.25rem',borderBottom:'1px solid rgba(14,14,12,0.04)',alignItems:'center',gap:'0.5rem'}}>
+            <div key={user.id} style={{display:'grid',gridTemplateColumns:'2fr 120px 100px 1fr',padding:'0.85rem 1.25rem',borderBottom:'1px solid rgba(14,14,12,0.04)',alignItems:'center',gap:'0.5rem'}}>
               <div style={{minWidth:0}}>
                 <div style={{fontSize:'0.78rem',color:black,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontWeight:500}}>{user.business_name||user.full_name}</div>
                 <div style={{fontSize:'0.62rem',color:gray,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{user.business_name?user.full_name:user.email}</div>
@@ -164,7 +164,7 @@ function ClientsPanel({users,cards,search,setSearch,onEdit,onAddPayment,onCreate
                 {Array.from({length:5},(_,j)=><div key={j} style={{width:8,height:8,borderRadius:'50%',background:j<cur?gold:'rgba(14,14,12,0.08)'}}/>)}
                 <span style={{fontSize:'0.58rem',color:gray,marginLeft:'0.3rem'}}>{card?.stamps||0}</span>
               </div>
-              <div style={{display:'flex',gap:'0.35rem',flexWrap:'wrap',justifyContent:'flex-end'}}>
+              <div style={{display:'flex',gap:'0.35rem',flexWrap:'wrap',justifyContent:'flex-end',alignItems:'center'}}>
                 <button onClick={()=>onEdit(user)} style={{padding:'0.35rem 0.65rem',background:'rgba(14,14,12,0.06)',color:black,border:'none',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.56rem',letterSpacing:'0.07em',textTransform:'uppercase'}}>Edit</button>
                 {card
                   ?<button onClick={()=>onAddPayment(card)} style={{padding:'0.35rem 0.65rem',background:black,color:white,border:'none',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.56rem',letterSpacing:'0.07em',textTransform:'uppercase'}}>+ Pay</button>
@@ -292,64 +292,87 @@ function CatalogPanel({ catalog, onSetCost, onSetSuppliers }) {
   const [search, setSearch] = useState('')
   const [expandMargin, setExpandMargin] = useState(false)
 
-  function getMargin(item) {
-    const price = item.catalog_prices?.find(p=>p.active)?.amount || 0
-    const cost = item.catalog_costs?.[0]?.cost || 0
-    if (!price || !cost) return null
-    return Math.round(((price - cost) / price) * 100)
+  function getPrice(item) {
+    const p = item.catalog_prices?.find(p=>p.active)
+    if (!p) return null
+    return p.amount
   }
 
   function formatPrice(item) {
-    const prices = item.catalog_prices?.filter(p=>p.active) || []
-    if (prices.length === 0) return '—'
-    return prices.map(p=>{const amt='$'+(p.amount||0).toFixed(2);return p.interval?amt+'/'+p.interval:amt}).join(' · ')
+    const prices = item.catalog_prices?.filter(p=>p.active)||[]
+    if (!prices.length) return '—'
+    return prices.map(p=>'$'+(p.amount||0).toFixed(2)+(p.interval?'/'+p.interval:'')).join(' · ')
   }
 
-  function categorize(item) {
-    const name = item.name.toLowerCase()
-    if (name.includes('setup') || name.includes('bundle') && !name.includes('mantenimiento') && !name.includes('maintenance')) return 'setup'
-    if (name.includes('mantenimiento') || name.includes('maintenance') || name.includes('mensual') || name.includes('monthly') || name.includes('planilla')) return 'maintenance'
+  function getCost(item) {
+    const c = item.catalog_costs?.[0]?.cost
+    return c!=null ? parseFloat(c) : null
+  }
+
+  function getMargin(item) {
+    const price = getPrice(item)
+    const cost = getCost(item)
+    if (!price || cost === null) return null
+    return Math.round(((price - cost) / price) * 100)
+  }
+
+  function mc(m) {
+    return m >= 60 ? '#2d8a60' : m >= 40 ? gold : '#c0392b'
+  }
+
+  function categorize(name) {
+    const n = name.toLowerCase()
+    if (n.includes('mantenimiento') || n.includes('maintenance') || n.includes('mensual') || n.includes('planilla') || n.includes('scaling')) return 'maintenance'
+    if (n.includes('setup') || n.includes('bundle') || n.includes('pro')) return 'setup'
     return 'extras'
   }
 
-  const withMargin = catalog
-    .filter(i=>getMargin(i)!==null)
-    .map(i=>({...i,margin:getMargin(i)}))
-    .sort((a,b)=>b.margin-a.margin)
+  const filtered = catalog.filter(i => i.name.toLowerCase().includes(search.toLowerCase()))
+  const setup = [...filtered.filter(i=>categorize(i.name)==='setup')].sort((a,b)=>(getPrice(b)||0)-(getPrice(a)||0))
+  const maintenance = [...filtered.filter(i=>categorize(i.name)==='maintenance')].sort((a,b)=>(getPrice(b)||0)-(getPrice(a)||0))
+  const extras = [...filtered.filter(i=>categorize(i.name)==='extras')].sort((a,b)=>(getPrice(b)||0)-(getPrice(a)||0))
 
-  const top5 = withMargin.slice(0,5)
-  const allMargin = withMargin
+  const withMargin = catalog.map(i=>({...i,_margin:getMargin(i)})).filter(i=>i._margin!==null).sort((a,b)=>b._margin-a._margin)
+  const showList = expandMargin ? withMargin : withMargin.slice(0,5)
 
-  const filtered = catalog.filter(i=>i.name.toLowerCase().includes(search.toLowerCase()))
-  const setup = filtered.filter(i=>categorize(i)==='setup').sort((a,b)=>(b.catalog_prices?.[0]?.amount||0)-(a.catalog_prices?.[0]?.amount||0))
-  const maintenance = filtered.filter(i=>categorize(i)==='maintenance').sort((a,b)=>(b.catalog_prices?.[0]?.amount||0)-(a.catalog_prices?.[0]?.amount||0))
-  const extras = filtered.filter(i=>categorize(i)==='extras').sort((a,b)=>(b.catalog_prices?.[0]?.amount||0)-(a.catalog_prices?.[0]?.amount||0))
-
-  const marginColor = (m) => m>=60?'#2d8a60':m>=40?gold:'#c0392b'
-
-  function CatalogRow({item}) {
+  function Row({item}) {
+    const price = getPrice(item)
+    const cost = getCost(item)
     const margin = getMargin(item)
-    const cost = item.catalog_costs?.[0]?.cost
-    return(
-      <div style={{display:'grid',gridTemplateColumns:'minmax(180px,2fr) minmax(90px,1fr) minmax(80px,1fr) minmax(80px,1fr) auto',padding:'0.85rem 1.25rem',borderBottom:'1px solid rgba(14,14,12,0.04)',alignItems:'center',gap:'1rem'}}>
-        <div style={{minWidth:0}}>
-          <div style={{fontSize:'0.75rem',color:black,fontWeight:500,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{item.name}</div>
-          {item.description&&<div style={{fontSize:'0.58rem',color:gray,marginTop:'0.15rem',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{item.description.substring(0,55)}...</div>}
+    return (
+      <div style={{padding:'0.9rem 1.25rem',borderBottom:'1px solid rgba(14,14,12,0.05)'}}>
+        {/* Name + status */}
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'0.6rem'}}>
+          <div style={{flex:1,minWidth:0,marginRight:'0.75rem'}}>
+            <div style={{fontSize:'0.78rem',fontWeight:600,color:black,lineHeight:1.3}}>{item.name}</div>
+            {item.description&&<div style={{fontSize:'0.6rem',color:gray,marginTop:'0.2rem',lineHeight:1.4}}>{item.description.substring(0,80)}{item.description.length>80?'...':''}</div>}
+          </div>
+          <span style={{fontSize:'0.52rem',padding:'0.15rem 0.55rem',borderRadius:20,background:item.active?'rgba(45,138,96,0.1)':'rgba(192,57,43,0.1)',color:item.active?'#2d8a60':'#c0392b',whiteSpace:'nowrap',flexShrink:0}}>{item.active?'Active':'Inactive'}</span>
         </div>
-        <div style={{fontSize:'0.75rem',color:black,fontWeight:600}}>{formatPrice(item)}</div>
-        <div style={{fontSize:'0.75rem',color:cost?black:'rgba(14,14,12,0.3)',fontWeight:cost?500:400}}>{cost?'$'+parseFloat(cost).toFixed(2):'—'}</div>
-        <div>
-          {margin!==null
-            ?<div style={{display:'flex',flexDirection:'column',gap:'0.2rem'}}>
-               <span style={{fontSize:'0.72rem',fontWeight:700,color:marginColor(margin)}}>{margin}%</span>
-               <div style={{width:48,height:3,background:'rgba(14,14,12,0.06)',borderRadius:2}}><div style={{height:'100%',width:Math.min(margin,100)+'%',background:marginColor(margin),borderRadius:2}}/></div>
-             </div>
-            :<span style={{fontSize:'0.7rem',color:'rgba(14,14,12,0.25)'}}>—</span>
-          }
+        {/* Price / Cost / Margin row */}
+        <div style={{display:'flex',gap:'0.5rem',marginBottom:'0.65rem',flexWrap:'wrap'}}>
+          <div style={{background:'rgba(14,14,12,0.04)',borderRadius:6,padding:'0.35rem 0.65rem',minWidth:80}}>
+            <div style={{fontSize:'0.48rem',color:gray,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:'0.15rem'}}>Price</div>
+            <div style={{fontSize:'0.75rem',fontWeight:700,color:black}}>{formatPrice(item)}</div>
+          </div>
+          <div style={{background:'rgba(14,14,12,0.04)',borderRadius:6,padding:'0.35rem 0.65rem',minWidth:80}}>
+            <div style={{fontSize:'0.48rem',color:gray,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:'0.15rem'}}>Cost</div>
+            <div style={{fontSize:'0.75rem',fontWeight:600,color:cost!==null?black:'rgba(14,14,12,0.3)'}}>{cost!==null?'$'+cost.toFixed(2):'—'}</div>
+          </div>
+          <div style={{background:margin!==null?mc(margin)+'18':'rgba(14,14,12,0.04)',borderRadius:6,padding:'0.35rem 0.65rem',minWidth:80}}>
+            <div style={{fontSize:'0.48rem',color:gray,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:'0.15rem'}}>Margin</div>
+            <div style={{fontSize:'0.75rem',fontWeight:700,color:margin!==null?mc(margin):'rgba(14,14,12,0.3)'}}>{margin!==null?margin+'%':'—'}</div>
+          </div>
+          {margin!==null&&<div style={{display:'flex',alignItems:'center',flex:1,minWidth:80}}>
+            <div style={{flex:1,height:4,background:'rgba(14,14,12,0.06)',borderRadius:2}}>
+              <div style={{height:'100%',width:Math.min(margin,100)+'%',background:mc(margin),borderRadius:2}}/>
+            </div>
+          </div>}
         </div>
-        <div style={{display:'flex',gap:'0.35rem',flexShrink:0}}>
-          <button onClick={()=>onSetCost(item)} style={{padding:'0.35rem 0.65rem',background:'rgba(184,151,90,0.08)',color:gold,border:'1px solid rgba(184,151,90,0.25)',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.56rem',letterSpacing:'0.06em',textTransform:'uppercase',whiteSpace:'nowrap'}}>{cost?'Edit Cost':'Set Cost'}</button>
-          <button onClick={()=>onSetSuppliers(item)} style={{padding:'0.35rem 0.65rem',background:'rgba(52,152,219,0.08)',color:'#2980b9',border:'1px solid rgba(52,152,219,0.2)',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.56rem',letterSpacing:'0.06em',textTransform:'uppercase',whiteSpace:'nowrap'}}>Suppliers</button>
+        {/* Buttons */}
+        <div style={{display:'flex',gap:'0.4rem',flexWrap:'wrap'}}>
+          <button onClick={()=>onSetCost(item)} style={{padding:'0.4rem 0.85rem',background:'rgba(184,151,90,0.08)',color:gold,border:'1px solid rgba(184,151,90,0.25)',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.58rem',letterSpacing:'0.08em',textTransform:'uppercase'}}>{cost!==null?'Edit Cost':'Set Cost'}</button>
+          <button onClick={()=>onSetSuppliers(item)} style={{padding:'0.4rem 0.85rem',background:'rgba(52,152,219,0.08)',color:'#2980b9',border:'1px solid rgba(52,152,219,0.2)',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.58rem',letterSpacing:'0.08em',textTransform:'uppercase'}}>Suppliers</button>
         </div>
       </div>
     )
@@ -357,65 +380,58 @@ function CatalogPanel({ catalog, onSetCost, onSetSuppliers }) {
 
   function Section({title, items}) {
     const [open, setOpen] = useState(true)
-    if (items.length===0) return null
-    return(
+    if (!items.length) return null
+    return (
       <div style={{background:white,borderRadius:10,border:'1px solid rgba(14,14,12,0.07)',overflow:'hidden',marginBottom:'1rem'}}>
-        <div onClick={()=>setOpen(o=>!o)} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'0.85rem 1.25rem',cursor:'pointer',borderBottom:open?'1px solid rgba(14,14,12,0.06)':'none'}}>
-          <div style={{fontFamily:ffS,fontSize:'1.1rem',fontWeight:300,color:black}}>{title}</div>
-          <div style={{display:'flex',alignItems:'center',gap:'0.75rem'}}>
-            <span style={{fontSize:'0.62rem',color:gray}}>{items.length} service{items.length!==1?'s':''}</span>
+        <div onClick={()=>setOpen(o=>!o)} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'0.9rem 1.25rem',cursor:'pointer',background:'rgba(14,14,12,0.02)'}}>
+          <div style={{fontFamily:ffS,fontSize:'1.05rem',fontWeight:300,color:black}}>{title}</div>
+          <div style={{display:'flex',alignItems:'center',gap:'0.6rem'}}>
+            <span style={{fontSize:'0.6rem',color:gray}}>{items.length} service{items.length!==1?'s':''}</span>
             <span style={{fontSize:'0.6rem',color:gray,transform:open?'rotate(180deg)':'rotate(0)',display:'inline-block',transition:'transform 0.2s'}}>▾</span>
           </div>
         </div>
-        {open&&<>
-          <div style={{display:'grid',gridTemplateColumns:'minmax(180px,2fr) minmax(90px,1fr) minmax(80px,1fr) minmax(80px,1fr) auto',padding:'0.5rem 1.25rem',fontSize:'0.52rem',letterSpacing:'0.1em',textTransform:'uppercase',color:gray,borderBottom:'1px solid rgba(14,14,12,0.04)',gap:'1rem'}}>
-            <span>Service</span><span>Price</span><span>Cost</span><span>Margin</span><span style={{paddingLeft:'0.5rem'}}>Actions</span>
-          </div>
-          {items.map(item=><CatalogRow key={item.id} item={item}/>)}
-        </>}
+        {open && items.map(item=><Row key={item.id} item={item}/>)}
       </div>
     )
   }
 
-  return(
+  return (
     <div>
-      <style>{`.catalog-row{} @media(max-width:700px){.catalog-row{grid-template-columns:1fr!important;}.catalog-row span:not(:first-child){display:none;}}`}</style>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1.25rem'}}>
         <h2 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300}}>Catalog</h2>
-        <div style={{fontSize:'0.62rem',color:gray}}>{catalog.length} services · Synced with Stripe</div>
+        <div style={{fontSize:'0.62rem',color:gray}}>{catalog.length} services · Stripe synced</div>
       </div>
+
+      {/* Best Margin Box */}
+      {withMargin.length>0&&(
+        <div style={{background:white,borderRadius:10,border:'1px solid rgba(184,151,90,0.25)',padding:'0.9rem 1.25rem',marginBottom:'1.25rem'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.65rem'}}>
+            <span style={{fontSize:'0.6rem',fontWeight:700,color:gold,letterSpacing:'0.1em',textTransform:'uppercase'}}>★ Best Margin</span>
+            <button onClick={()=>setExpandMargin(e=>!e)} style={{background:'none',border:'none',cursor:'pointer',fontSize:'0.6rem',color:gray,fontFamily:ff,letterSpacing:'0.08em',textTransform:'uppercase'}}>{expandMargin?'Collapse':'See all'}</button>
+          </div>
+          {showList.map((item,i)=>(
+            <div key={item.id} style={{display:'flex',alignItems:'center',gap:'0.6rem',marginBottom:'0.45rem'}}>
+              <div style={{width:16,height:16,borderRadius:'50%',background:i===0&&!expandMargin?gold:'rgba(14,14,12,0.06)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'0.5rem',fontWeight:700,color:i===0&&!expandMargin?black:gray,flexShrink:0}}>{i+1}</div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:'0.68rem',color:black,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{item.name}</div>
+                <div style={{height:3,background:'rgba(14,14,12,0.06)',borderRadius:2,marginTop:'0.2rem'}}>
+                  <div style={{height:'100%',width:Math.min(item._margin,100)+'%',background:mc(item._margin),borderRadius:2}}/>
+                </div>
+              </div>
+              <span style={{fontSize:'0.7rem',fontWeight:700,color:mc(item._margin),flexShrink:0,minWidth:36,textAlign:'right'}}>{item._margin}%</span>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Search */}
       <input type="text" placeholder="Search services..." value={search} onChange={e=>setSearch(e.target.value)} style={{width:'100%',padding:'0.7rem 1rem',border:'1px solid '+gl,borderRadius:3,fontFamily:ff,fontSize:'0.82rem',outline:'none',marginBottom:'1.25rem',boxSizing:'border-box',background:white}}/>
-
-      {/* Best Margin Bar */}
-      {top5.length>0&&(
-        <div style={{background:white,borderRadius:10,border:'1px solid rgba(14,14,12,0.07)',padding:'0.85rem 1.25rem',marginBottom:'1.25rem'}}>
-          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.6rem'}}>
-            <span style={{fontSize:'0.6rem',fontWeight:600,color:gold,letterSpacing:'0.08em',textTransform:'uppercase'}}>★ Best Margin</span>
-            <button onClick={()=>setExpandMargin(e=>!e)} style={{background:'none',border:'none',cursor:'pointer',fontSize:'0.6rem',color:gray,fontFamily:ff,letterSpacing:'0.08em',textTransform:'uppercase'}}>{expandMargin?'Collapse':'Expand all'}</button>
-          </div>
-          <div style={{display:'flex',flexDirection:'column',gap:'0.4rem'}}>
-            {(expandMargin?allMargin:top5).map((item,i)=>(
-              <div key={item.id} style={{display:'flex',alignItems:'center',gap:'0.65rem'}}>
-                <div style={{width:14,height:14,borderRadius:'50%',background:i===0&&!expandMargin?gold:'rgba(14,14,12,0.06)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'0.5rem',fontWeight:600,color:i===0&&!expandMargin?black:gray,flexShrink:0}}>{i+1}</div>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontSize:'0.68rem',color:black,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{item.name}</div>
-                  <div style={{height:2,background:'rgba(14,14,12,0.06)',borderRadius:2,marginTop:'0.15rem'}}><div style={{height:'100%',width:Math.min(item.margin,100)+'%',background:marginColor(item.margin),borderRadius:2}}/></div>
-                </div>
-                <span style={{fontSize:'0.68rem',fontWeight:700,color:marginColor(item.margin),flexShrink:0,minWidth:32,textAlign:'right'}}>{item.margin}%</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Sections */}
       <Section title="Setup" items={setup}/>
       <Section title="Maintenance" items={maintenance}/>
       <Section title="Extras" items={extras}/>
-
-      {filtered.length===0&&<div style={{background:white,borderRadius:10,padding:'2rem',textAlign:'center',color:gray,fontSize:'0.82rem',border:'1px solid rgba(14,14,12,0.07)'}}>No services found.</div>}
+      {!filtered.length&&<div style={{background:white,borderRadius:10,padding:'2rem',textAlign:'center',color:gray,fontSize:'0.82rem',border:'1px solid rgba(14,14,12,0.07)'}}>No services found.</div>}
     </div>
   )
 }
@@ -909,7 +925,7 @@ export default function Admin({session}){
             <label style={lbl}>Internal Cost ($)</label><input style={inp} type="number" step="0.01" placeholder="0.00" value={costForm.cost} onChange={e=>setCostForm(f=>({...f,cost:e.target.value}))}/>
             <label style={lbl}>Notes (optional)</label><input style={inp} type="text" placeholder="e.g. Vercel $20/mo, domain $12/yr..." value={costForm.notes} onChange={e=>setCostForm(f=>({...f,notes:e.target.value}))}/>
             <div style={{display:'flex',gap:'0.75rem'}}>
-              <button onClick={async()=>{const r=await fetch('/api/admin/catalog',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({product_id:editCost.id,cost:costForm.cost,notes:costForm.notes})});const d=await r.json();if(r.ok){if(d.item){setCatalog(prev=>prev.map(i=>i.id===d.item.id?d.item:i));}else{loadAll();}showToast('Cost saved ✓');setModal(null);}else{showToast('Error: '+d.error);}}} style={{flex:1,background:black,color:white,border:'none',padding:'0.85rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Save</button>
+              <button onClick={async()=>{const r=await fetch('/api/admin/catalog',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({product_id:editCost.id,cost:costForm.cost,notes:costForm.notes})});const d=await r.json();if(r.ok){showToast('Cost saved ✓');setModal(null);fetch('/api/admin/catalog').then(r=>r.json()).then(d=>setCatalog(d.items||[]));}else{showToast('Error: '+(d.error||'Unknown error'));}}} style={{flex:1,background:black,color:white,border:'none',padding:'0.85rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Save</button>
               <button onClick={()=>setModal(null)} style={{background:'rgba(14,14,12,0.06)',color:black,border:'none',padding:'0.85rem 1.25rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Cancel</button>
             </div>
           </div>
@@ -926,7 +942,7 @@ export default function Admin({session}){
             <label style={lbl}>Supplier Notes</label>
             <textarea value={suppliersText} onChange={e=>setSuppliersText(e.target.value)} rows={6} placeholder={'e.g.\nVercel hosting — $20/mo\nGoDaddy domain — $12/yr\nSupabase free tier'} style={{width:'100%',padding:'0.85rem',border:'1px solid '+gl,borderRadius:3,fontFamily:ff,fontSize:'0.82rem',color:black,outline:'none',resize:'vertical',boxSizing:'border-box',lineHeight:1.7,marginBottom:'1rem'}}/>
             <div style={{display:'flex',gap:'0.75rem'}}>
-              <button onClick={async()=>{const r=await fetch('/api/admin/catalog',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({product_id:suppliersItem.id,cost:suppliersItem.catalog_costs?.[0]?.cost||0,notes:suppliersText})});const d=await r.json();if(r.ok){if(d.item){setCatalog(prev=>prev.map(i=>i.id===d.item.id?d.item:i));}else{loadAll();}showToast('Suppliers saved ✓');setModal(null);}else{showToast('Error: '+d.error);}}} style={{flex:1,background:black,color:white,border:'none',padding:'0.85rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Save</button>
+              <button onClick={async()=>{const r=await fetch('/api/admin/catalog',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({product_id:suppliersItem.id,cost:suppliersItem.catalog_costs?.[0]?.cost||0,notes:suppliersText})});const d=await r.json();if(r.ok){showToast('Suppliers saved ✓');setModal(null);fetch('/api/admin/catalog').then(r=>r.json()).then(d=>setCatalog(d.items||[]));}else{showToast('Error: '+(d.error||'Unknown error'));}}} style={{flex:1,background:black,color:white,border:'none',padding:'0.85rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Save</button>
               <button onClick={()=>setModal(null)} style={{background:'rgba(14,14,12,0.06)',color:black,border:'none',padding:'0.85rem 1.25rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Cancel</button>
             </div>
           </div>
