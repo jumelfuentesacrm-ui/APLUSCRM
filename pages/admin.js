@@ -43,7 +43,7 @@ function getNotifications(cards) {
   return alerts.sort((a,b) => b.days - a.days)
 }
 
-function DashboardPanel({ cards, onSelectClient }) {
+function DashboardPanel({ cards, sales, onSelectClient }) {
   const totalClients=cards.length
   const sorted=[...cards].sort((a,b)=>(b.stamps||0)-(a.stamps||0))
   const top5=sorted.slice(0,5)
@@ -708,7 +708,7 @@ export default function Admin({session}){
 
           {/* MAIN */}
           <div className="admin-main" style={{marginLeft:205,flex:1,padding:'1.75rem',maxWidth:980}}>
-            {panel==='dashboard'&&<DashboardPanel cards={cards} onSelectClient={(card)=>{setSelectedClient(card);setPanel('client')}}/>}
+            {panel==='dashboard'&&<DashboardPanel cards={cards} sales={sales} onSelectClient={(card)=>{setSelectedClient(card);setPanel('client')}}/>}
             {panel==='client'&&selectedClient&&<ClientProfile card={selectedClient} onBack={()=>{setSelectedClient(null);setPanel('dashboard')}}/>}
             {panel==='notifications'&&<NotificationsPanel cards={cards} users={users}/>}
             {panel==='campaigns'&&<CampaignsPanel cards={cards} users={users}/>}
