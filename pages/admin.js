@@ -72,8 +72,9 @@ function DashboardPanel({ cards, onSelectClient }) {
             <div style={{flex:1}}>{clientDonut.map(d=>(<div key={d.label} style={{display:'flex',alignItems:'center',gap:'0.4rem',marginBottom:'0.4rem'}}><div style={{width:7,height:7,borderRadius:'50%',background:d.color,flexShrink:0}}/><span style={{fontSize:'0.62rem',color:gray,flex:1}}>{d.label}</span><span style={{fontSize:'0.62rem',fontWeight:500,color:black}}>{d.value}</span></div>))}</div>
           </div>
         </div>
-        <div style={{background:white,borderRadius:10,padding:'1.5rem',border:'1px solid rgba(14,14,12,0.07)',position:'relative'}}>
-          <div style={{fontFamily:ffS,fontSize:'1.1rem',fontWeight:300,marginBottom:'1.25rem'}}>Financial</div>
+        <FinancialCard sales={sales}/>
+        <div style={{background:white,borderRadius:10,padding:'1.5rem',border:'1px solid rgba(14,14,12,0.07)',position:'relative',display:'none'}}>
+          <div style={{fontFamily:ffS,fontSize:'1.1rem',fontWeight:300,marginBottom:'1.25rem'}}>Financial Legacy</div>
           <div style={{display:'flex',alignItems:'center',gap:'1rem'}}>
             <svg viewBox="0 0 100 100" style={{width:100,height:100,flexShrink:0}}><path d="M 50 15 A 35 35 0 1 1 49.99 15 Z" fill="rgba(14,14,12,0.06)" opacity="0.85"/><circle cx="50" cy="50" r="22" fill={white}/><text x="50" y="54" textAnchor="middle" style={{fontSize:8,fontFamily:ff,fill:gray}}>Clover</text></svg>
             <div style={{flex:1}}>{[['Gross Sales','#2d8a60'],['Gross Exp.','#c0392b'],['Net Profit',gold]].map(([label,color])=>(<div key={label} style={{display:'flex',alignItems:'center',gap:'0.4rem',marginBottom:'0.4rem'}}><div style={{width:7,height:7,borderRadius:'50%',background:color,flexShrink:0}}/><span style={{fontSize:'0.62rem',color:gray,flex:1}}>{label}</span><span style={{fontSize:'0.62rem',color:'rgba(14,14,12,0.25)'}}>—</span></div>))}</div>
@@ -330,22 +331,25 @@ function CatalogPanel({ catalog, onSetCost, onSetSuppliers }) {
     const margin = getMargin(item)
     const cost = item.catalog_costs?.[0]?.cost
     return(
-      <div style={{display:'grid',gridTemplateColumns:'2fr 1fr 1fr 1fr auto',padding:'0.85rem 1.25rem',borderBottom:'1px solid rgba(14,14,12,0.04)',alignItems:'center',gap:'0.5rem'}} className="catalog-row">
+      <div style={{display:'grid',gridTemplateColumns:'minmax(180px,2fr) minmax(90px,1fr) minmax(80px,1fr) minmax(80px,1fr) auto',padding:'0.85rem 1.25rem',borderBottom:'1px solid rgba(14,14,12,0.04)',alignItems:'center',gap:'1rem'}}>
         <div style={{minWidth:0}}>
-          <div style={{fontSize:'0.78rem',color:black,fontWeight:500,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{item.name}</div>
-          {item.description&&<div style={{fontSize:'0.6rem',color:gray,marginTop:'0.1rem',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{item.description.substring(0,60)}...</div>}
+          <div style={{fontSize:'0.75rem',color:black,fontWeight:500,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{item.name}</div>
+          {item.description&&<div style={{fontSize:'0.58rem',color:gray,marginTop:'0.15rem',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{item.description.substring(0,55)}...</div>}
         </div>
-        <div style={{fontSize:'0.78rem',color:black,fontWeight:600}}>{formatPrice(item)}</div>
-        <div style={{fontSize:'0.78rem',color:cost?black:'rgba(14,14,12,0.3)'}}>{cost?'$'+parseFloat(cost).toFixed(2):'—'}</div>
+        <div style={{fontSize:'0.75rem',color:black,fontWeight:600}}>{formatPrice(item)}</div>
+        <div style={{fontSize:'0.75rem',color:cost?black:'rgba(14,14,12,0.3)',fontWeight:cost?500:400}}>{cost?'$'+parseFloat(cost).toFixed(2):'—'}</div>
         <div>
           {margin!==null
-            ?<div style={{display:'flex',alignItems:'center',gap:'0.4rem'}}><div style={{width:40,height:3,background:'rgba(14,14,12,0.06)',borderRadius:2}}><div style={{height:'100%',width:Math.min(margin,100)+'%',background:marginColor(margin),borderRadius:2}}/></div><span style={{fontSize:'0.7rem',fontWeight:600,color:marginColor(margin)}}>{margin}%</span></div>
+            ?<div style={{display:'flex',flexDirection:'column',gap:'0.2rem'}}>
+               <span style={{fontSize:'0.72rem',fontWeight:700,color:marginColor(margin)}}>{margin}%</span>
+               <div style={{width:48,height:3,background:'rgba(14,14,12,0.06)',borderRadius:2}}><div style={{height:'100%',width:Math.min(margin,100)+'%',background:marginColor(margin),borderRadius:2}}/></div>
+             </div>
             :<span style={{fontSize:'0.7rem',color:'rgba(14,14,12,0.25)'}}>—</span>
           }
         </div>
-        <div style={{display:'flex',gap:'0.35rem'}}>
-          <button onClick={()=>onSetCost(item)} style={{padding:'0.35rem 0.65rem',background:'rgba(184,151,90,0.08)',color:gold,border:'1px solid rgba(184,151,90,0.25)',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.56rem',letterSpacing:'0.07em',textTransform:'uppercase',whiteSpace:'nowrap'}}>{cost?'Edit Cost':'Set Cost'}</button>
-          <button onClick={()=>onSetSuppliers(item)} style={{padding:'0.35rem 0.65rem',background:'rgba(52,152,219,0.08)',color:'#2980b9',border:'1px solid rgba(52,152,219,0.2)',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.56rem',letterSpacing:'0.07em',textTransform:'uppercase'}}>Suppliers</button>
+        <div style={{display:'flex',gap:'0.35rem',flexShrink:0}}>
+          <button onClick={()=>onSetCost(item)} style={{padding:'0.35rem 0.65rem',background:'rgba(184,151,90,0.08)',color:gold,border:'1px solid rgba(184,151,90,0.25)',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.56rem',letterSpacing:'0.06em',textTransform:'uppercase',whiteSpace:'nowrap'}}>{cost?'Edit Cost':'Set Cost'}</button>
+          <button onClick={()=>onSetSuppliers(item)} style={{padding:'0.35rem 0.65rem',background:'rgba(52,152,219,0.08)',color:'#2980b9',border:'1px solid rgba(52,152,219,0.2)',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.56rem',letterSpacing:'0.06em',textTransform:'uppercase',whiteSpace:'nowrap'}}>Suppliers</button>
         </div>
       </div>
     )
@@ -364,8 +368,8 @@ function CatalogPanel({ catalog, onSetCost, onSetSuppliers }) {
           </div>
         </div>
         {open&&<>
-          <div style={{display:'grid',gridTemplateColumns:'2fr 1fr 1fr 1fr auto',padding:'0.5rem 1.25rem',fontSize:'0.52rem',letterSpacing:'0.1em',textTransform:'uppercase',color:gray,borderBottom:'1px solid rgba(14,14,12,0.04)'}} className="catalog-row">
-            <span>Service</span><span>Price</span><span>Cost</span><span>Margin</span><span>Actions</span>
+          <div style={{display:'grid',gridTemplateColumns:'minmax(180px,2fr) minmax(90px,1fr) minmax(80px,1fr) minmax(80px,1fr) auto',padding:'0.5rem 1.25rem',fontSize:'0.52rem',letterSpacing:'0.1em',textTransform:'uppercase',color:gray,borderBottom:'1px solid rgba(14,14,12,0.04)',gap:'1rem'}}>
+            <span>Service</span><span>Price</span><span>Cost</span><span>Margin</span><span style={{paddingLeft:'0.5rem'}}>Actions</span>
           </div>
           {items.map(item=><CatalogRow key={item.id} item={item}/>)}
         </>}
@@ -381,32 +385,30 @@ function CatalogPanel({ catalog, onSetCost, onSetSuppliers }) {
         <div style={{fontSize:'0.62rem',color:gray}}>{catalog.length} services · Synced with Stripe</div>
       </div>
 
+      {/* Search */}
+      <input type="text" placeholder="Search services..." value={search} onChange={e=>setSearch(e.target.value)} style={{width:'100%',padding:'0.7rem 1rem',border:'1px solid '+gl,borderRadius:3,fontFamily:ff,fontSize:'0.82rem',outline:'none',marginBottom:'1.25rem',boxSizing:'border-box',background:white}}/>
+
       {/* Best Margin Bar */}
       {top5.length>0&&(
-        <div style={{background:white,borderRadius:10,border:'1px solid rgba(14,14,12,0.07)',padding:'1rem 1.25rem',marginBottom:'1.25rem'}}>
-          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.75rem'}}>
-            <div style={{display:'flex',alignItems:'center',gap:'0.5rem'}}>
-              <span style={{fontSize:'0.62rem',fontWeight:600,color:gold,letterSpacing:'0.08em',textTransform:'uppercase'}}>★ Best Margin</span>
-            </div>
-            <button onClick={()=>setExpandMargin(e=>!e)} style={{background:'none',border:'none',cursor:'pointer',fontSize:'0.62rem',color:gray,fontFamily:ff,letterSpacing:'0.08em',textTransform:'uppercase'}}>{expandMargin?'Collapse':'Expand all'}</button>
+        <div style={{background:white,borderRadius:10,border:'1px solid rgba(14,14,12,0.07)',padding:'0.85rem 1.25rem',marginBottom:'1.25rem'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.6rem'}}>
+            <span style={{fontSize:'0.6rem',fontWeight:600,color:gold,letterSpacing:'0.08em',textTransform:'uppercase'}}>★ Best Margin</span>
+            <button onClick={()=>setExpandMargin(e=>!e)} style={{background:'none',border:'none',cursor:'pointer',fontSize:'0.6rem',color:gray,fontFamily:ff,letterSpacing:'0.08em',textTransform:'uppercase'}}>{expandMargin?'Collapse':'Expand all'}</button>
           </div>
-          <div style={{display:'flex',flexDirection:'column',gap:'0.5rem'}}>
+          <div style={{display:'flex',flexDirection:'column',gap:'0.4rem'}}>
             {(expandMargin?allMargin:top5).map((item,i)=>(
-              <div key={item.id} style={{display:'flex',alignItems:'center',gap:'0.75rem'}}>
-                <div style={{width:16,height:16,borderRadius:'50%',background:i===0&&!expandMargin?gold:'rgba(14,14,12,0.06)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'0.52rem',fontWeight:600,color:i===0&&!expandMargin?black:gray,flexShrink:0}}>{i+1}</div>
+              <div key={item.id} style={{display:'flex',alignItems:'center',gap:'0.65rem'}}>
+                <div style={{width:14,height:14,borderRadius:'50%',background:i===0&&!expandMargin?gold:'rgba(14,14,12,0.06)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'0.5rem',fontWeight:600,color:i===0&&!expandMargin?black:gray,flexShrink:0}}>{i+1}</div>
                 <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontSize:'0.72rem',color:black,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{item.name}</div>
-                  <div style={{height:3,background:'rgba(14,14,12,0.06)',borderRadius:2,marginTop:'0.2rem'}}><div style={{height:'100%',width:item.margin+'%',background:marginColor(item.margin),borderRadius:2}}/></div>
+                  <div style={{fontSize:'0.68rem',color:black,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{item.name}</div>
+                  <div style={{height:2,background:'rgba(14,14,12,0.06)',borderRadius:2,marginTop:'0.15rem'}}><div style={{height:'100%',width:Math.min(item.margin,100)+'%',background:marginColor(item.margin),borderRadius:2}}/></div>
                 </div>
-                <span style={{fontSize:'0.7rem',fontWeight:700,color:marginColor(item.margin),flexShrink:0}}>{item.margin}%</span>
+                <span style={{fontSize:'0.68rem',fontWeight:700,color:marginColor(item.margin),flexShrink:0,minWidth:32,textAlign:'right'}}>{item.margin}%</span>
               </div>
             ))}
           </div>
         </div>
       )}
-
-      {/* Search */}
-      <input type="text" placeholder="Search services..." value={search} onChange={e=>setSearch(e.target.value)} style={{width:'100%',padding:'0.7rem 1rem',border:'1px solid '+gl,borderRadius:3,fontFamily:ff,fontSize:'0.82rem',outline:'none',marginBottom:'1.25rem',boxSizing:'border-box',background:white}}/>
 
       {/* Sections */}
       <Section title="Setup" items={setup}/>
@@ -414,6 +416,150 @@ function CatalogPanel({ catalog, onSetCost, onSetSuppliers }) {
       <Section title="Extras" items={extras}/>
 
       {filtered.length===0&&<div style={{background:white,borderRadius:10,padding:'2rem',textAlign:'center',color:gray,fontSize:'0.82rem',border:'1px solid rgba(14,14,12,0.07)'}}>No services found.</div>}
+    </div>
+  )
+}
+
+function ExpenseHistory({ clientId, showToast }) {
+  const [expenses, setExpenses] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(()=>{ load() },[clientId])
+
+  async function load(){
+    setLoading(true)
+    const res = await fetch('/api/admin/expenses?client_id='+clientId)
+    const data = await res.json()
+    setExpenses(data.expenses||[])
+    setLoading(false)
+  }
+
+  async function del(id){
+    await fetch('/api/admin/expenses',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})})
+    showToast('Expense deleted')
+    load()
+  }
+
+  const total = expenses.reduce((a,e)=>a+parseFloat(e.amount||0),0)
+
+  if(loading) return <div style={{fontSize:'0.72rem',color:'#6b6b67',textAlign:'center',padding:'1rem'}}>Loading...</div>
+
+  return(
+    <div>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.75rem'}}>
+        <div style={{fontSize:'0.56rem',letterSpacing:'0.12em',textTransform:'uppercase',color:'#6b6b67'}}>Expense History</div>
+        {expenses.length>0&&<div style={{fontSize:'0.68rem',fontWeight:600,color:'#c0392b'}}>Total: ${total.toFixed(2)}</div>}
+      </div>
+      {expenses.length===0
+        ?<div style={{fontSize:'0.72rem',color:'#6b6b67',textAlign:'center',padding:'0.75rem 0'}}>No expenses logged yet.</div>
+        :<div style={{border:'1px solid rgba(14,14,12,0.07)',borderRadius:8,overflow:'hidden'}}>
+          {expenses.map((e,i)=>(
+            <div key={e.id} style={{display:'flex',alignItems:'center',gap:'0.75rem',padding:'0.75rem 1rem',borderBottom:i<expenses.length-1?'1px solid rgba(14,14,12,0.05)':'none'}}>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:'0.72rem',color:'#0e0e0c',fontWeight:500}}>{e.description||'—'}</div>
+                <div style={{display:'flex',gap:'0.5rem',marginTop:'0.15rem'}}>
+                  <span style={{fontSize:'0.58rem',color:'#6b6b67'}}>{e.expense_date}</span>
+                  {e.recurring&&<span style={{fontSize:'0.55rem',padding:'0.1rem 0.45rem',borderRadius:20,background:'rgba(52,152,219,0.1)',color:'#2980b9'}}>↻ {e.recurring_interval}</span>}
+                </div>
+              </div>
+              <div style={{fontSize:'0.78rem',fontWeight:600,color:'#c0392b',flexShrink:0}}>-${parseFloat(e.amount).toFixed(2)}</div>
+              <button onClick={()=>del(e.id)} style={{background:'none',border:'none',cursor:'pointer',color:'rgba(192,57,43,0.4)',fontSize:'0.75rem',padding:0,flexShrink:0}}>x</button>
+            </div>
+          ))}
+        </div>
+      }
+    </div>
+  )
+}
+
+function FinancialCard({ sales }) {
+  const [expanded, setExpanded] = useState(false)
+
+  const paid = (sales||[]).filter(s=>s.status==='paid')
+  const grossSales = paid.reduce((a,s)=>a+parseFloat(s.amount||0),0)
+  const refunded = (sales||[]).filter(s=>s.status==='refunded').reduce((a,s)=>a+Math.abs(parseFloat(s.amount||0)),0)
+  const netSales = grossSales - refunded
+  const avgOrder = paid.length>0?grossSales/paid.length:0
+
+  // Revenue by product
+  const byProduct = {}
+  paid.forEach(s=>{
+    const name=s.product_name||'Other'
+    byProduct[name]=(byProduct[name]||0)+parseFloat(s.amount||0)
+  })
+  const topProducts = Object.entries(byProduct).sort((a,b)=>b[1]-a[1]).slice(0,5)
+
+  // Monthly chart data
+  const byMonth = {}
+  paid.forEach(s=>{
+    const m=new Date(s.sale_date).toLocaleDateString('en-US',{month:'short',year:'2-digit'})
+    byMonth[m]=(byMonth[m]||0)+parseFloat(s.amount||0)
+  })
+  const months = Object.entries(byMonth).slice(-6)
+  const maxVal = Math.max(...months.map(m=>m[1]),1)
+
+  const w=280,h=70,pad=10
+  const points=months.map(([,v],i)=>({x:pad+(i/(months.length-1||1))*(w-pad*2),y:h-pad-(v/maxVal)*(h-pad*2)}))
+  const pathD=points.map((p,i)=>`${i===0?'M':'L'} ${p.x} ${p.y}`).join(' ')
+
+  return(
+    <div style={{background:white,borderRadius:10,border:'1px solid rgba(14,14,12,0.07)',overflow:'hidden',marginBottom:'1.5rem'}}>
+      <div onClick={()=>setExpanded(e=>!e)} style={{padding:'1.25rem 1.5rem',cursor:'pointer',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+        <div>
+          <div style={{fontFamily:ffS,fontSize:'1.1rem',fontWeight:300}}>Financial <span style={{fontSize:'0.52rem',color:gold,letterSpacing:'0.1em',textTransform:'uppercase',marginLeft:'0.5rem'}}>Stripe</span></div>
+          <div style={{fontSize:'0.62rem',color:gray,marginTop:'0.15rem'}}>{paid.length} payment{paid.length!==1?'s':''} · Net ${netSales.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+        </div>
+        <div style={{display:'flex',alignItems:'center',gap:'0.75rem'}}>
+          <div style={{display:'flex',gap:'0.5rem'}}>
+            {[['#2d8a60','Sales'],['#c0392b','Refunds'],[gold,'Avg']].map(([color,label])=>(<div key={label} style={{display:'flex',alignItems:'center',gap:'0.25rem'}}><div style={{width:6,height:6,borderRadius:'50%',background:color}}/><span style={{fontSize:'0.56rem',color:gray}}>{label}</span></div>))}
+          </div>
+          <span style={{fontSize:'0.75rem',color:gray,transform:expanded?'rotate(180deg)':'rotate(0)',transition:'transform 0.2s',display:'inline-block'}}>▾</span>
+        </div>
+      </div>
+      {expanded&&(
+        <div style={{borderTop:'1px solid rgba(14,14,12,0.06)',padding:'1.25rem 1.5rem'}}>
+          {/* Key metrics */}
+          <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'1rem',marginBottom:'1.5rem'}}>
+            {[['Gross Sales','$'+grossSales.toFixed(2),'#2d8a60'],['Refunded','-$'+refunded.toFixed(2),'#c0392b'],['Avg Order','$'+avgOrder.toFixed(2),gold]].map(([label,val,color])=>(
+              <div key={label} style={{textAlign:'center',background:'rgba(14,14,12,0.02)',borderRadius:8,padding:'0.85rem'}}>
+                <div style={{fontSize:'1rem',fontFamily:ffS,fontWeight:300,color,marginBottom:'0.2rem'}}>{val}</div>
+                <div style={{fontSize:'0.56rem',color:gray,letterSpacing:'0.1em',textTransform:'uppercase'}}>{label}</div>
+              </div>
+            ))}
+          </div>
+          {/* Top products */}
+          {topProducts.length>0&&(<>
+            <div style={{fontSize:'0.56rem',letterSpacing:'0.12em',textTransform:'uppercase',color:gray,marginBottom:'0.6rem'}}>Revenue by Service</div>
+            <div style={{marginBottom:'1.5rem'}}>
+              {topProducts.map(([name,val],i)=>(
+                <div key={name} style={{display:'flex',alignItems:'center',gap:'0.6rem',marginBottom:'0.5rem'}}>
+                  <div style={{fontSize:'0.62rem',color:gray,width:12,textAlign:'right',flexShrink:0}}>{i+1}</div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:'0.68rem',color:black,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{name}</div>
+                    <div style={{height:3,background:'rgba(14,14,12,0.06)',borderRadius:2,marginTop:'0.2rem'}}><div style={{height:'100%',width:(val/topProducts[0][1]*100)+'%',background:gold,borderRadius:2}}/></div>
+                  </div>
+                  <div style={{fontSize:'0.68rem',fontWeight:600,color:black,flexShrink:0}}>${val.toFixed(2)}</div>
+                </div>
+              ))}
+            </div>
+          </>)}
+          {/* Monthly chart */}
+          {months.length>1&&(<>
+            <div style={{fontSize:'0.56rem',letterSpacing:'0.12em',textTransform:'uppercase',color:gray,marginBottom:'0.6rem'}}>Monthly Revenue</div>
+            <div style={{background:'rgba(14,14,12,0.02)',borderRadius:8,padding:'0.75rem',border:'1px solid rgba(14,14,12,0.04)'}}>
+              <svg viewBox={`0 0 ${w} ${h}`} style={{width:'100%',height:'auto'}}>
+                {[0.25,0.5,0.75].map(pct=>(<line key={pct} x1={pad} y1={h-pad-(pct*(h-pad*2))} x2={w-pad} y2={h-pad-(pct*(h-pad*2))} stroke="rgba(14,14,12,0.06)" strokeWidth={1}/>))}
+                <path d={pathD} fill="none" stroke={gold} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"/>
+                {points.map((p,i)=>(<circle key={i} cx={p.x} cy={p.y} r={3} fill={gold}/>))}
+              </svg>
+              <div style={{display:'flex',justifyContent:'space-between',marginTop:'0.25rem'}}>
+                {months.map(([m],i)=>(<span key={i} style={{fontSize:'0.52rem',color:gray}}>{m}</span>))}
+              </div>
+            </div>
+          </>)}
+          {paid.length===0&&<div style={{textAlign:'center',fontSize:'0.72rem',color:gray,padding:'1rem'}}>No Stripe payments recorded yet.</div>}
+        </div>
+      )}
     </div>
   )
 }
@@ -443,6 +589,7 @@ export default function Admin({session}){
   const [suppliersItem,setSuppliersItem]=useState(null)
   const [suppliersText,setSuppliersText]=useState('')
   const [expenseClient,setExpenseClient]=useState(null)
+  const [sales,setSales]=useState([])
   const [expenseForm,setExpenseForm]=useState({amount:'',description:'',date:new Date().toISOString().split('T')[0]})
 
   useEffect(()=>{
@@ -460,6 +607,8 @@ export default function Admin({session}){
       fetch('/api/admin/catalog').then(r=>r.json())
     ])
     setCards(c.cards||[]);setUsers(u.users||[]);setRewards(r.rewards||[]);setCatalog(cat.items||[])
+    // Load sales for financial card
+    fetch('/api/admin/sales').then(r=>r.json()).then(d=>setSales(d.sales||[])).catch(()=>{})
     setLoading(false)
   }
 
@@ -715,21 +864,37 @@ export default function Admin({session}){
         {/* MODAL: Expense */}
         {modal==='expense'&&expenseClient&&(<div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:500,display:'flex',alignItems:'flex-end',justifyContent:'center'}} onClick={e=>e.target===e.currentTarget&&setModal(null)}>
           <div style={{background:white,borderRadius:'12px 12px 0 0',padding:'2rem',width:'100%',maxWidth:520,maxHeight:'90vh',overflowY:'auto'}}>
-            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.5rem'}}>
-              <h3 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300}}>Log Expense</h3>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.25rem'}}>
+              <h3 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300}}>Expenses</h3>
               <button onClick={()=>setModal(null)} style={{background:'none',border:'none',fontSize:'1.1rem',cursor:'pointer',color:gray}}>x</button>
             </div>
             <p style={{fontSize:'0.72rem',color:gray,marginBottom:'1.5rem'}}>{expenseClient.business_name||expenseClient.full_name}</p>
-            <label style={lbl}>Amount</label><input style={inp} type="number" step="0.01" placeholder="$0.00" value={expenseForm.amount} onChange={e=>setExpenseForm(f=>({...f,amount:e.target.value}))}/>
+            <label style={lbl}>Amount ($)</label><input style={inp} type="number" step="0.01" placeholder="0.00" value={expenseForm.amount} onChange={e=>setExpenseForm(f=>({...f,amount:e.target.value}))}/>
             <label style={lbl}>Description</label><input style={inp} type="text" placeholder="e.g. Domain renewal, hosting..." value={expenseForm.description} onChange={e=>setExpenseForm(f=>({...f,description:e.target.value}))}/>
-            <label style={lbl}>Date</label><input style={inp} type="date" value={expenseForm.date} onChange={e=>setExpenseForm(f=>({...f,date:e.target.value}))}/>
-            <div style={{display:'flex',gap:'0.75rem'}}>
-              <button onClick={async()=>{
-                await fetch('/api/admin/catalog',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:'expense',client_id:expenseClient.id,amount:expenseForm.amount,description:expenseForm.description,date:expenseForm.date})})
-                showToast('Expense logged');setModal(null)
-              }} style={{flex:1,background:black,color:white,border:'none',padding:'0.85rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Save Expense</button>
-              <button onClick={()=>setModal(null)} style={{background:'rgba(14,14,12,0.06)',color:black,border:'none',padding:'0.85rem 1.25rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Cancel</button>
+            <label style={lbl}>Date</label><input style={{...inp}} type="date" value={expenseForm.date} onChange={e=>setExpenseForm(f=>({...f,date:e.target.value}))}/>
+            <div style={{display:'flex',alignItems:'center',gap:'0.75rem',marginBottom:'1rem'}}>
+              <input type="checkbox" id="recurring-cb" checked={expenseForm.recurring||false} onChange={e=>setExpenseForm(f=>({...f,recurring:e.target.checked}))} style={{width:16,height:16,cursor:'pointer'}}/>
+              <label htmlFor="recurring-cb" style={{fontSize:'0.72rem',color:black,cursor:'pointer'}}>Recurring expense</label>
             </div>
+            {expenseForm.recurring&&(
+              <div style={{marginBottom:'1rem'}}>
+                <label style={lbl}>Interval</label>
+                <select value={expenseForm.recurring_interval||'month'} onChange={e=>setExpenseForm(f=>({...f,recurring_interval:e.target.value}))} style={{...inp,marginBottom:0}}>
+                  <option value="week">Weekly</option>
+                  <option value="month">Monthly</option>
+                  <option value="year">Yearly</option>
+                </select>
+              </div>
+            )}
+            <div style={{display:'flex',gap:'0.75rem',marginBottom:'1.5rem'}}>
+              <button onClick={async()=>{
+                const res=await fetch('/api/admin/expenses',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({client_id:expenseClient.id,amount:expenseForm.amount,description:expenseForm.description,recurring:expenseForm.recurring||false,recurring_interval:expenseForm.recurring_interval||'month',expense_date:expenseForm.date})})
+                if(res.ok){showToast('Expense saved');setExpenseForm({amount:'',description:'',date:new Date().toISOString().split('T')[0],recurring:false,recurring_interval:'month'})}
+                else showToast('Error saving expense')
+              }} style={{flex:1,background:black,color:white,border:'none',padding:'0.85rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Save Expense</button>
+              <button onClick={()=>setModal(null)} style={{background:'rgba(14,14,12,0.06)',color:black,border:'none',padding:'0.85rem 1.25rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Close</button>
+            </div>
+            <ExpenseHistory clientId={expenseClient.id} showToast={showToast}/>
           </div>
         </div>)}
 
@@ -826,4 +991,3 @@ function FilesListForClient({ userId, showToast }) {
     </div>
   )
 }
-                                                                                                         
