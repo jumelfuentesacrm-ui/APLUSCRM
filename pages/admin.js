@@ -1242,14 +1242,42 @@ function AgendaEvent({ ev, todayFlag }) {
       </div>
       {open&&(
         <div style={{padding:'0 1.25rem 1.25rem',borderTop:'1px solid rgba(14,14,12,0.04)'}}>
-          {ev.description&&(
-            <div style={{marginBottom:'1rem',background:'rgba(14,14,12,0.02)',borderRadius:6,padding:'0.75rem',border:'1px solid rgba(14,14,12,0.05)'}}>
-              <div style={{fontSize:'0.5rem',letterSpacing:'0.1em',textTransform:'uppercase',color:'#6b6b67',marginBottom:'0.5rem'}}>Client Info</div>
-              {ev.description.split('\n').filter(l=>l.trim()).map((line,j)=>(
-                <div key={j} style={{fontSize:'0.68rem',color:black,lineHeight:1.7}}>{line}</div>
-              ))}
-            </div>
-          )}
+          {ev.description&&(()=>{
+            // Parse Google Calendar HTML description into label/value pairs
+            const raw = ev.description
+              .replace(/<br\s*\/?>/gi, '\n')
+              .replace(/<b>(.*?)<\/b>/gi, '|||$1|||')
+              .replace(/<[^>]+>/g, '')
+            const lines = raw.split('\n').map(l=>l.trim()).filter(Boolean)
+            const fields = []
+            let currentLabel = null
+            lines.forEach(line => {
+              if (line.startsWith('|||') && line.endsWith('|||')) {
+                currentLabel = line.replace(/\|\|\|/g,'').trim()
+              } else if (currentLabel) {
+                fields.push({ label: currentLabel, value: line })
+                currentLabel = null
+              } else {
+                fields.push({ label: null, value: line })
+              }
+            })
+            return (
+              <div style={{marginBottom:'1rem',borderRadius:8,overflow:'hidden',border:'1px solid rgba(14,14,12,0.07)'}}>
+                <div style={{padding:'0.6rem 0.85rem',background:'rgba(14,14,12,0.03)',fontSize:'0.5rem',letterSpacing:'0.1em',textTransform:'uppercase',color:gray,borderBottom:'1px solid rgba(14,14,12,0.06)'}}>Client Info</div>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0'}}>
+                  {fields.filter(f=>f.label).map((f,j)=>(
+                    <div key={j} style={{padding:'0.65rem 0.85rem',borderBottom:'1px solid rgba(14,14,12,0.04)',borderRight:j%2===0?'1px solid rgba(14,14,12,0.04)':'none'}}>
+                      <div style={{fontSize:'0.5rem',color:gray,letterSpacing:'0.07em',textTransform:'uppercase',marginBottom:'0.2rem'}}>{f.label}</div>
+                      <div style={{fontSize:'0.72rem',color:f.value?black:'rgba(14,14,12,0.25)',fontWeight:f.value?500:400}}>{f.value||'—'}</div>
+                    </div>
+                  ))}
+                </div>
+                {fields.filter(f=>!f.label).map((f,j)=>(
+                  <div key={'n'+j} style={{padding:'0.65rem 0.85rem',borderTop:'1px solid rgba(14,14,12,0.04)',fontSize:'0.65rem',color:gray,lineHeight:1.6,fontStyle:'italic'}}>{f.value}</div>
+                ))}
+              </div>
+            )
+          })()}
           {ev.location&&<div style={{fontSize:'0.62rem',color:'#6b6b67',marginBottom:'0.75rem'}}>{ev.location}</div>}
           {ev.end?.dateTime&&<div style={{fontSize:'0.62rem',color:gold,marginBottom:'0.75rem'}}>{formatCalendarTime(ev)} – {new Date(ev.end.dateTime).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div>}
           <div style={{fontSize:'0.5rem',letterSpacing:'0.1em',textTransform:'uppercase',color:'#6b6b67',marginBottom:'0.4rem'}}>Notes</div>
