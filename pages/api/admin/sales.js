@@ -7,10 +7,10 @@ const supabase = createClient(
 
 export default async function handler(req, res) {
   if (req.method === 'GET') {
-    const { data, error } = await supabase
-      .from('sales')
-      .select('*')
-      .order('sale_date', { ascending: false })
+    const { email } = req.query
+    let query = supabase.from('sales').select('*').order('sale_date', { ascending: false })
+    if (email) query = query.eq('customer_email', email)
+    const { data, error } = await query
     if (error) return res.status(500).json({ error: error.message })
     return res.status(200).json({ sales: data || [] })
   }
