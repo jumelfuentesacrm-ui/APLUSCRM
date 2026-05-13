@@ -437,6 +437,38 @@ function CatalogPanel({ catalog, onSetCost, onSetSuppliers }) {
   )
 }
 
+function CostHistory({ productId }) {
+  const [history, setHistory] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(()=>{
+    fetch('/api/admin/catalog/history?product_id='+productId)
+      .then(r=>r.json())
+      .then(d=>{ setHistory(d.history||[]); setLoading(false) })
+      .catch(()=>setLoading(false))
+  },[productId])
+
+  if(loading) return <div style={{fontSize:'0.68rem',color:'#6b6b67',padding:'0.5rem 0'}}>Loading history...</div>
+  if(!history.length) return <div style={{fontSize:'0.68rem',color:'#6b6b67',padding:'0.5rem 0'}}>No cost history yet.</div>
+
+  return(
+    <div style={{marginTop:'0.75rem'}}>
+      <div style={{fontSize:'0.52rem',letterSpacing:'0.12em',textTransform:'uppercase',color:'#6b6b67',marginBottom:'0.5rem'}}>Cost History</div>
+      <div style={{border:'1px solid rgba(14,14,12,0.07)',borderRadius:6,overflow:'hidden'}}>
+        {history.map((h,i)=>(
+          <div key={h.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'0.6rem 0.85rem',borderBottom:i<history.length-1?'1px solid rgba(14,14,12,0.05)':'none'}}>
+            <div>
+              <span style={{fontSize:'0.78rem',fontWeight:600,color:'#0e0e0c'}}>${parseFloat(h.cost).toFixed(2)}</span>
+              {h.notes&&<span style={{fontSize:'0.6rem',color:'#6b6b67',marginLeft:'0.5rem'}}>{h.notes.substring(0,40)}</span>}
+            </div>
+            <span style={{fontSize:'0.58rem',color:'#6b6b67'}}>{new Date(h.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function ExpenseHistory({ clientId, showToast }) {
   const [expenses, setExpenses] = useState([])
   const [loading, setLoading] = useState(true)
@@ -605,6 +637,7 @@ export default function Admin({session}){
   const [costForm,setCostForm]=useState({cost:'',notes:''})
   const [suppliersItem,setSuppliersItem]=useState(null)
   const [suppliersText,setSuppliersText]=useState('')
+  const [suppliersTitle,setSuppliersTitle]=useState('')
   const [expenseClient,setExpenseClient]=useState(null)
   const [historyClient,setHistoryClient]=useState(null)
   const [sales,setSales]=useState([])
@@ -730,7 +763,7 @@ export default function Admin({session}){
             {panel==='client'&&selectedClient&&<ClientProfile card={selectedClient} onBack={()=>{setSelectedClient(null);setPanel('dashboard')}}/>}
             {panel==='notifications'&&<NotificationsPanel cards={cards} users={users}/>}
             {panel==='campaigns'&&<CampaignsPanel cards={cards} users={users}/>}
-            {panel==='catalog'&&<CatalogPanel catalog={catalog} onSetCost={(item)=>{setEditCost(item);setCostForm({cost:item.catalog_costs?.[0]?.cost||'',notes:item.catalog_costs?.[0]?.notes||''});setModal('cost')}} onSetSuppliers={(item)=>{setSuppliersItem(item);setSuppliersText(item.catalog_costs?.[0]?.notes||'');setModal('suppliers')}}/>}
+            {panel==='catalog'&&<CatalogPanel catalog={catalog} onSetCost={(item)=>{setEditCost(item);setCostForm({cost:item.catalog_costs?.[0]?.cost||'',notes:item.catalog_costs?.[0]?.notes||''});setModal('cost')}} onSetSuppliers={(item)=>{setSuppliersItem(item);setSuppliersText(item.catalog_costs?.[0]?.notes||'');setSuppliersTitle('');setModal('suppliers')}}/>}
             {panel==='loyalty'&&(<div><h2 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300,marginBottom:'1.5rem'}}>Loyalty Program</h2><div style={{display:'flex',flexDirection:'column',gap:'0.75rem'}}>{[['cards','Cards','Create and manage loyalty cards'],['punch','Punch','Register payments and stamps'],['rewards','Rewards','Register and view redeemed rewards']].map(([id,label,desc])=>(<div key={id} onClick={()=>setPanel(id)} style={{background:white,borderRadius:10,padding:'1.25rem 1.5rem',border:'1px solid rgba(14,14,12,0.07)',cursor:'pointer',display:'flex',justifyContent:'space-between',alignItems:'center'}}><div><div style={{fontFamily:ffS,fontSize:'1.1rem',fontWeight:300,color:black,marginBottom:'0.2rem'}}>{label}</div><div style={{fontSize:'0.68rem',color:gray}}>{desc}</div></div><div style={{color:gold,fontSize:'1rem'}}>›</div></div>))}</div></div>)}
             {panel==='clients'&&<ClientsPanel users={users} cards={cards} search={clientSearch} setSearch={setClientSearch}
               onEdit={(u)=>{setEditingClient(u);setEditForm({name:u.full_name||'',business:u.business_name||'',phone:u.phone||'',email:'',password:''});setModal('editclient')}}
@@ -919,33 +952,61 @@ export default function Admin({session}){
         {/* MODAL: Set Cost */}
         {modal==='cost'&&editCost&&(<div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:500,display:'flex',alignItems:'flex-end',justifyContent:'center'}} onClick={e=>e.target===e.currentTarget&&setModal(null)}>
           <div style={{background:white,borderRadius:'12px 12px 0 0',padding:'2rem',width:'100%',maxWidth:520,maxHeight:'90vh',overflowY:'auto'}}>
-            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.5rem'}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.25rem'}}>
               <h3 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300}}>Set Cost</h3>
               <button onClick={()=>setModal(null)} style={{background:'none',border:'none',fontSize:'1.1rem',cursor:'pointer',color:gray}}>x</button>
             </div>
-            <p style={{fontSize:'0.72rem',color:gray,marginBottom:'1.5rem'}}>{editCost.name}</p>
-            <label style={lbl}>Internal Cost ($)</label><input style={inp} type="number" step="0.01" placeholder="0.00" value={costForm.cost} onChange={e=>setCostForm(f=>({...f,cost:e.target.value}))}/>
-            <label style={lbl}>Notes (optional)</label><input style={inp} type="text" placeholder="e.g. Vercel $20/mo, domain $12/yr..." value={costForm.notes} onChange={e=>setCostForm(f=>({...f,notes:e.target.value}))}/>
-            <div style={{display:'flex',gap:'0.75rem'}}>
-              <button onClick={async()=>{const r=await fetch('/api/admin/catalog',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({product_id:editCost.id,cost:costForm.cost,notes:costForm.notes})});const d=await r.json();if(r.ok){showToast('Cost saved ✓');setModal(null);fetch('/api/admin/catalog').then(r=>r.json()).then(d=>setCatalog(d.items||[]));}else{showToast('Error: '+(d.error||'Unknown error'));}}} style={{flex:1,background:black,color:white,border:'none',padding:'0.85rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Save</button>
-              <button onClick={()=>setModal(null)} style={{background:'rgba(14,14,12,0.06)',color:black,border:'none',padding:'0.85rem 1.25rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Cancel</button>
+            <p style={{fontSize:'0.72rem',color:gray,marginBottom:'1.25rem'}}>{editCost.name}</p>
+            <div style={{display:'flex',gap:'0.75rem',marginBottom:'1rem',alignItems:'flex-end'}}>
+              <div style={{flex:1}}>
+                <label style={lbl}>Current Cost ($)</label>
+                <input id="cost-input" style={{...inp,marginBottom:0,fontSize:'1.1rem',fontWeight:600}} type="number" step="0.01" placeholder="0.00" value={costForm.cost} onChange={e=>setCostForm(f=>({...f,cost:e.target.value}))}/>
+              </div>
+              <button onClick={async()=>{
+                if(!costForm.cost){showToast('Enter a cost first');return}
+                const r=await fetch('/api/admin/catalog',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({product_id:editCost.id,cost:costForm.cost,notes:costForm.notes})})
+                const d=await r.json()
+                if(r.ok){
+                  showToast('Cost saved ✓')
+                  fetch('/api/admin/catalog').then(r=>r.json()).then(d=>setCatalog(d.items||[]))
+                  setEditCost(d.item||editCost)
+                  setCostForm(f=>({...f,cost:d.item?.catalog_costs?.[0]?.cost||f.cost}))
+                } else showToast('Error: '+(d.error||'Unknown'))
+              }} style={{padding:'0.78rem 1.25rem',background:black,color:white,border:'none',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.62rem',letterSpacing:'0.12em',textTransform:'uppercase',flexShrink:0}}>Save</button>
             </div>
+            <label style={lbl}>Notes (optional)</label>
+            <input id="cost-notes" style={inp} type="text" placeholder="e.g. Vercel $20/mo, domain $12/yr..." value={costForm.notes} onChange={e=>setCostForm(f=>({...f,notes:e.target.value}))}/>
+            <CostHistory productId={editCost.id}/>
+            <button onClick={()=>setModal(null)} style={{width:'100%',background:'rgba(14,14,12,0.06)',color:black,border:'none',padding:'0.75rem',fontFamily:ff,fontSize:'0.62rem',letterSpacing:'0.12em',textTransform:'uppercase',borderRadius:3,cursor:'pointer',marginTop:'0.5rem'}}>Close</button>
           </div>
         </div>)}
 
         {/* MODAL: Suppliers */}
         {modal==='suppliers'&&suppliersItem&&(<div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:500,display:'flex',alignItems:'flex-end',justifyContent:'center'}} onClick={e=>e.target===e.currentTarget&&setModal(null)}>
           <div style={{background:white,borderRadius:'12px 12px 0 0',padding:'2rem',width:'100%',maxWidth:520,maxHeight:'90vh',overflowY:'auto'}}>
-            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.5rem'}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.25rem'}}>
               <h3 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300}}>Suppliers</h3>
               <button onClick={()=>setModal(null)} style={{background:'none',border:'none',fontSize:'1.1rem',cursor:'pointer',color:gray}}>x</button>
             </div>
-            <p style={{fontSize:'0.72rem',color:gray,marginBottom:'1.5rem'}}>{suppliersItem.name}</p>
-            <label style={lbl}>Supplier Notes</label>
-            <textarea value={suppliersText} onChange={e=>setSuppliersText(e.target.value)} rows={6} placeholder={'e.g.\nVercel hosting — $20/mo\nGoDaddy domain — $12/yr\nSupabase free tier'} style={{width:'100%',padding:'0.85rem',border:'1px solid '+gl,borderRadius:3,fontFamily:ff,fontSize:'0.82rem',color:black,outline:'none',resize:'vertical',boxSizing:'border-box',lineHeight:1.7,marginBottom:'1rem'}}/>
+            <p style={{fontSize:'0.72rem',color:gray,marginBottom:'1.25rem'}}>{suppliersItem.name}</p>
+            <div style={{background:'rgba(184,151,90,0.04)',border:'1px solid rgba(184,151,90,0.15)',borderRadius:8,padding:'1rem',marginBottom:'1rem'}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.5rem'}}>
+                <input value={suppliersTitle} onChange={e=>setSuppliersTitle(e.target.value)} placeholder="Note title..." style={{background:'none',border:'none',outline:'none',fontFamily:ffS,fontSize:'1rem',fontWeight:300,color:black,flex:1}} id="suppliers-title"/>
+                <span style={{fontSize:'0.58rem',color:gray,flexShrink:0,marginLeft:'0.5rem'}}>{new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</span>
+              </div>
+              <textarea id="suppliers-text" value={suppliersText} onChange={e=>setSuppliersText(e.target.value)} rows={6} placeholder={'e.g.
+Vercel hosting — $20/mo
+GoDaddy domain — $12/yr
+Supabase free tier'} style={{width:'100%',background:'none',border:'none',outline:'none',fontFamily:ff,fontSize:'0.82rem',color:black,resize:'vertical',boxSizing:'border-box',lineHeight:1.7}}/>
+            </div>
             <div style={{display:'flex',gap:'0.75rem'}}>
-              <button onClick={async()=>{const r=await fetch('/api/admin/catalog',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({product_id:suppliersItem.id,cost:suppliersItem.catalog_costs?.[0]?.cost||0,notes:suppliersText})});const d=await r.json();if(r.ok){showToast('Suppliers saved ✓');setModal(null);fetch('/api/admin/catalog').then(r=>r.json()).then(d=>setCatalog(d.items||[]));}else{showToast('Error: '+(d.error||'Unknown error'));}}} style={{flex:1,background:black,color:white,border:'none',padding:'0.85rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Save</button>
-              <button onClick={()=>setModal(null)} style={{background:'rgba(14,14,12,0.06)',color:black,border:'none',padding:'0.85rem 1.25rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Cancel</button>
+              <button onClick={async()=>{
+                const r=await fetch('/api/admin/catalog',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({product_id:suppliersItem.id,cost:suppliersItem.catalog_costs?.[0]?.cost||0,notes:suppliersText})})
+                const d=await r.json()
+                if(r.ok){showToast('Saved ✓');fetch('/api/admin/catalog').then(r=>r.json()).then(d=>setCatalog(d.items||[]))}
+                else showToast('Error: '+(d.error||'Unknown'))
+              }} style={{flex:1,background:black,color:white,border:'none',padding:'0.85rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Save</button>
+              <button onClick={()=>setModal(null)} style={{background:'rgba(14,14,12,0.06)',color:black,border:'none',padding:'0.85rem 1.25rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Close</button>
             </div>
           </div>
         </div>)}
@@ -1071,4 +1132,4 @@ function FilesListForClient({ userId, showToast }) {
     </div>
   )
 }
-          
+  
