@@ -189,28 +189,17 @@ export default function CardPage({ session }) {
                 </div>
               </div>
 
-              {/* HISTORY */}
-              <div style={{fontSize:'0.52rem',letterSpacing:'0.14em',textTransform:'uppercase',color:gold,marginBottom:'1rem'}}>Historial de Pagos</div>
-              {card?.stamp_history?.length > 0 ? [...card.stamp_history].reverse().map((h,i)=>(
+              {/* REWARDS HISTORY */}
+              <div style={{fontSize:'0.52rem',letterSpacing:'0.14em',textTransform:'uppercase',color:gold,marginBottom:'1rem'}}>Rewards History</div>
+              {card?.rewards?.length > 0 ? card.rewards.map((r,i)=>(
                 <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'0.75rem 0',borderBottom:'1px solid rgba(255,255,255,0.05)'}}>
                   <div>
-                    <div style={{fontSize:'0.6rem',color:'rgba(255,255,255,0.3)'}}>{new Date(h.created_at).toLocaleDateString('es-PR',{day:'numeric',month:'long',year:'numeric'})}</div>
-                    <div style={{fontSize:'0.78rem',color:'rgba(255,255,255,0.72)',marginTop:'0.1rem'}}>Pago registrado{h.payment_amount?' · '+h.payment_amount:''}</div>
+                    <div style={{fontSize:'0.78rem',color:white}}>{r.reward_type}</div>
+                    <div style={{fontSize:'0.6rem',color:'rgba(255,255,255,0.3)',marginTop:'0.1rem'}}>{r.redeemed_at?new Date(r.redeemed_at).toLocaleDateString('es-PR',{day:'numeric',month:'long',year:'numeric'}):r.created_at?new Date(r.created_at).toLocaleDateString('es-PR',{day:'numeric',month:'long',year:'numeric'}):'—'}</div>
                   </div>
-                  <span style={{fontSize:'0.54rem',padding:'0.18rem 0.55rem',borderRadius:20,background:'rgba(184,151,90,0.1)',color:gold,border:'1px solid rgba(184,151,90,0.22)',whiteSpace:'nowrap'}}>+1 sello</span>
+                  <span style={{fontSize:'0.54rem',padding:'0.18rem 0.55rem',borderRadius:20,background:'rgba(45,150,100,0.12)',color:'#52b788',border:'1px solid rgba(45,150,100,0.25)',whiteSpace:'nowrap'}}>{r.status}</span>
                 </div>
-              )) : <p style={{fontSize:'0.78rem',color:'rgba(255,255,255,0.3)',textAlign:'center',padding:'1rem 0'}}>Sin historial aun.</p>}
-
-              {/* REWARDS */}
-              {card?.rewards?.filter(r=>r.status==='Canjeado').length > 0 && <>
-                <div style={{fontSize:'0.52rem',letterSpacing:'0.14em',textTransform:'uppercase',color:'#52b788',marginTop:'1.5rem',marginBottom:'1rem'}}>Premios Canjeados</div>
-                {card.rewards.filter(r=>r.status==='Canjeado').map((r,i)=>(
-                  <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'0.75rem 0',borderBottom:'1px solid rgba(255,255,255,0.05)'}}>
-                    <div style={{fontSize:'0.78rem',color:'rgba(255,255,255,0.72)'}}>{r.reward_type}</div>
-                    <span style={{fontSize:'0.54rem',padding:'0.18rem 0.55rem',borderRadius:20,background:'rgba(45,150,100,0.12)',color:'#52b788',border:'1px solid rgba(45,150,100,0.25)',whiteSpace:'nowrap'}}>{r.status}</span>
-                  </div>
-                ))}
-              </>}
+              )) : <p style={{fontSize:'0.78rem',color:'rgba(255,255,255,0.3)',textAlign:'center',padding:'1rem 0'}}>No rewards yet.</p>}
 
               <button onClick={signOut} style={{width:'100%',marginTop:'1.5rem',background:'rgba(192,57,43,0.1)',color:'#c0392b',border:'1px solid rgba(192,57,43,0.2)',padding:'0.85rem',fontFamily:ff,fontSize:'0.65rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Cerrar Sesion</button>
             </div>
