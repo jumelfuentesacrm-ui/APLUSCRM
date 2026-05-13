@@ -156,12 +156,32 @@ export default async function handler(req, res) {
 
   // PAYMENT INTENT — one-time payments
   if (type === 'payment_intent.succeeded') {
+    // Get email — try receipt_email first, then fetch from customer
+    let email = obj.receipt_email || null
+    let name = null
+    if (!email && obj.customer) {
+      try {
+        const customer = await stripe.customers.retrieve(obj.customer)
+        email = customer.email || null
+        name = customer.name || null
+      } catch(e) {}
+    }
+    // Try billing details from latest charge
+    if (!name && obj.latest_charge) {
+      try {
+        const charge = await stripe.charges.retrieve(obj.latest_charge)
+        name = name || charge.billing_details?.name || null
+        email = email || charge.billing_details?.email || null
+      } catch(e) {}
+    }
+
     const { data: existingSale } = await supabase.from('sales').select('id').eq('id', obj.id).single()
     if (!existingSale) {
       await supabase.from('sales').insert({
         id: obj.id,
         customer_id: obj.customer || null,
-        customer_email: obj.receipt_email || null,
+        customer_email: email,
+        customer_name: name,
         amount: obj.amount / 100,
         currency: obj.currency,
         type: 'stripe',
@@ -170,9 +190,6 @@ export default async function handler(req, res) {
       })
     }
     // Auto punch card
-    const email = obj.receipt_email
-    const charge = obj.charges?.data?.[0]
-    const name = charge?.billing_details?.name || null
     await handlePayment(email, name, obj.amount, obj.currency, obj.customer, obj.description)
   }
 
