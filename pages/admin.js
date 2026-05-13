@@ -626,7 +626,7 @@ export default function Admin({session}){
     ])
     setCards(c.cards||[]);setUsers(u.users||[]);setRewards(r.rewards||[]);setCatalog(cat.items||[])
     // Load sales for financial card
-    fetch('/api/admin/sales').then(r=>r.json()).then(d=>setSales(d.sales||[])).catch(()=>{})
+    fetch('/api/admin/sales').then(r=>r.json()).then(d=>setSales(d.sales||[])).catch(e=>console.error('Sales fetch error:',e))
     setLoading(false)
   }
 
@@ -1071,3 +1071,4 @@ function FilesListForClient({ userId, showToast }) {
     </div>
   )
 }
+          
