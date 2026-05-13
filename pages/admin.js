@@ -1305,7 +1305,7 @@ export default function Admin({session}){
           .mobile-nav{display:flex!important;}
         }
         .mobile-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:${ink};z-index:200;border-top:1px solid rgba(184,151,90,0.15);}
-        .mobile-nav button{flex:1;padding:0.75rem 0.1rem;background:none;border:none;color:rgba(255,255,255,0.4);font-family:${ff};font-size:0.58rem;letter-spacing:0.04em;text-transform:uppercase;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:0.2rem;}
+        .mobile-nav button{flex:1;padding:0.75rem 0.1rem;background:none;border:none;color:rgba(255,255,255,0.4);font-family:${ff};font-size:0.65rem;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:0.2rem;}
         .mobile-nav button.active{color:${gold};}
       `}</style>
       <div style={{background:'#f2f0eb',minHeight:'100vh',fontFamily:ff,paddingBottom:70}}>
@@ -1426,7 +1426,7 @@ export default function Admin({session}){
           ))}
           <button onClick={()=>setHamburgerOpen(o=>!o)}
             className={hamburgerOpen||['clients','campaigns','catalog','system'].includes(panel)?'active':''}>
-            More
+            ☰
           </button>
         </div>
 
@@ -1435,10 +1435,10 @@ export default function Admin({session}){
           <>
             <div onClick={()=>setHamburgerOpen(false)}
               style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.45)',zIndex:195}}/>
-            <div style={{position:'fixed',bottom:56,left:0,right:0,background:ink,zIndex:196,
-              borderRadius:'16px 16px 0 0',borderTop:'1px solid rgba(184,151,90,0.15)',
-              padding:'0.5rem 0 0.5rem'}}>
-              <div style={{width:36,height:3,background:'rgba(255,255,255,0.15)',borderRadius:2,margin:'0 auto 0.75rem'}}/>
+            <div style={{position:'fixed',bottom:52,left:0,right:0,background:ink,zIndex:196,
+              borderRadius:'16px 16px 0 0',borderTop:'1px solid rgba(184,151,90,0.2)',
+              paddingBottom:0}}>
+              <div style={{width:36,height:3,background:'rgba(255,255,255,0.15)',borderRadius:2,margin:'0.75rem auto 0.5rem'}}/>
               {[
                 ['clients','Clients'],
                 ['campaigns','Campaigns'],
