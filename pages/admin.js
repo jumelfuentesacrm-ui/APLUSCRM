@@ -1363,11 +1363,25 @@ export default function Admin({session}){
 
   async function doPunch(){
     if(!punchId){showToast('Select a client');return}
+    if(!punchAmt||parseFloat(punchAmt)<=0){showToast('Amount is required');return}
     const res=await fetch('/api/admin/punch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({card_id:punchId,payment_amount:punchAmt})})
     const data=await res.json()
     if(res.ok){
       showToast(data.message)
       const card=cards.find(c=>c.id===punchId)
+      // Register sale
+      await fetch('/api/admin/sales',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+        customer_id:card?.user_id,
+        customer_name:card?.profiles?.business_name||card?.profiles?.full_name||'',
+        customer_email:card?.profiles?.email||'',
+        product_name:'Manual Payment',
+        amount:parseFloat(punchAmt),
+        currency:'usd',
+        type:'manual',
+        status:'paid',
+        sale_date:new Date().toISOString().split('T')[0],
+        notes:'Registered via punch'
+      })})
       await fetch('/api/admin/activity-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'Punch card',target:card?.profiles?.business_name||card?.profiles?.full_name||'Client',type:'punch'})})
       setPunchId('');setPunchAmt('');loadAll()
     }
@@ -1526,6 +1540,20 @@ export default function Admin({session}){
                       <button onClick={()=>{setQrCard(card);setModal('qr')}} style={{flex:1,padding:'0.45rem',background:'rgba(184,151,90,0.1)',color:gold,border:'1px solid rgba(184,151,90,0.25)',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.56rem',letterSpacing:'0.07em',textTransform:'uppercase'}}>QR</button>
                       <button onClick={()=>deleteCard(card.id)} style={{flex:1,padding:'0.45rem',background:'rgba(192,57,43,0.08)',color:'#a93226',border:'none',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.56rem',letterSpacing:'0.07em',textTransform:'uppercase'}}>Delete</button>
                     </div>
+                    {/* Next Reward editable */}
+                    <div style={{padding:'0 1.25rem 0.85rem',display:'flex',gap:'0.5rem',alignItems:'center'}}>
+                      <span style={{fontSize:'0.52rem',color:gray,letterSpacing:'0.08em',textTransform:'uppercase',whiteSpace:'nowrap'}}>Next Reward:</span>
+                      <input
+                        type="text"
+                        defaultValue={card.notes||''}
+                        placeholder="e.g. 1 free month"
+                        onBlur={async(e)=>{
+                          await fetch('/api/admin/cards',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:card.id,notes:e.target.value})})
+                          showToast('Next reward updated')
+                        }}
+                        style={{flex:1,padding:'0.3rem 0.6rem',border:'1px solid rgba(184,151,90,0.2)',borderRadius:3,fontFamily:ff,fontSize:'0.62rem',outline:'none',background:'rgba(184,151,90,0.04)',color:black}}
+                      />
+                    </div>
                   </div>)
                 })}
                 {cards.length===0&&<p style={{color:gray,fontSize:'0.85rem'}}>No cards yet.</p>}
@@ -1536,7 +1564,7 @@ export default function Admin({session}){
               <div style={{background:white,borderRadius:10,padding:'1.5rem',border:'1px solid rgba(14,14,12,0.07)'}}>
                 <div className="punch-row" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1rem',marginBottom:'1rem'}}>
                   <div><label style={lbl}>Client</label><select value={punchId} onChange={e=>setPunchId(e.target.value)} style={{...inp,marginBottom:0}}><option value="">Select</option>{cards.map(c=><option key={c.id} value={c.id}>{c.profiles?.business_name||c.profiles?.full_name} · {c.stamps%5===0&&c.stamps>0?5:c.stamps%5}/5</option>)}</select></div>
-                  <div><label style={lbl}>Amount (optional)</label><input style={{...inp,marginBottom:0}} type="text" placeholder="$0.00" value={punchAmt} onChange={e=>setPunchAmt(e.target.value)}/></div>
+                  <div><label style={lbl}>Amount <span style={{color:'#c0392b'}}>*</span></label><input style={{...inp,marginBottom:0}} type="number" step="0.01" placeholder="0.00" value={punchAmt} onChange={e=>setPunchAmt(e.target.value)}/></div>
                 </div>
                 {punchId&&(()=>{const card=cards.find(c=>c.id===punchId);const cur=card?(card.stamps%5===0&&card.stamps>0?5:card.stamps%5):0;return<div style={{background:'linear-gradient(135deg,#1a1917,#252320)',borderRadius:10,padding:'1.1rem',marginBottom:'1rem',border:'1px solid rgba(184,151,90,0.22)',color:white}}><div style={{fontFamily:ffS,fontSize:'1rem',marginBottom:'0.45rem'}}>A<span style={{color:gold,fontStyle:'italic'}}>+</span> CRM · {card?.profiles?.business_name||card?.profiles?.full_name}</div><div style={{display:'flex',gap:5}}>{Array.from({length:5},(_,i)=><div key={i} style={{width:15,height:15,borderRadius:'50%',border:'1.5px solid rgba(184,151,90,0.22)',background:i<cur?gold:i===cur?'rgba(184,151,90,0.35)':'transparent'}}/>)}</div></div>})()}
                 <button onClick={doPunch} style={{width:'100%',background:black,color:white,border:'none',padding:'0.85rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Give Stamp</button>
@@ -1981,3 +2009,4 @@ function FilesListForClient({ userId, showToast }) {
     </div>
   )
 }
+                                                                                                                                   
