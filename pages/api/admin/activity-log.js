@@ -20,20 +20,8 @@ export default async function handler(req, res) {
     const { action, target, type, metadata } = req.body
     if (!action) return res.status(400).json({ error: 'action required' })
 
-    // Get admin profile name from service role — best effort
-    let user_name = 'Admin'
-    try {
-      const { data: admins } = await supabaseAdmin
-        .from('profiles')
-        .select('full_name')
-        .eq('role', 'admin')
-        .limit(1)
-        .single()
-      if (admins?.full_name) user_name = admins.full_name
-    } catch(e) {}
-
     const { error } = await supabaseAdmin.from('activity_log').insert({
-      user_name,
+      user_name: 'Jumel Fuentes',
       action,
       target: target || null,
       type: type || 'edit',
