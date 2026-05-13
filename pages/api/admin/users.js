@@ -7,12 +7,19 @@ const supabaseAdmin = createClient(
 
 export default async function handler(req, res) {
   if (req.method === 'GET') {
-    const { data: users, error } = await supabaseAdmin
+    const { data: profiles, error } = await supabaseAdmin
       .from('profiles')
       .select('id, full_name, business_name, phone, role')
       .eq('role', 'client')
       .order('created_at', { ascending: false })
     if (error) return res.status(500).json({ error: error.message })
+
+    // Get emails from auth.users
+    const { data: authList } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 })
+    const emailMap = {}
+    authList?.users?.forEach(u => { emailMap[u.id] = u.email })
+
+    const users = (profiles||[]).map(p => ({ ...p, email: emailMap[p.id] || null }))
     return res.status(200).json({ users })
   }
 
