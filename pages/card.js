@@ -1,214 +1,52 @@
-import { useEffect, useState } from 'react'
-import { supabase } from '../lib/supabase'
+import { createClient } from '@supabase/supabase-js'
 
-const gold='#b8975a',goldL='#d4b47a',black='#0e0e0c',white='#f8f6f1',gray='#6b6b67'
-const ff='DM Sans,sans-serif'
-const ffS='Cormorant Garamond,serif'
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+)
 
-export default function CardPage({ session }) {
-  const [card, setCard] = useState(null)
-  const [profile, setProfile] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [noCard, setNoCard] = useState(false)
-  const [errMsg, setErrMsg] = useState('')
-  const [showProfile, setShowProfile] = useState(false)
+export default async function handler(req, res) {
+  if (req.method === 'GET') {
+    const { data: cards, error } = await supabaseAdmin
+      .from('loyalty_cards')
+      .select('*, profiles(full_name,business_name,phone), stamp_history(id,payment_amount,created_at), rewards(id,reward_type,reward_cost,status,redeemed_at,created_at)')
+      .order('created_at', { ascending: false })
 
-  useEffect(() => {
-    if (!session) { window.location.href = '/login'; return }
-    supabase.from('profiles').select('role').eq('id', session.user.id).single()
-      .then(({ data }) => {
-        if (data?.role === 'admin') { window.location.href = '/admin'; return }
-        load()
-      })
-  }, [session])
-
-  async function load() {
-    const { data: prof } = await supabase.from('profiles').select('*').eq('id', session.user.id).single()
-    setProfile(prof)
-    const uid = session.user.id
-    const res = await fetch('/api/card/me?user_id='+uid)
-    const data = await res.json()
-    if (res.ok && data.card) {
-      setCard(data.card)
-    } else {
-      setErrMsg(data.error||'')
-      setNoCard(true)
+    if (error) {
+      // Fallback — fetch without relations if join fails
+      const { data: cardsBasic } = await supabaseAdmin
+        .from('loyalty_cards')
+        .select('*, profiles(full_name,business_name,phone)')
+        .order('created_at', { ascending: false })
+      return res.status(200).json({ cards: cardsBasic || [] })
     }
-    setLoading(false)
+
+    return res.status(200).json({ cards: cards || [] })
   }
 
-  const signOut = async () => { await supabase.auth.signOut(); window.location.href = '/login' }
+  if (req.method === 'POST') {
+    const { user_id, notes } = req.body
+    const { data: num } = await supabaseAdmin.rpc('generate_card_number')
+    const { data: card, error } = await supabaseAdmin
+      .from('loyalty_cards')
+      .insert({ user_id, card_number: num, notes, stamps: 0, cycle: 1 })
+      .select()
+      .single()
+    if (error) return res.status(400).json({ error: error.message })
+    return res.status(200).json({ card })
+  }
 
-  if (loading) return <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'#111110',color:'rgba(255,255,255,0.4)',fontFamily:ff,fontSize:'0.8rem'}}>Cargando...</div>
+  if (req.method === 'PATCH') {
+    const { id, notes } = req.body
+    await supabaseAdmin.from('loyalty_cards').update({ notes }).eq('id', id)
+    return res.status(200).json({ success: true })
+  }
 
-  const cur = card ? (card.stamps%5===0&&card.stamps>0 ? 5 : card.stamps%5) : 0
-  const cycle = card ? (Math.ceil((card.stamps||1)/5)||1) : 1
-  const rem = cur===0 ? 5 : 5-cur
-  const hasReward = card && card.stamps>0 && card.stamps%5===0
+  if (req.method === 'DELETE') {
+    const { id } = req.body
+    await supabaseAdmin.from('loyalty_cards').delete().eq('id', id)
+    return res.status(200).json({ success: true })
+  }
 
-  return (
-    <>
-      <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,400&family=DM+Sans:wght@300;400&display=swap" rel="stylesheet"/>
-      <style>{`
-        html,body{background:#111110;overscroll-behavior:none;margin:0;padding:0;}
-        * {-webkit-tap-highlight-color:transparent;}
-        @media(max-width:480px){
-          .client-hero-pad{padding:5rem 1.25rem 3rem!important;}
-          .card-container{padding:0!important;max-width:100%!important;}
-          .card-inner{border-radius:0!important;margin-left:0!important;margin-right:0!important;}
-          .card-inner-wrap{padding:0 0 0 0!important;}
-          .stamp-grid{gap:0.4rem!important;}
-          .wallet-btns{gap:0.4rem!important;}
-          .below-card{padding:0 1.25rem!important;}
-        }
-      `}</style>
-
-      <div style={{background:'#111110',minHeight:'100vh',fontFamily:ff}}>
-
-        {/* TOP BAR */}
-        <div style={{background:'rgba(14,14,12,0.96)',backdropFilter:'blur(12px)',position:'fixed',top:0,left:0,right:0,zIndex:100,height:52,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 1.25rem',borderBottom:'1px solid rgba(184,151,90,0.1)'}}>
-          <div style={{fontFamily:ffS,fontSize:'1.1rem',color:white}}>A<span style={{color:gold,fontStyle:'italic'}}>+</span> CRM</div>
-          <div style={{display:'flex',alignItems:'center',gap:'0.6rem'}}>
-            <span style={{fontSize:'0.6rem',color:'rgba(255,255,255,0.38)',maxWidth:120,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{profile?.business_name||session?.user?.email}</span>
-            <button onClick={()=>setShowProfile(true)} style={{background:'rgba(184,151,90,0.12)',border:'1px solid rgba(184,151,90,0.3)',color:gold,padding:'0.28rem 0.65rem',fontSize:'0.7rem',cursor:'pointer',borderRadius:20,fontFamily:ff}}>👤</button>
-            <button onClick={signOut} style={{background:'none',border:'1px solid rgba(255,255,255,0.1)',color:'rgba(255,255,255,0.38)',padding:'0.25rem 0.7rem',fontSize:'0.52rem',letterSpacing:'0.1em',textTransform:'uppercase',cursor:'pointer',borderRadius:2,fontFamily:ff}}>Salir</button>
-          </div>
-        </div>
-
-        {/* HERO */}
-        <div className="client-hero-pad" style={{background:black,padding:'5.5rem 1.25rem 3rem',textAlign:'center',position:'relative',overflow:'hidden'}}>
-          <div style={{position:'absolute',inset:0,background:'radial-gradient(ellipse 55% 40% at 50% 0%,rgba(184,151,90,0.07) 0%,transparent 70%)'}}/>
-          <div style={{fontSize:'0.56rem',letterSpacing:'0.22em',textTransform:'uppercase',color:gold,marginBottom:'0.6rem'}}>Tu Programa de Lealtad</div>
-          <h2 style={{fontFamily:ffS,fontSize:'clamp(1.6rem,5vw,2.5rem)',fontWeight:300,color:white,marginBottom:'0.4rem'}}>{profile?.full_name||'Bienvenido'}</h2>
-          <div style={{fontSize:'0.68rem',color:'rgba(255,255,255,0.28)'}}>{profile?.business_name} · Cliente A+ CRM</div>
-        </div>
-
-        {/* CARD CONTAINER */}
-        <div className="card-container" style={{maxWidth:420,margin:'0 auto',padding:'0 1.25rem',transform:'translateY(-1.5rem)'}}>
-          {noCard ? (
-            <div style={{background:'rgba(184,151,90,0.07)',border:'1px solid rgba(184,151,90,0.17)',borderRadius:10,padding:'2rem',textAlign:'center'}}>
-              <div style={{fontSize:'2rem',marginBottom:'1rem'}}>🎴</div>
-              <div style={{fontFamily:ffS,fontSize:'1.3rem',color:white,marginBottom:'0.5rem'}}>Tarjeta Pendiente</div>
-              <p style={{fontSize:'0.78rem',color:'rgba(255,255,255,0.45)',lineHeight:1.7}}>Tu cuenta esta activa. Tu representante A+ CRM activara tu tarjeta pronto.</p>
-            </div>
-          ) : card && (
-            <>
-              {/* LOYALTY CARD — full bleed on mobile */}
-              <div className="card-inner" style={{background:'linear-gradient(145deg,#1a1917 0%,#252320 55%,#1a1917 100%)',borderRadius:20,padding:'1.75rem',border:'1px solid rgba(184,151,90,0.28)',boxShadow:'0 30px 70px rgba(0,0,0,0.55)',color:white,position:'relative',overflow:'hidden',marginBottom:'1.25rem'}}>
-                <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'1.5rem'}}>
-                  <div style={{fontFamily:ffS,fontSize:'1.3rem',lineHeight:1}}>
-                    A<span style={{color:gold,fontStyle:'italic'}}>+</span> CRM
-                    <small style={{display:'block',fontFamily:ff,fontSize:'0.48rem',letterSpacing:'0.16em',textTransform:'uppercase',color:'rgba(184,151,90,0.55)',marginTop:3}}>Loyalty Card · Pagos a Tiempo</small>
-                  </div>
-                  <div style={{width:34,height:24,borderRadius:4,background:'linear-gradient(135deg,'+gold+','+goldL+')',opacity:0.72}}/>
-                </div>
-                <div style={{fontSize:'0.5rem',letterSpacing:'0.14em',textTransform:'uppercase',color:'rgba(184,151,90,0.45)',marginBottom:'0.6rem'}}>5 pagos a tiempo = 1 mes de servicio gratis</div>
-                <div className="stamp-grid" style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:'0.5rem',marginBottom:'0.4rem'}}>
-                  {Array.from({length:5},(_,i)=>(
-                    <div key={i} style={{aspectRatio:'1',borderRadius:'50%',border:i<cur?'none':'1.5px solid rgba(184,151,90,0.2)',background:i<cur?'linear-gradient(135deg,'+gold+','+goldL+')':'transparent',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'0.6rem',fontWeight:700,color:black}}>
-                      {i<cur?'✓':''}
-                    </div>
-                  ))}
-                </div>
-                <div style={{display:'flex',justifyContent:'space-between',fontSize:'0.48rem',color:'rgba(255,255,255,0.18)',marginBottom:'0.55rem'}}><span>Pago 1</span><span>Pago 5</span></div>
-                {hasReward && <div style={{display:'inline-flex',alignItems:'center',gap:'0.4rem',background:'rgba(184,151,90,0.1)',border:'1px solid rgba(184,151,90,0.22)',borderRadius:20,padding:'0.32rem 0.75rem',fontSize:'0.55rem',textTransform:'uppercase',color:gold,marginBottom:'1.5rem'}}>🎁 Premio disponible!</div>}
-                <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end',borderTop:'1px solid rgba(184,151,90,0.1)',paddingTop:'1rem'}}>
-                  <div><div style={{fontSize:'0.48rem',letterSpacing:'0.1em',textTransform:'uppercase',color:'rgba(255,255,255,0.26)'}}>Miembro</div><div style={{fontSize:'0.88rem',marginTop:'0.15rem'}}>{profile?.full_name}</div></div>
-                  <div style={{textAlign:'right'}}><div style={{fontSize:'0.48rem',color:'rgba(255,255,255,0.22)'}}>#{card.card_number}</div><div style={{fontSize:'0.58rem',color:gold,marginTop:'0.15rem'}}>Ciclo {cycle} · {cur}/5</div></div>
-                </div>
-              </div>
-
-              {/* EVERYTHING BELOW CARD — padded on mobile */}
-              <div className="below-card">
-
-                {/* PROGRESS */}
-                <div style={{marginBottom:'1.25rem'}}>
-                  <div style={{display:'flex',justifyContent:'space-between',fontSize:'0.6rem',color:'rgba(255,255,255,0.3)',marginBottom:'0.4rem'}}>
-                    <span>{cur} sello{cur!==1?'s':''} en ciclo actual</span>
-                    <span>Meta: 5 sellos</span>
-                  </div>
-                  <div style={{height:2,background:'rgba(255,255,255,0.06)',borderRadius:2}}>
-                    <div style={{height:'100%',width:(cur/5*100)+'%',background:'linear-gradient(90deg,'+gold+','+goldL+')',borderRadius:2}}/>
-                  </div>
-                </div>
-
-                {/* NEXT REWARD */}
-                <div style={{background:'rgba(184,151,90,0.07)',border:'1px solid rgba(184,151,90,0.17)',borderRadius:10,padding:'1rem',marginBottom:'1.25rem',textAlign:'center'}}>
-                  <div style={{fontSize:'0.54rem',letterSpacing:'0.12em',textTransform:'uppercase',color:'rgba(255,255,255,0.28)',marginBottom:'0.3rem'}}>Next Reward</div>
-                  <div style={{fontFamily:ffS,fontSize:'1.2rem',fontWeight:300,color:white}}>
-                    {hasReward
-                      ? (card.notes||'Your reward is ready') + ' 🎉'
-                      : 'Te faltan ' + rem + ' sello' + (rem!==1?'s':'') + (card.notes ? ' para: ' + card.notes : ' para tu proximo premio')
-                    }
-                  </div>
-                </div>
-
-                {/* COLLECTED REWARDS */}
-                <div style={{marginBottom:'2rem'}}>
-                  <div style={{fontSize:'0.54rem',letterSpacing:'0.12em',textTransform:'uppercase',color:'rgba(255,255,255,0.28)',marginBottom:'0.85rem'}}>Collected Rewards</div>
-                  {card.rewards?.length>0
-                    ? card.rewards.map((r,i)=>(
-                        <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'0.75rem 0',borderBottom:'1px solid rgba(255,255,255,0.05)'}}>
-                          <div>
-                            <div style={{fontSize:'0.78rem',color:'rgba(255,255,255,0.82)',fontWeight:500}}>{r.reward_type}</div>
-                            <div style={{fontSize:'0.6rem',color:'rgba(255,255,255,0.3)',marginTop:'0.1rem'}}>
-                              {r.redeemed_at
-                                ? new Date(r.redeemed_at).toLocaleDateString('es-PR',{day:'numeric',month:'long',year:'numeric'})
-                                : r.created_at
-                                  ? new Date(r.created_at).toLocaleDateString('es-PR',{day:'numeric',month:'long',year:'numeric'})
-                                  : '—'}
-                            </div>
-                          </div>
-                          <span style={{fontSize:'0.54rem',padding:'0.18rem 0.55rem',borderRadius:20,background:'rgba(45,150,100,0.12)',color:'#52b788',border:'1px solid rgba(45,150,100,0.25)',whiteSpace:'nowrap'}}>{r.status}</span>
-                        </div>
-                      ))
-                    : <div style={{fontSize:'0.72rem',color:'rgba(255,255,255,0.25)',textAlign:'center',padding:'1rem 0'}}>No rewards yet — keep going!</div>
-                  }
-                </div>
-
-              </div>{/* end below-card */}
-            </>
-          )}
-        </div>
-
-        {/* PROFILE MODAL */}
-        {showProfile && (
-          <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.75)',zIndex:200,display:'flex',alignItems:'flex-end',justifyContent:'center'}} onClick={e=>e.target===e.currentTarget&&setShowProfile(false)}>
-            <div style={{background:'#1a1917',borderRadius:'16px 16px 0 0',padding:'2rem 1.5rem',width:'100%',maxWidth:480,maxHeight:'85vh',overflowY:'auto',border:'1px solid rgba(184,151,90,0.2)'}}>
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1.5rem'}}>
-                <div style={{fontFamily:ffS,fontSize:'1.4rem',fontWeight:300,color:white}}>Mi Perfil</div>
-                <button onClick={()=>setShowProfile(false)} style={{background:'none',border:'none',color:'rgba(255,255,255,0.4)',fontSize:'1.2rem',cursor:'pointer'}}>✕</button>
-              </div>
-
-              {/* INFO */}
-              <div style={{background:'rgba(184,151,90,0.07)',border:'1px solid rgba(184,151,90,0.15)',borderRadius:10,padding:'1.25rem',marginBottom:'1.5rem'}}>
-                <div style={{fontSize:'0.52rem',letterSpacing:'0.14em',textTransform:'uppercase',color:gold,marginBottom:'0.85rem'}}>Informacion</div>
-                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1rem'}}>
-                  <div><div style={{fontSize:'0.5rem',color:'rgba(255,255,255,0.35)',marginBottom:'0.2rem'}}>Nombre</div><div style={{fontSize:'0.85rem',color:white}}>{profile?.full_name||'—'}</div></div>
-                  <div><div style={{fontSize:'0.5rem',color:'rgba(255,255,255,0.35)',marginBottom:'0.2rem'}}>Negocio</div><div style={{fontSize:'0.85rem',color:white}}>{profile?.business_name||'—'}</div></div>
-                  <div><div style={{fontSize:'0.5rem',color:'rgba(255,255,255,0.35)',marginBottom:'0.2rem'}}>Telefono</div><div style={{fontSize:'0.85rem',color:white}}>{profile?.phone||'—'}</div></div>
-                  <div><div style={{fontSize:'0.5rem',color:'rgba(255,255,255,0.35)',marginBottom:'0.2rem'}}>Tarjeta</div><div style={{fontSize:'0.85rem',color:gold}}>#{card?.card_number||'—'}</div></div>
-                </div>
-              </div>
-
-              {/* REWARDS HISTORY */}
-              <div style={{fontSize:'0.52rem',letterSpacing:'0.14em',textTransform:'uppercase',color:gold,marginBottom:'1rem'}}>Rewards History</div>
-              {card?.rewards?.length > 0 ? card.rewards.map((r,i)=>(
-                <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'0.75rem 0',borderBottom:'1px solid rgba(255,255,255,0.05)'}}>
-                  <div>
-                    <div style={{fontSize:'0.78rem',color:white}}>{r.reward_type}</div>
-                    <div style={{fontSize:'0.6rem',color:'rgba(255,255,255,0.3)',marginTop:'0.1rem'}}>{r.redeemed_at?new Date(r.redeemed_at).toLocaleDateString('es-PR',{day:'numeric',month:'long',year:'numeric'}):r.created_at?new Date(r.created_at).toLocaleDateString('es-PR',{day:'numeric',month:'long',year:'numeric'}):'—'}</div>
-                  </div>
-                  <span style={{fontSize:'0.54rem',padding:'0.18rem 0.55rem',borderRadius:20,background:'rgba(45,150,100,0.12)',color:'#52b788',border:'1px solid rgba(45,150,100,0.25)',whiteSpace:'nowrap'}}>{r.status}</span>
-                </div>
-              )) : <p style={{fontSize:'0.78rem',color:'rgba(255,255,255,0.3)',textAlign:'center',padding:'1rem 0'}}>No rewards yet.</p>}
-
-              <button onClick={signOut} style={{width:'100%',marginTop:'1.5rem',background:'rgba(192,57,43,0.1)',color:'#c0392b',border:'1px solid rgba(192,57,43,0.2)',padding:'0.85rem',fontFamily:ff,fontSize:'0.65rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Cerrar Sesion</button>
-            </div>
-          </div>
-        )}
-
-      </div>
-    </>
-  )
+  res.status(405).end()
 }
