@@ -469,9 +469,11 @@ function CostHistory({ productId }) {
   )
 }
 
-function ExpenseHistory({ clientId, showToast }) {
+function ExpenseHistory({ clientId, showToast, supplies }) {
   const [expenses, setExpenses] = useState([])
   const [loading, setLoading] = useState(true)
+  const [mode, setMode] = useState('manual') // 'manual' | 'supplies'
+  const [quantities, setQuantities] = useState({})
 
   useEffect(()=>{ load() },[clientId])
 
@@ -489,12 +491,78 @@ function ExpenseHistory({ clientId, showToast }) {
     load()
   }
 
+  function unitLabel(u) { return u==='month'?'/mo':u==='year'?'/yr':u==='one-time'?' once':'/'+u }
+
+  function calcLineTotal(s, qty) {
+    if (!qty || parseFloat(qty)===0) return 0
+    return parseFloat(s.cost||0) * parseFloat(qty)
+  }
+
+  const suppliesTotal = (supplies||[]).reduce((a,s)=>{
+    const qty = parseFloat(quantities[s.id]||0)
+    return a + calcLineTotal(s, qty)
+  }, 0)
+
+  async function saveSuppliesExpense() {
+    const lineItems = (supplies||[]).filter(s=>parseFloat(quantities[s.id]||0)>0).map(s=>({
+      supply_id: s.id, name: s.name, unit: s.unit, cost: s.cost, qty: parseFloat(quantities[s.id])
+    }))
+    if (lineItems.length===0) { showToast('Add at least one supply'); return }
+    const res = await fetch('/api/admin/expenses',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      client_id: clientId, amount: suppliesTotal, description: lineItems.map(l=>l.name).join(', '),
+      recurring: false, recurring_interval: 'month', expense_date: new Date().toISOString().split('T')[0],
+      line_items: lineItems
+    })})
+    if (res.ok) { showToast('Expense saved'); setQuantities({}); load() }
+    else showToast('Error saving expense')
+  }
+
   const total = expenses.reduce((a,e)=>a+parseFloat(e.amount||0),0)
 
   if(loading) return <div style={{fontSize:'0.72rem',color:'#6b6b67',textAlign:'center',padding:'1rem'}}>Loading...</div>
 
   return(
     <div>
+      {/* Toggle */}
+      <div style={{display:'flex',gap:'0.4rem',marginBottom:'1rem'}}>
+        {[['manual','Manual'],['supplies','From Supplies']].map(([m,label])=>(
+          <button key={m} onClick={()=>setMode(m)} style={{padding:'0.35rem 0.85rem',borderRadius:20,border:'none',cursor:'pointer',fontFamily:ff,fontSize:'0.6rem',letterSpacing:'0.08em',textTransform:'uppercase',background:mode===m?black:'rgba(14,14,12,0.06)',color:mode===m?white:gray,transition:'all 0.15s'}}>{label}</button>
+        ))}
+      </div>
+
+      {/* FROM SUPPLIES */}
+      {mode==='supplies'&&(
+        <div style={{marginBottom:'1.25rem'}}>
+          {!supplies||supplies.length===0
+            ?<div style={{fontSize:'0.72rem',color:gray,padding:'0.75rem 0'}}>No supplies added yet. Add them in the Supplies section.</div>
+            :<>
+              {supplies.map(s=>(
+                <div key={s.id} style={{display:'flex',alignItems:'center',gap:'0.75rem',padding:'0.6rem 0',borderBottom:'1px solid rgba(14,14,12,0.05)'}}>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:'0.72rem',color:black,fontWeight:500}}>{s.name}</div>
+                    <div style={{fontSize:'0.6rem',color:gray}}>${parseFloat(s.cost).toFixed(2)}{unitLabel(s.unit)}</div>
+                  </div>
+                  <input type="number" min="0" step="0.1" placeholder="0"
+                    value={quantities[s.id]||''}
+                    onChange={e=>setQuantities(q=>({...q,[s.id]:e.target.value}))}
+                    style={{width:60,padding:'0.35rem 0.5rem',border:'1px solid '+gl,borderRadius:3,fontFamily:ff,fontSize:'0.75rem',outline:'none',textAlign:'center'}}/>
+                  <div style={{fontSize:'0.6rem',color:gray,width:20,textAlign:'center'}}>{unitLabel(s.unit)}</div>
+                  <div style={{fontSize:'0.72rem',fontWeight:600,color:calcLineTotal(s,quantities[s.id])>0?'#c0392b':gray,width:60,textAlign:'right'}}>
+                    {calcLineTotal(s,quantities[s.id])>0?'$'+calcLineTotal(s,quantities[s.id]).toFixed(2):'—'}
+                  </div>
+                </div>
+              ))}
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',paddingTop:'0.75rem',marginTop:'0.25rem',borderTop:'1px solid rgba(14,14,12,0.08)'}}>
+                <span style={{fontSize:'0.62rem',color:gray,letterSpacing:'0.08em',textTransform:'uppercase'}}>Total</span>
+                <span style={{fontFamily:ffS,fontSize:'1.1rem',fontWeight:300,color:'#c0392b'}}>${suppliesTotal.toFixed(2)}</span>
+              </div>
+              <button onClick={saveSuppliesExpense} style={{width:'100%',marginTop:'0.85rem',background:black,color:white,border:'none',padding:'0.75rem',fontFamily:ff,fontSize:'0.62rem',letterSpacing:'0.12em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Save Expense</button>
+            </>
+          }
+        </div>
+      )}
+
+      {/* EXPENSE LIST */}
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.75rem'}}>
         <div style={{fontSize:'0.56rem',letterSpacing:'0.12em',textTransform:'uppercase',color:'#6b6b67'}}>Expense History</div>
         {expenses.length>0&&<div style={{fontSize:'0.68rem',fontWeight:600,color:'#c0392b'}}>Total: ${total.toFixed(2)}</div>}
@@ -509,6 +577,7 @@ function ExpenseHistory({ clientId, showToast }) {
                 <div style={{display:'flex',gap:'0.5rem',marginTop:'0.15rem'}}>
                   <span style={{fontSize:'0.58rem',color:'#6b6b67'}}>{e.expense_date}</span>
                   {e.recurring&&<span style={{fontSize:'0.55rem',padding:'0.1rem 0.45rem',borderRadius:20,background:'rgba(52,152,219,0.1)',color:'#2980b9'}}>↻ {e.recurring_interval}</span>}
+                  {e.line_items&&<span style={{fontSize:'0.55rem',padding:'0.1rem 0.45rem',borderRadius:20,background:'rgba(184,151,90,0.1)',color:gold}}>Supplies</span>}
                 </div>
               </div>
               <div style={{fontSize:'0.78rem',fontWeight:600,color:'#c0392b',flexShrink:0}}>-${parseFloat(e.amount).toFixed(2)}</div>
@@ -963,6 +1032,68 @@ function FinancialCard({ sales }) {
   )
 }
 
+function SuppliesPanel({ supplies, onAdd, onEdit, onDelete, showToast }) {
+  const categories = [...new Set(supplies.map(s=>s.category).filter(Boolean))]
+
+  const unitLabel = u => u==='month'?'/mo':u==='year'?'/yr':u==='one-time'?' once':'/'+u
+
+  // Totals
+  const monthlyTotal = supplies.filter(s=>s.active).reduce((a,s)=>{
+    if (s.unit==='month') return a+parseFloat(s.cost||0)
+    if (s.unit==='year') return a+parseFloat(s.cost||0)/12
+    return a
+  },0)
+  const yearlyTotal = supplies.filter(s=>s.active).reduce((a,s)=>{
+    if (s.unit==='month') return a+parseFloat(s.cost||0)*12
+    if (s.unit==='year') return a+parseFloat(s.cost||0)
+    return a
+  },0)
+
+  return (
+    <div>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1.25rem'}}>
+        <h2 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300}}>Supplies</h2>
+        <button onClick={onAdd} style={{background:black,color:white,border:'none',padding:'0.6rem 1.1rem',fontFamily:ff,fontSize:'0.6rem',letterSpacing:'0.12em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>+ Add</button>
+      </div>
+
+      {/* Totals row */}
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1rem',marginBottom:'1.5rem'}}>
+        {[['Monthly Cost','$'+monthlyTotal.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}),'#c0392b'],
+          ['Annual Cost','$'+yearlyTotal.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}),'#c0392b']
+        ].map(([label,val,color])=>(
+          <div key={label} style={{background:white,borderRadius:10,padding:'1.25rem',border:'1px solid rgba(14,14,12,0.07)',textAlign:'center'}}>
+            <div style={{fontFamily:ffS,fontSize:'1.4rem',fontWeight:300,color}}>{val}</div>
+            <div style={{fontSize:'0.56rem',color:gray,letterSpacing:'0.1em',textTransform:'uppercase',marginTop:'0.25rem'}}>{label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Grid */}
+      {supplies.length===0&&<div style={{background:white,borderRadius:10,padding:'2rem',textAlign:'center',color:gray,fontSize:'0.82rem',border:'1px solid rgba(14,14,12,0.07)'}}>No supplies yet. Add your first one.</div>}
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))',gap:'0.85rem'}}>
+        {supplies.map(s=>(
+          <div key={s.id} style={{background:white,borderRadius:10,border:'1px solid rgba(14,14,12,0.07)',padding:'1.1rem',display:'flex',flexDirection:'column',gap:'0.4rem',opacity:s.active?1:0.5}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
+              <div style={{fontFamily:ffS,fontSize:'1rem',fontWeight:300,color:black,lineHeight:1.3,flex:1,marginRight:'0.5rem'}}>{s.name}</div>
+              <div style={{display:'flex',gap:'0.3rem',flexShrink:0}}>
+                <button onClick={()=>onEdit(s)} style={{background:'none',border:'none',cursor:'pointer',color:gray,fontSize:'0.65rem',padding:'0.1rem 0.3rem',fontFamily:ff}}>✎</button>
+                <button onClick={()=>onDelete(s.id)} style={{background:'none',border:'none',cursor:'pointer',color:'rgba(192,57,43,0.5)',fontSize:'0.75rem',padding:'0.1rem 0.3rem'}}>×</button>
+              </div>
+            </div>
+            {s.category&&<span style={{fontSize:'0.52rem',padding:'0.15rem 0.5rem',borderRadius:20,background:'rgba(14,14,12,0.05)',color:gray,width:'fit-content',letterSpacing:'0.06em',textTransform:'uppercase'}}>{s.category}</span>}
+            {s.provider&&<div style={{fontSize:'0.62rem',color:gray,fontStyle:'italic'}}>{s.provider}</div>}
+            <div style={{marginTop:'auto',paddingTop:'0.5rem',borderTop:'1px solid rgba(14,14,12,0.05)',display:'flex',justifyContent:'space-between',alignItems:'baseline'}}>
+              <span style={{fontFamily:ffS,fontSize:'1.15rem',fontWeight:300,color:'#c0392b'}}>${parseFloat(s.cost).toFixed(2)}</span>
+              <span style={{fontSize:'0.58rem',color:gray}}>{unitLabel(s.unit)}</span>
+            </div>
+            {s.renewal_date&&<div style={{fontSize:'0.58rem',color:gold}}>Renews {new Date(s.renewal_date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</div>}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function AdminSystemPanel({ users, cards, allUsers, loadAll, showToast }) {
   const [tab, setTab] = useState('users')
   const [search, setSearch] = useState('')
@@ -1200,6 +1331,10 @@ export default function Admin({session}){
   const [historyClient,setHistoryClient]=useState(null)
   const [sales,setSales]=useState([])
   const [allUsers,setAllUsers]=useState([])
+  const [supplies,setSupplies]=useState([])
+  const [supplyModal,setSupplyModal]=useState(null) // null | 'add' | supply object
+  const [supplyForm,setSupplyForm]=useState({name:'',category:'',cost:'',unit:'month',provider:'',renewal_date:'',notes:''})
+  const [rewardCard,setRewardCard]=useState(null) // card for inline reward modal
   const [expenseForm,setExpenseForm]=useState({amount:'',description:'',date:new Date().toISOString().split('T')[0]})
 
   useEffect(()=>{
@@ -1217,7 +1352,7 @@ export default function Admin({session}){
       fetch('/api/admin/catalog').then(r=>r.json())
     ])
     setCards(c.cards||[]);setUsers(u.users||[]);setRewards(r.rewards||[]);setCatalog(cat.items||[])
-    // Load all users (including admins) for system panel
+    fetch('/api/admin/supplies').then(r=>r.json()).then(d=>setSupplies(d.supplies||[])).catch(()=>{})
     fetch('/api/admin/users?all=1').then(r=>r.json()).then(d=>setAllUsers(d.users||[])).catch(()=>{})
     // Load sales for financial card
     fetch('/api/admin/sales').then(r=>r.json()).then(d=>setSales(d.sales||[])).catch(e=>console.error('Sales fetch error:',e))
@@ -1323,15 +1458,16 @@ export default function Admin({session}){
             <div style={{height:'1px',background:'rgba(255,255,255,0.06)',margin:'0.25rem 1.5rem'}}/>
             {[['dashboard','Dashboard'],['clients','Clients'],['campaigns','Campaigns']].map(([id,label])=>(<button key={id} onClick={()=>setPanel(id)} style={{display:'flex',alignItems:'center',padding:'0.82rem 1.5rem',fontSize:'0.72rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel===id?gold:'rgba(255,255,255,0.32)',cursor:'pointer',background:'none',border:'none',borderLeft:panel===id?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>{label}</button>))}
             <div style={{height:'1px',background:'rgba(255,255,255,0.06)',margin:'0.25rem 1.5rem'}}/>
-            <button onClick={()=>setLoyaltyOpen(o=>!o)} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0.82rem 1.5rem',fontSize:'0.72rem',letterSpacing:'0.1em',textTransform:'uppercase',color:['cards','punch','rewards'].includes(panel)?gold:'rgba(255,255,255,0.45)',cursor:'pointer',background:'none',border:'none',width:'100%',textAlign:'left',fontFamily:ff}}>
+            <button onClick={()=>setLoyaltyOpen(o=>!o)} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0.82rem 1.5rem',fontSize:'0.72rem',letterSpacing:'0.1em',textTransform:'uppercase',color:['cards','punch'].includes(panel)?gold:'rgba(255,255,255,0.45)',cursor:'pointer',background:'none',border:'none',width:'100%',textAlign:'left',fontFamily:ff}}>
               <span>Loyalty Program</span>
               <span style={{fontSize:'0.6rem',display:'inline-block',transform:loyaltyOpen?'rotate(180deg)':'rotate(0deg)',transition:'transform 0.2s'}}>▾</span>
             </button>
             {loyaltyOpen&&(<div style={{background:'rgba(0,0,0,0.15)'}}>
-              {[['cards','Cards'],['punch','Punch'],['rewards','Rewards']].map(([id,label])=>(<button key={id} onClick={()=>setPanel(id)} style={{display:'flex',alignItems:'center',padding:'0.68rem 1.5rem 0.68rem 2.25rem',fontSize:'0.68rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel===id?gold:'rgba(255,255,255,0.28)',cursor:'pointer',background:'none',border:'none',borderLeft:panel===id?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>{label}</button>))}
+              {[['cards','Cards'],['punch','Punch']].map(([id,label])=>(<button key={id} onClick={()=>setPanel(id)} style={{display:'flex',alignItems:'center',padding:'0.68rem 1.5rem 0.68rem 2.25rem',fontSize:'0.68rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel===id?gold:'rgba(255,255,255,0.28)',cursor:'pointer',background:'none',border:'none',borderLeft:panel===id?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>{label}</button>))}
             </div>)}
             <div style={{height:'1px',background:'rgba(255,255,255,0.06)',margin:'0.25rem 1.5rem'}}/>
             <button onClick={()=>setPanel('catalog')} style={{display:'flex',alignItems:'center',padding:'0.82rem 1.5rem',fontSize:'0.72rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel==='catalog'?gold:'rgba(255,255,255,0.32)',cursor:'pointer',background:'none',border:'none',borderLeft:panel==='catalog'?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>Catalog</button>
+            <button onClick={()=>setPanel('supplies')} style={{display:'flex',alignItems:'center',padding:'0.82rem 1.5rem',fontSize:'0.72rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel==='supplies'?gold:'rgba(255,255,255,0.32)',cursor:'pointer',background:'none',border:'none',borderLeft:panel==='supplies'?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>Supplies</button>
             <div style={{height:'1px',background:'rgba(255,255,255,0.06)',margin:'0.25rem 1.5rem'}}/>
             <button onClick={()=>setPanel('system')} style={{display:'flex',alignItems:'center',padding:'0.82rem 1.5rem',fontSize:'0.72rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel==='system'?gold:'rgba(255,255,255,0.32)',cursor:'pointer',background:'none',border:'none',borderLeft:panel==='system'?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>Admin Panel</button>
           </div>
@@ -1343,8 +1479,14 @@ export default function Admin({session}){
             {panel==='notifications'&&<NotificationsPanel cards={cards} users={users}/>}
             {panel==='campaigns'&&<CampaignsPanel cards={cards} users={users}/>}
             {panel==='catalog'&&<CatalogPanel catalog={catalog} onSetCost={(item)=>{setEditCost(item);setCostForm({cost:item.catalog_costs?.cost||'',notes:item.catalog_costs?.notes||''});setModal('cost')}} onSetSuppliers={(item)=>{setSuppliersItem(item);setSuppliersText(item.catalog_costs?.suppliers||'');setSuppliersTitle('');setModal('suppliers')}}/>}
+            {panel==='supplies'&&<SuppliesPanel supplies={supplies}
+              onAdd={()=>{setSupplyForm({name:'',category:'',cost:'',unit:'month',provider:'',renewal_date:'',notes:''});setSupplyModal('add')}}
+              onEdit={(s)=>{setSupplyForm({name:s.name,category:s.category||'',cost:s.cost,unit:s.unit||'month',provider:s.provider||'',renewal_date:s.renewal_date||'',notes:s.notes||''});setSupplyModal(s)}}
+              onDelete={async(id)=>{if(!confirm('Delete this supply?'))return;await fetch('/api/admin/supplies',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})});showToast('Supply deleted');loadAll()}}
+              showToast={showToast}
+            />}
             {panel==='system'&&<AdminSystemPanel users={users} cards={cards} allUsers={allUsers} loadAll={loadAll} showToast={showToast}/>}
-            {panel==='loyalty'&&(<div><h2 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300,marginBottom:'1.5rem'}}>Loyalty Program</h2><div style={{display:'flex',flexDirection:'column',gap:'0.75rem'}}>{[['cards','Cards','Create and manage loyalty cards'],['punch','Punch','Register payments and stamps'],['rewards','Rewards','Register and view redeemed rewards']].map(([id,label,desc])=>(<div key={id} onClick={()=>setPanel(id)} style={{background:white,borderRadius:10,padding:'1.25rem 1.5rem',border:'1px solid rgba(14,14,12,0.07)',cursor:'pointer',display:'flex',justifyContent:'space-between',alignItems:'center'}}><div><div style={{fontFamily:ffS,fontSize:'1.1rem',fontWeight:300,color:black,marginBottom:'0.2rem'}}>{label}</div><div style={{fontSize:'0.68rem',color:gray}}>{desc}</div></div><div style={{color:gold,fontSize:'1rem'}}>›</div></div>))}</div></div>)}
+            {panel==='loyalty'&&(<div><h2 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300,marginBottom:'1.5rem'}}>Loyalty Program</h2><div style={{display:'flex',flexDirection:'column',gap:'0.75rem'}}>{[['cards','Cards','Create and manage loyalty cards'],['punch','Punch','Register payments and stamps']].map(([id,label,desc])=>(<div key={id} onClick={()=>setPanel(id)} style={{background:white,borderRadius:10,padding:'1.25rem 1.5rem',border:'1px solid rgba(14,14,12,0.07)',cursor:'pointer',display:'flex',justifyContent:'space-between',alignItems:'center'}}><div><div style={{fontFamily:ffS,fontSize:'1.1rem',fontWeight:300,color:black,marginBottom:'0.2rem'}}>{label}</div><div style={{fontSize:'0.68rem',color:gray}}>{desc}</div></div><div style={{color:gold,fontSize:'1rem'}}>›</div></div>))}</div></div>)}
             {panel==='clients'&&<ClientsPanel users={users} cards={cards} search={clientSearch} setSearch={setClientSearch}
               onEdit={(u)=>{setEditingClient(u);setEditForm({name:u.full_name||'',business:u.business_name||'',phone:u.phone||'',email:'',password:''});setModal('editclient')}}
               onAddPayment={(card)=>{setPunchId(card.id);setPanel('punch')}}
@@ -1380,6 +1522,7 @@ export default function Admin({session}){
                     </div>
                     <div style={{padding:'0.75rem 1.25rem',display:'flex',gap:'0.4rem'}}>
                       <button onClick={()=>{setPunchId(card.id);setPanel('punch')}} style={{flex:1,padding:'0.45rem',background:black,color:white,border:'none',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.56rem',letterSpacing:'0.07em',textTransform:'uppercase'}}>+ Stamp</button>
+                      <button onClick={()=>setRewardCard(card)} style={{flex:1,padding:'0.45rem',background:'rgba(45,138,96,0.1)',color:'#2d8a60',border:'1px solid rgba(45,138,96,0.25)',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.56rem',letterSpacing:'0.07em',textTransform:'uppercase'}}>Reward</button>
                       <button onClick={()=>{setQrCard(card);setModal('qr')}} style={{flex:1,padding:'0.45rem',background:'rgba(184,151,90,0.1)',color:gold,border:'1px solid rgba(184,151,90,0.25)',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.56rem',letterSpacing:'0.07em',textTransform:'uppercase'}}>QR</button>
                       <button onClick={()=>deleteCard(card.id)} style={{flex:1,padding:'0.45rem',background:'rgba(192,57,43,0.08)',color:'#a93226',border:'none',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.56rem',letterSpacing:'0.07em',textTransform:'uppercase'}}>Delete</button>
                     </div>
@@ -1397,16 +1540,6 @@ export default function Admin({session}){
                 </div>
                 {punchId&&(()=>{const card=cards.find(c=>c.id===punchId);const cur=card?(card.stamps%5===0&&card.stamps>0?5:card.stamps%5):0;return<div style={{background:'linear-gradient(135deg,#1a1917,#252320)',borderRadius:10,padding:'1.1rem',marginBottom:'1rem',border:'1px solid rgba(184,151,90,0.22)',color:white}}><div style={{fontFamily:ffS,fontSize:'1rem',marginBottom:'0.45rem'}}>A<span style={{color:gold,fontStyle:'italic'}}>+</span> CRM · {card?.profiles?.business_name||card?.profiles?.full_name}</div><div style={{display:'flex',gap:5}}>{Array.from({length:5},(_,i)=><div key={i} style={{width:15,height:15,borderRadius:'50%',border:'1.5px solid rgba(184,151,90,0.22)',background:i<cur?gold:i===cur?'rgba(184,151,90,0.35)':'transparent'}}/>)}</div></div>})()}
                 <button onClick={doPunch} style={{width:'100%',background:black,color:white,border:'none',padding:'0.85rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Give Stamp</button>
-              </div>
-            </>}
-            {panel==='rewards'&&<>
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1.25rem'}}>
-                <h2 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300}}>Rewards</h2>
-                <button onClick={()=>setModal('reward')} style={{background:black,color:white,border:'none',padding:'0.6rem 1.1rem',fontFamily:ff,fontSize:'0.6rem',letterSpacing:'0.12em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>+ Register</button>
-              </div>
-              <div style={{display:'flex',flexDirection:'column',gap:'0.75rem'}}>
-                {rewards.length===0&&<div style={{background:white,borderRadius:10,padding:'2rem',textAlign:'center',color:gray,fontSize:'0.82rem',border:'1px solid rgba(14,14,12,0.07)'}}>No rewards registered.</div>}
-                {rewards.map((r,i)=>(<div key={r.id} style={{background:white,borderRadius:10,padding:'1.1rem 1.25rem',border:'1px solid rgba(14,14,12,0.07)',display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:'1rem'}}><div style={{flex:1,minWidth:0}}><div style={{fontSize:'0.78rem',fontWeight:500,color:black,marginBottom:'0.25rem'}}>{r.profiles?.business_name||r.profiles?.full_name}</div><div style={{fontSize:'0.72rem',color:gray,marginBottom:'0.25rem'}}>{r.reward_type}</div><div style={{display:'flex',gap:'0.75rem'}}><span style={{fontSize:'0.72rem',color:gold,fontWeight:500}}>{r.reward_cost||'—'}</span><span style={{fontSize:'0.65rem',color:gray}}>{r.redeemed_at?new Date(r.redeemed_at).toLocaleDateString('en-US'):'—'}</span></div></div><div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:'0.5rem',flexShrink:0}}><span style={{fontSize:'0.58rem',padding:'0.2rem 0.65rem',borderRadius:20,background:'rgba(45,150,100,0.1)',color:'#2d8a60',whiteSpace:'nowrap'}}>{r.status}</span><button onClick={()=>deleteReward(r.id)} style={{background:'none',border:'none',cursor:'pointer',color:'rgba(192,57,43,0.5)',fontSize:'0.75rem',padding:0}}>x</button></div></div>))}
               </div>
             </>}
           </div>
@@ -1442,6 +1575,7 @@ export default function Admin({session}){
                 ['clients','Clients'],
                 ['campaigns','Campaigns'],
                 ['catalog','Catalog'],
+                ['supplies','Supplies'],
                 ['system','Admin Panel'],
               ].map(([id,label])=>(
                 <button key={id} onClick={()=>{setPanel(id);setHamburgerOpen(false)}}
@@ -1567,7 +1701,7 @@ export default function Admin({session}){
               }} style={{flex:1,background:black,color:white,border:'none',padding:'0.85rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Save Expense</button>
               <button onClick={()=>setModal(null)} style={{background:'rgba(14,14,12,0.06)',color:black,border:'none',padding:'0.85rem 1.25rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Close</button>
             </div>
-            <ExpenseHistory clientId={expenseClient.id} showToast={showToast}/>
+            <ExpenseHistory clientId={expenseClient.id} showToast={showToast} supplies={supplies}/>
           </div>
         </div>)}
 
@@ -1644,24 +1778,122 @@ export default function Admin({session}){
           </div>
         )}
 
-        {/* MODAL: Reward */}
-        {modal==='reward'&&(<div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:500,display:'flex',alignItems:'flex-end',justifyContent:'center'}} onClick={e=>e.target===e.currentTarget&&setModal(null)}>
-          <div style={{background:white,borderRadius:'12px 12px 0 0',padding:'2rem',width:'100%',maxWidth:520,maxHeight:'90vh',overflowY:'auto'}}>
-            <h3 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300,marginBottom:'0.35rem'}}>Register Reward</h3>
-            <p style={{fontSize:'0.72rem',color:gray,marginBottom:'1.5rem'}}>Document the reward with type and cost.</p>
-            <label style={lbl}>Client</label><select value={form.reward_user_id||''} onChange={e=>upd('reward_user_id',e.target.value)} style={inp}><option value="">Select</option>{users.map(u=><option key={u.id} value={u.id}>{u.business_name||u.full_name}</option>)}</select>
-            <label style={lbl}>Reward Type</label><select value={form.reward_type||'1 Free Month'} onChange={e=>upd('reward_type',e.target.value)} style={inp}>{['1 Free Month','50% Discount','Extra Service','Other'].map(t=><option key={t}>{t}</option>)}</select>
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem'}}>
-              <div><label style={lbl}>Cost</label><input style={{...inp,marginBottom:0}} type="text" placeholder="$0.00" value={form.reward_cost||''} onChange={e=>upd('reward_cost',e.target.value)}/></div>
-              <div><label style={lbl}>Date</label><input style={{...inp,marginBottom:0}} type="date" value={form.reward_date||new Date().toISOString().split('T')[0]} onChange={e=>upd('reward_date',e.target.value)}/></div>
-            </div>
-            <label style={{...lbl,marginTop:'1rem'}}>Notes (optional)</label><input style={inp} type="text" placeholder="Details..." value={form.reward_notes||''} onChange={e=>upd('reward_notes',e.target.value)}/>
-            <div style={{display:'flex',gap:'0.75rem',marginTop:'0.5rem'}}>
-              <button onClick={saveReward} style={{flex:1,background:black,color:white,border:'none',padding:'0.85rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Register Reward</button>
-              <button onClick={()=>setModal(null)} style={{background:'rgba(14,14,12,0.06)',color:black,border:'none',padding:'0.85rem 1.25rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Cancel</button>
+        {/* MODAL: Reward — inline per card */}
+        {rewardCard&&(
+          <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:500,display:'flex',alignItems:'flex-end',justifyContent:'center'}} onClick={e=>e.target===e.currentTarget&&setRewardCard(null)}>
+            <div style={{background:white,borderRadius:'12px 12px 0 0',padding:'2rem',width:'100%',maxWidth:520,maxHeight:'90vh',overflowY:'auto'}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.25rem'}}>
+                <h3 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300}}>Rewards</h3>
+                <button onClick={()=>setRewardCard(null)} style={{background:'none',border:'none',fontSize:'1.1rem',cursor:'pointer',color:gray}}>x</button>
+              </div>
+              <p style={{fontSize:'0.72rem',color:gray,marginBottom:'1.5rem'}}>{rewardCard.profiles?.business_name||rewardCard.profiles?.full_name} · #{rewardCard.card_number}</p>
+
+              {/* Existing rewards list */}
+              {rewardCard.rewards?.length>0&&(
+                <div style={{marginBottom:'1.5rem',border:'1px solid rgba(14,14,12,0.07)',borderRadius:8,overflow:'hidden'}}>
+                  <div style={{padding:'0.6rem 1rem',background:'rgba(14,14,12,0.02)',fontSize:'0.52rem',letterSpacing:'0.1em',textTransform:'uppercase',color:gray}}>Reward History</div>
+                  {rewardCard.rewards.map((r,i)=>(
+                    <div key={r.id||i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'0.75rem 1rem',borderTop:'1px solid rgba(14,14,12,0.05)'}}>
+                      <div>
+                        <div style={{fontSize:'0.75rem',color:black,fontWeight:500}}>{r.reward_type}</div>
+                        <div style={{fontSize:'0.6rem',color:gray,marginTop:'0.1rem'}}>
+                          {r.redeemed_at?new Date(r.redeemed_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):r.created_at?new Date(r.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'—'}
+                          {r.reward_cost&&' · '+r.reward_cost}
+                        </div>
+                      </div>
+                      <div style={{display:'flex',alignItems:'center',gap:'0.5rem'}}>
+                        <span style={{fontSize:'0.56rem',padding:'0.18rem 0.55rem',borderRadius:20,background:'rgba(45,138,96,0.1)',color:'#2d8a60'}}>{r.status}</span>
+                        <button onClick={async()=>{await fetch('/api/admin/rewards',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:r.id})});showToast('Reward deleted');loadAll();setRewardCard(c=>({...c,rewards:c.rewards.filter(x=>x.id!==r.id)}))}} style={{background:'none',border:'none',cursor:'pointer',color:'rgba(192,57,43,0.4)',fontSize:'0.75rem',padding:0}}>x</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {(!rewardCard.rewards||rewardCard.rewards.length===0)&&<p style={{fontSize:'0.72rem',color:gray,marginBottom:'1.5rem'}}>No rewards yet.</p>}
+
+              {/* Register new reward */}
+              <div style={{fontSize:'0.52rem',letterSpacing:'0.14em',textTransform:'uppercase',color:gold,marginBottom:'1rem'}}>Register New Reward</div>
+              <label style={lbl}>Reward Type</label>
+              <select value={form.reward_type||'1 Free Month'} onChange={e=>upd('reward_type',e.target.value)} style={inp}>
+                {['1 Free Month','50% Discount','Extra Service','Other'].map(t=><option key={t}>{t}</option>)}
+              </select>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem',marginBottom:'1rem'}}>
+                <div><label style={lbl}>Cost (optional)</label><input style={{...inp,marginBottom:0}} type="text" placeholder="$0.00" value={form.reward_cost||''} onChange={e=>upd('reward_cost',e.target.value)}/></div>
+                <div><label style={lbl}>Date</label><input style={{...inp,marginBottom:0}} type="date" value={form.reward_date||new Date().toISOString().split('T')[0]} onChange={e=>upd('reward_date',e.target.value)}/></div>
+              </div>
+              <button onClick={async()=>{
+                const res=await fetch('/api/admin/rewards',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({card_id:rewardCard.id,user_id:rewardCard.user_id,reward_type:form.reward_type||'1 Free Month',reward_cost:form.reward_cost,notes:form.reward_notes})})
+                if(res.ok){
+                  showToast('Reward registered')
+                  await fetch('/api/admin/activity-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'Registered reward',target:(form.reward_type||'1 Free Month')+' → '+(rewardCard.profiles?.business_name||rewardCard.profiles?.full_name||''),type:'reward'})})
+                  setForm({});loadAll()
+                  // Refresh card rewards in modal
+                  const updated=await fetch('/api/admin/cards').then(r=>r.json())
+                  const updatedCard=(updated.cards||[]).find(c=>c.id===rewardCard.id)
+                  if(updatedCard)setRewardCard(updatedCard)
+                }
+              }} style={{width:'100%',background:black,color:white,border:'none',padding:'0.85rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Register Reward</button>
             </div>
           </div>
-        </div>)}
+        )}
+
+        {/* MODAL: Supply Add/Edit */}
+        {supplyModal&&(
+          <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:500,display:'flex',alignItems:'flex-end',justifyContent:'center'}} onClick={e=>e.target===e.currentTarget&&setSupplyModal(null)}>
+            <div style={{background:white,borderRadius:'12px 12px 0 0',padding:'2rem',width:'100%',maxWidth:520,maxHeight:'90vh',overflowY:'auto'}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1.5rem'}}>
+                <h3 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300}}>{supplyModal==='add'?'Add Supply':'Edit Supply'}</h3>
+                <button onClick={()=>setSupplyModal(null)} style={{background:'none',border:'none',fontSize:'1.1rem',cursor:'pointer',color:gray}}>x</button>
+              </div>
+              <label style={lbl}>Name</label>
+              <input style={inp} type="text" placeholder="e.g. Vercel Pro" value={supplyForm.name} onChange={e=>setSupplyForm(f=>({...f,name:e.target.value}))}/>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem'}}>
+                <div>
+                  <label style={lbl}>Category</label>
+                  <input style={{...inp,marginBottom:0}} type="text" placeholder="Hosting, Software..." value={supplyForm.category} onChange={e=>setSupplyForm(f=>({...f,category:e.target.value}))}/>
+                </div>
+                <div>
+                  <label style={lbl}>Provider</label>
+                  <input style={{...inp,marginBottom:0}} type="text" placeholder="Vercel, GoDaddy..." value={supplyForm.provider} onChange={e=>setSupplyForm(f=>({...f,provider:e.target.value}))}/>
+                </div>
+              </div>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem',marginTop:'1rem'}}>
+                <div>
+                  <label style={lbl}>Cost ($)</label>
+                  <input style={{...inp,marginBottom:0}} type="number" step="0.01" placeholder="0.00" value={supplyForm.cost} onChange={e=>setSupplyForm(f=>({...f,cost:e.target.value}))}/>
+                </div>
+                <div>
+                  <label style={lbl}>Billing</label>
+                  <select style={{...inp,marginBottom:0}} value={supplyForm.unit} onChange={e=>setSupplyForm(f=>({...f,unit:e.target.value}))}>
+                    <option value="month">Monthly</option>
+                    <option value="year">Yearly</option>
+                    <option value="one-time">One-time</option>
+                  </select>
+                </div>
+              </div>
+              <div style={{marginTop:'1rem'}}>
+                <label style={lbl}>Renewal Date (optional)</label>
+                <input style={inp} type="date" value={supplyForm.renewal_date} onChange={e=>setSupplyForm(f=>({...f,renewal_date:e.target.value}))}/>
+              </div>
+              <label style={lbl}>Notes (optional)</label>
+              <input style={inp} type="text" placeholder="Any additional info..." value={supplyForm.notes} onChange={e=>setSupplyForm(f=>({...f,notes:e.target.value}))}/>
+              <div style={{display:'flex',gap:'0.75rem'}}>
+                <button onClick={async()=>{
+                  if(!supplyForm.name||!supplyForm.cost){showToast('Name and cost required');return}
+                  if(supplyModal==='add'){
+                    await fetch('/api/admin/supplies',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(supplyForm)})
+                    showToast('Supply added')
+                  } else {
+                    await fetch('/api/admin/supplies',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:supplyModal.id,...supplyForm})})
+                    showToast('Supply updated')
+                  }
+                  setSupplyModal(null);loadAll()
+                }} style={{flex:1,background:black,color:white,border:'none',padding:'0.85rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Save</button>
+                <button onClick={()=>setSupplyModal(null)} style={{background:'rgba(14,14,12,0.06)',color:black,border:'none',padding:'0.85rem 1.25rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Cancel</button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {toast&&<div style={{position:'fixed',bottom:'5rem',right:'1rem',background:black,color:white,padding:'0.85rem 1.25rem',borderRadius:8,fontSize:'0.74rem',borderLeft:'3px solid '+gold,zIndex:9999,maxWidth:280}}>{toast}</div>}
       </div>
