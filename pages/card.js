@@ -125,7 +125,7 @@ export default function CardPage({ session }) {
                 <div style={{marginBottom:'1.25rem'}}>
                   <div style={{display:'flex',justifyContent:'space-between',fontSize:'0.6rem',color:'rgba(255,255,255,0.3)',marginBottom:'0.4rem'}}>
                     <span>{cur} sello{cur!==1?'s':''} en ciclo actual</span>
-                    <span>Meta: 5 = 1 mes gratis</span>
+                    <span>Meta: 5 sellos</span>
                   </div>
                   <div style={{height:2,background:'rgba(255,255,255,0.06)',borderRadius:2}}>
                     <div style={{height:'100%',width:(cur/5*100)+'%',background:'linear-gradient(90deg,'+gold+','+goldL+')',borderRadius:2}}/>
@@ -134,35 +134,37 @@ export default function CardPage({ session }) {
 
                 {/* NEXT REWARD */}
                 <div style={{background:'rgba(184,151,90,0.07)',border:'1px solid rgba(184,151,90,0.17)',borderRadius:10,padding:'1rem',marginBottom:'1.25rem',textAlign:'center'}}>
-                  <div style={{fontSize:'0.54rem',letterSpacing:'0.12em',textTransform:'uppercase',color:'rgba(255,255,255,0.28)',marginBottom:'0.3rem'}}>Proximo Premio</div>
+                  <div style={{fontSize:'0.54rem',letterSpacing:'0.12em',textTransform:'uppercase',color:'rgba(255,255,255,0.28)',marginBottom:'0.3rem'}}>Next Reward</div>
                   <div style={{fontFamily:ffS,fontSize:'1.2rem',fontWeight:300,color:white}}>
-                    {hasReward?'Tu mes gratis esta listo! 🎉':'Te faltan '+rem+' sello'+(rem!==1?'s':'')+' para tu proximo mes gratis'}
+                    {hasReward
+                      ? (card.notes||'Your reward is ready') + ' 🎉'
+                      : 'Te faltan ' + rem + ' sello' + (rem!==1?'s':'') + (card.notes ? ' para: ' + card.notes : ' para tu proximo premio')
+                    }
                   </div>
                 </div>
 
-                {/* WALLET */}
-                <div style={{fontSize:'0.54rem',letterSpacing:'0.12em',textTransform:'uppercase',color:'rgba(255,255,255,0.28)',textAlign:'center',marginBottom:'0.6rem'}}>Anade tu tarjeta al wallet</div>
-                <div className="wallet-btns" style={{display:'flex',gap:'0.5rem',marginBottom:'2rem'}}>
-                  {[['🍎','Apple'],['🤖','Google'],['📱','Samsung']].map(([icon,name])=>(
-                    <button key={name} style={{flex:1,padding:'0.65rem 0.3rem',border:'1px solid rgba(184,151,90,0.17)',borderRadius:8,background:'rgba(255,255,255,0.03)',cursor:'pointer',fontFamily:ff,fontSize:'0.55rem',textAlign:'center',color:'rgba(255,255,255,0.45)'}}>
-                      <span style={{fontSize:'1rem',display:'block',marginBottom:'0.2rem'}}>{icon}</span>{name} Wallet
-                    </button>
-                  ))}
+                {/* COLLECTED REWARDS */}
+                <div style={{marginBottom:'2rem'}}>
+                  <div style={{fontSize:'0.54rem',letterSpacing:'0.12em',textTransform:'uppercase',color:'rgba(255,255,255,0.28)',marginBottom:'0.85rem'}}>Collected Rewards</div>
+                  {card.rewards?.length>0
+                    ? card.rewards.map((r,i)=>(
+                        <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'0.75rem 0',borderBottom:'1px solid rgba(255,255,255,0.05)'}}>
+                          <div>
+                            <div style={{fontSize:'0.78rem',color:'rgba(255,255,255,0.82)',fontWeight:500}}>{r.reward_type}</div>
+                            <div style={{fontSize:'0.6rem',color:'rgba(255,255,255,0.3)',marginTop:'0.1rem'}}>
+                              {r.redeemed_at
+                                ? new Date(r.redeemed_at).toLocaleDateString('es-PR',{day:'numeric',month:'long',year:'numeric'})
+                                : r.created_at
+                                  ? new Date(r.created_at).toLocaleDateString('es-PR',{day:'numeric',month:'long',year:'numeric'})
+                                  : '—'}
+                            </div>
+                          </div>
+                          <span style={{fontSize:'0.54rem',padding:'0.18rem 0.55rem',borderRadius:20,background:'rgba(45,150,100,0.12)',color:'#52b788',border:'1px solid rgba(45,150,100,0.25)',whiteSpace:'nowrap'}}>{r.status}</span>
+                        </div>
+                      ))
+                    : <div style={{fontSize:'0.72rem',color:'rgba(255,255,255,0.25)',textAlign:'center',padding:'1rem 0'}}>No rewards yet — keep going!</div>
+                  }
                 </div>
-
-                {/* STAMP HISTORY */}
-                {card.stamp_history?.length>0 && <>
-                  <div style={{fontSize:'0.54rem',letterSpacing:'0.12em',textTransform:'uppercase',color:'rgba(255,255,255,0.28)',marginBottom:'0.85rem'}}>Historial de Pagos</div>
-                  {[...card.stamp_history].reverse().map((h,i)=>(
-                    <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'0.75rem 0',borderBottom:'1px solid rgba(255,255,255,0.05)'}}>
-                      <div>
-                        <div style={{fontSize:'0.6rem',color:'rgba(255,255,255,0.26)'}}>{new Date(h.created_at).toLocaleDateString('es-PR',{day:'numeric',month:'long',year:'numeric'})}</div>
-                        <div style={{fontSize:'0.78rem',color:'rgba(255,255,255,0.72)',marginTop:'0.1rem'}}>Pago registrado{h.payment_amount?' · '+h.payment_amount:''}</div>
-                      </div>
-                      <span style={{fontSize:'0.54rem',padding:'0.18rem 0.55rem',borderRadius:20,background:'rgba(184,151,90,0.1)',color:gold,border:'1px solid rgba(184,151,90,0.22)',whiteSpace:'nowrap'}}>+1 sello</span>
-                    </div>
-                  ))}
-                </>}
 
               </div>{/* end below-card */}
             </>
