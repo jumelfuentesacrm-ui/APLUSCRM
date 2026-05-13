@@ -523,14 +523,44 @@ function ExpenseHistory({ clientId, showToast }) {
 
 function FinancialCard({ sales }) {
   const [expanded, setExpanded] = useState(false)
+  const [activeChart, setActiveChart] = useState(null)
 
   const paid = (sales||[]).filter(s=>s.status==='paid')
+  const refunds = (sales||[]).filter(s=>s.status==='refunded')
   const grossSales = paid.reduce((a,s)=>a+parseFloat(s.amount||0),0)
-  const refunded = (sales||[]).filter(s=>s.status==='refunded').reduce((a,s)=>a+Math.abs(parseFloat(s.amount||0)),0)
+  const refunded = refunds.reduce((a,s)=>a+Math.abs(parseFloat(s.amount||0)),0)
   const netSales = grossSales - refunded
   const avgOrder = paid.length>0?grossSales/paid.length:0
 
-  // Revenue by product
+  const now = new Date()
+  const ytdSales = paid.filter(s=>new Date(s.sale_date).getFullYear()===now.getFullYear()).reduce((a,s)=>a+parseFloat(s.amount||0),0)
+  const thisMonthSales = paid.filter(s=>{const d=new Date(s.sale_date);return d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth()}).reduce((a,s)=>a+parseFloat(s.amount||0),0)
+
+  // Build monthly buckets (last 12 months)
+  const buildMonthly = (items, valueKey) => {
+    const map = {}
+    items.forEach(s=>{
+      const d = new Date(s.sale_date)
+      const key = d.toLocaleDateString('en-US',{month:'short',year:'2-digit'})
+      map[key] = (map[key]||0) + Math.abs(parseFloat(s[valueKey]||0))
+    })
+    // Last 12 months in order
+    const result = []
+    for(let i=11;i>=0;i--){
+      const d = new Date(now.getFullYear(), now.getMonth()-i, 1)
+      const key = d.toLocaleDateString('en-US',{month:'short',year:'2-digit'})
+      result.push([key, map[key]||0])
+    }
+    return result
+  }
+
+  const revenueMonthly = buildMonthly(paid, 'amount')
+  const refundMonthly = buildMonthly(refunds, 'amount')
+
+  // MRR: sum of current month recurring
+  const mrrMonthly = buildMonthly(paid.filter(s=>s.type==='recurring'||s.type==='subscription'), 'amount')
+
+  // Revenue by product monthly (for Services chart — show top 5 products stacked)
   const byProduct = {}
   paid.forEach(s=>{
     const name=s.product_name||'Other'
@@ -538,78 +568,196 @@ function FinancialCard({ sales }) {
   })
   const topProducts = Object.entries(byProduct).sort((a,b)=>b[1]-a[1]).slice(0,5)
 
-  // Monthly chart data
-  const byMonth = {}
-  paid.forEach(s=>{
-    const m=new Date(s.sale_date).toLocaleDateString('en-US',{month:'short',year:'2-digit'})
-    byMonth[m]=(byMonth[m]||0)+parseFloat(s.amount||0)
-  })
-  const months = Object.entries(byMonth).slice(-6)
-  const maxVal = Math.max(...months.map(m=>m[1]),1)
+  // AOV monthly
+  const aovMonthly = (() => {
+    const map = {}
+    paid.forEach(s=>{
+      const d = new Date(s.sale_date)
+      const key = d.toLocaleDateString('en-US',{month:'short',year:'2-digit'})
+      if(!map[key]) map[key]={sum:0,count:0}
+      map[key].sum += parseFloat(s.amount||0)
+      map[key].count += 1
+    })
+    const result = []
+    for(let i=11;i>=0;i--){
+      const d = new Date(now.getFullYear(), now.getMonth()-i, 1)
+      const key = d.toLocaleDateString('en-US',{month:'short',year:'2-digit'})
+      const entry = map[key]
+      result.push([key, entry ? entry.sum/entry.count : 0])
+    }
+    return result
+  })()
 
-  const w=280,h=70,pad=10
-  const points=months.map(([,v],i)=>({x:pad+(i/(months.length-1||1))*(w-pad*2),y:h-pad-(v/maxVal)*(h-pad*2)}))
-  const pathD=points.map((p,i)=>`${i===0?'M':'L'} ${p.x} ${p.y}`).join(' ')
+  // Chart definitions
+  const charts = [
+    { id:'revenue', label:'Revenue Over Time', data: revenueMonthly, color:'#2d8a60', prefix:'$', desc:'Monthly gross revenue from all paid transactions' },
+    { id:'mrr',     label:'MRR',               data: mrrMonthly,    color: gold,      prefix:'$', desc:'Monthly Recurring Revenue from subscriptions' },
+    { id:'aov',     label:'Avg Order Value',    data: aovMonthly,    color:'#5b8dee',  prefix:'$', desc:'Average transaction value per month' },
+    { id:'refunds', label:'Refunds',            data: refundMonthly, color:'#c0392b',  prefix:'$', desc:'Monthly refund totals' },
+    { id:'services',label:'Revenue by Service', data: topProducts,   color: gold,      prefix:'$', desc:'Total revenue breakdown by product/service', isBar:true },
+  ]
+
+  // SVG area chart renderer
+  function AreaChart({ data, color, prefix='$' }) {
+    const w=500, h=140, padX=48, padY=16
+    const vals = data.map(d=>d[1])
+    const maxVal = Math.max(...vals, 1)
+    const minVal = 0
+    const pts = data.map(([,v],i)=>({
+      x: padX + (i/(data.length-1||1))*(w-padX-padX*0.5),
+      y: padY + (1-(v-minVal)/(maxVal-minVal||1))*(h-padY*2)
+    }))
+    const linePath = pts.map((p,i)=>`${i===0?'M':'L'} ${p.x} ${p.y}`).join(' ')
+    const areaPath = `${linePath} L ${pts[pts.length-1].x} ${h-padY} L ${pts[0].x} ${h-padY} Z`
+    const gridLines = [0.25,0.5,0.75,1]
+
+    return (
+      <div style={{width:'100%',overflowX:'auto'}}>
+        <svg viewBox={`0 0 ${w} ${h}`} style={{width:'100%',height:'auto',minWidth:280}}>
+          {/* Grid */}
+          {gridLines.map(pct=>{
+            const y = padY + (1-pct)*(h-padY*2)
+            return <g key={pct}>
+              <line x1={padX} y1={y} x2={w-padX*0.5} y2={y} stroke="rgba(14,14,12,0.07)" strokeWidth={1} strokeDasharray="3,3"/>
+              <text x={padX-4} y={y+4} fontSize={9} fill={gray} textAnchor="end">{prefix}{(maxVal*pct).toFixed(0)}</text>
+            </g>
+          })}
+          {/* Area fill */}
+          <defs>
+            <linearGradient id={`grad-${color.replace('#','')}`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={color} stopOpacity="0.18"/>
+              <stop offset="100%" stopColor={color} stopOpacity="0.01"/>
+            </linearGradient>
+          </defs>
+          <path d={areaPath} fill={`url(#grad-${color.replace('#','')})`}/>
+          {/* Line */}
+          <path d={linePath} fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"/>
+          {/* Dots */}
+          {pts.map((p,i)=>(
+            <g key={i}>
+              <circle cx={p.x} cy={p.y} r={4} fill={color} opacity={0.9}/>
+              <title>{data[i][0]}: {prefix}{data[i][1].toFixed(2)}</title>
+            </g>
+          ))}
+        </svg>
+        {/* X labels */}
+        <div style={{display:'flex',justifyContent:'space-between',paddingLeft:padX,paddingRight:padX*0.5,marginTop:'-0.25rem'}}>
+          {data.filter((_,i)=>data.length<=7||i%2===0||i===data.length-1).map(([m],i)=>(
+            <span key={i} style={{fontSize:'0.52rem',color:gray}}>{m}</span>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  // Bar chart for services
+  function BarChart({ data, color, prefix='$' }) {
+    const maxVal = Math.max(...data.map(d=>d[1]),1)
+    return (
+      <div>
+        {data.map(([name,val],i)=>(
+          <div key={name} style={{marginBottom:'0.75rem'}}>
+            <div style={{display:'flex',justifyContent:'space-between',marginBottom:'0.25rem'}}>
+              <span style={{fontSize:'0.68rem',color:black,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:'70%'}}>{name}</span>
+              <span style={{fontSize:'0.68rem',fontWeight:600,color:black}}>{prefix}{val.toFixed(2)}</span>
+            </div>
+            <div style={{height:6,background:'rgba(14,14,12,0.06)',borderRadius:3}}>
+              <div style={{height:'100%',width:(val/maxVal*100)+'%',background:color,borderRadius:3,transition:'width 0.4s'}}/>
+            </div>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  const activeChartDef = charts.find(c=>c.id===activeChart)
 
   return(
-    <div style={{background:white,borderRadius:10,border:'1px solid rgba(14,14,12,0.07)',overflow:'hidden',marginBottom:'1.5rem'}}>
-      <div onClick={()=>setExpanded(e=>!e)} style={{padding:'1.25rem 1.5rem',cursor:'pointer',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-        <div>
-          <div style={{fontFamily:ffS,fontSize:'1.1rem',fontWeight:300}}>Financial <span style={{fontSize:'0.52rem',color:gold,letterSpacing:'0.1em',textTransform:'uppercase',marginLeft:'0.5rem'}}>Stripe</span></div>
-          <div style={{fontSize:'0.62rem',color:gray,marginTop:'0.15rem'}}>{paid.length} payment{paid.length!==1?'s':''} · Net ${netSales.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+    <>
+      {/* Chart Modal */}
+      {activeChart && activeChartDef && (
+        <div style={{position:'fixed',inset:0,background:'rgba(14,14,12,0.55)',zIndex:300,display:'flex',alignItems:'center',justifyContent:'center',padding:'1rem'}} onClick={e=>e.target===e.currentTarget&&setActiveChart(null)}>
+          <div style={{background:white,borderRadius:14,width:'100%',maxWidth:620,maxHeight:'85vh',overflowY:'auto',boxShadow:'0 24px 60px rgba(0,0,0,0.18)'}}>
+            {/* Modal header */}
+            <div style={{padding:'1.25rem 1.5rem',borderBottom:'1px solid rgba(14,14,12,0.07)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+              <div>
+                <div style={{fontFamily:ffS,fontSize:'1.15rem',fontWeight:300,color:black}}>{activeChartDef.label}</div>
+                <div style={{fontSize:'0.58rem',color:gray,marginTop:'0.2rem'}}>{activeChartDef.desc}</div>
+              </div>
+              <button onClick={()=>setActiveChart(null)} style={{background:'none',border:'none',fontSize:'1.1rem',color:gray,cursor:'pointer',padding:'0.25rem 0.5rem'}}>✕</button>
+            </div>
+            {/* Chart */}
+            <div style={{padding:'1.5rem'}}>
+              {activeChartDef.isBar
+                ? <BarChart data={activeChartDef.data} color={activeChartDef.color} prefix={activeChartDef.prefix}/>
+                : <AreaChart data={activeChartDef.data} color={activeChartDef.color} prefix={activeChartDef.prefix}/>
+              }
+              {activeChartDef.data.every(d=>d[1]===0) && (
+                <div style={{textAlign:'center',color:gray,fontSize:'0.72rem',padding:'1rem 0'}}>No data available yet.</div>
+              )}
+            </div>
+          </div>
         </div>
-        <div style={{display:'flex',alignItems:'center',gap:'0.75rem'}}>
-          <div style={{display:'flex',gap:'0.5rem'}}>
-            {[['#2d8a60','Sales'],['#c0392b','Refunds'],[gold,'Avg']].map(([color,label])=>(<div key={label} style={{display:'flex',alignItems:'center',gap:'0.25rem'}}><div style={{width:6,height:6,borderRadius:'50%',background:color}}/><span style={{fontSize:'0.56rem',color:gray}}>{label}</span></div>))}
+      )}
+
+      {/* Financial Card */}
+      <div style={{background:white,borderRadius:10,border:'1px solid rgba(14,14,12,0.07)',overflow:'hidden',marginBottom:'1.5rem'}}>
+        <div onClick={()=>setExpanded(e=>!e)} style={{padding:'1.25rem 1.5rem',cursor:'pointer',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <div>
+            <div style={{fontFamily:ffS,fontSize:'1.1rem',fontWeight:300}}>Financial <span style={{fontSize:'0.52rem',color:gold,letterSpacing:'0.1em',textTransform:'uppercase',marginLeft:'0.5rem'}}>Stripe</span></div>
+            <div style={{fontSize:'0.62rem',color:gray,marginTop:'0.15rem'}}>{paid.length} payment{paid.length!==1?'s':''} · Net ${netSales.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
           </div>
           <span style={{fontSize:'0.75rem',color:gray,transform:expanded?'rotate(180deg)':'rotate(0)',transition:'transform 0.2s',display:'inline-block'}}>▾</span>
         </div>
-      </div>
-      {expanded&&(
-        <div style={{borderTop:'1px solid rgba(14,14,12,0.06)',padding:'1.25rem 1.5rem'}}>
-          {/* Key metrics */}
-          <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'1rem',marginBottom:'1.5rem'}}>
-            {[['Gross Sales','$'+grossSales.toFixed(2),'#2d8a60'],['Refunded','-$'+refunded.toFixed(2),'#c0392b'],['Avg Order','$'+avgOrder.toFixed(2),gold]].map(([label,val,color])=>(
-              <div key={label} style={{textAlign:'center',background:'rgba(14,14,12,0.02)',borderRadius:8,padding:'0.85rem'}}>
-                <div style={{fontSize:'1rem',fontFamily:ffS,fontWeight:300,color,marginBottom:'0.2rem'}}>{val}</div>
-                <div style={{fontSize:'0.56rem',color:gray,letterSpacing:'0.1em',textTransform:'uppercase'}}>{label}</div>
-              </div>
-            ))}
-          </div>
-          {/* Top products */}
-          {topProducts.length>0&&(<>
-            <div style={{fontSize:'0.56rem',letterSpacing:'0.12em',textTransform:'uppercase',color:gray,marginBottom:'0.6rem'}}>Revenue by Service</div>
-            <div style={{marginBottom:'1.5rem'}}>
-              {topProducts.map(([name,val],i)=>(
-                <div key={name} style={{display:'flex',alignItems:'center',gap:'0.6rem',marginBottom:'0.5rem'}}>
-                  <div style={{fontSize:'0.62rem',color:gray,width:12,textAlign:'right',flexShrink:0}}>{i+1}</div>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontSize:'0.68rem',color:black,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{name}</div>
-                    <div style={{height:3,background:'rgba(14,14,12,0.06)',borderRadius:2,marginTop:'0.2rem'}}><div style={{height:'100%',width:(val/topProducts[0][1]*100)+'%',background:gold,borderRadius:2}}/></div>
-                  </div>
-                  <div style={{fontSize:'0.68rem',fontWeight:600,color:black,flexShrink:0}}>${val.toFixed(2)}</div>
+
+        {expanded&&(
+          <div style={{borderTop:'1px solid rgba(14,14,12,0.06)',padding:'1.25rem 1.5rem'}}>
+
+            {/* Top 3 KPIs */}
+            <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'0.75rem',marginBottom:'1.5rem'}}>
+              {[
+                ['Revenue YTD',   '$'+ytdSales.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}), '#2d8a60'],
+                ['This Month',    '$'+thisMonthSales.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}), gold],
+                ['Avg Order',     '$'+avgOrder.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}), '#5b8dee'],
+              ].map(([label,val,color])=>(
+                <div key={label} style={{textAlign:'center',background:'rgba(14,14,12,0.025)',borderRadius:8,padding:'0.85rem 0.5rem'}}>
+                  <div style={{fontSize:'1.05rem',fontFamily:ffS,fontWeight:300,color,marginBottom:'0.2rem',lineHeight:1}}>{val}</div>
+                  <div style={{fontSize:'0.52rem',color:gray,letterSpacing:'0.08em',textTransform:'uppercase',marginTop:'0.3rem'}}>{label}</div>
                 </div>
               ))}
             </div>
-          </>)}
-          {/* Monthly chart */}
-          {months.length>1&&(<>
-            <div style={{fontSize:'0.56rem',letterSpacing:'0.12em',textTransform:'uppercase',color:gray,marginBottom:'0.6rem'}}>Monthly Revenue</div>
-            <div style={{background:'rgba(14,14,12,0.02)',borderRadius:8,padding:'0.75rem',border:'1px solid rgba(14,14,12,0.04)'}}>
-              <svg viewBox={`0 0 ${w} ${h}`} style={{width:'100%',height:'auto'}}>
-                {[0.25,0.5,0.75].map(pct=>(<line key={pct} x1={pad} y1={h-pad-(pct*(h-pad*2))} x2={w-pad} y2={h-pad-(pct*(h-pad*2))} stroke="rgba(14,14,12,0.06)" strokeWidth={1}/>))}
-                <path d={pathD} fill="none" stroke={gold} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"/>
-                {points.map((p,i)=>(<circle key={i} cx={p.x} cy={p.y} r={3} fill={gold}/>))}
-              </svg>
-              <div style={{display:'flex',justifyContent:'space-between',marginTop:'0.25rem'}}>
-                {months.map(([m],i)=>(<span key={i} style={{fontSize:'0.52rem',color:gray}}>{m}</span>))}
-              </div>
+
+            {/* Divider + label */}
+            <div style={{fontSize:'0.52rem',letterSpacing:'0.14em',textTransform:'uppercase',color:gray,marginBottom:'0.75rem'}}>Gráficas — toca para ver</div>
+
+            {/* Chart chips */}
+            <div style={{display:'flex',flexWrap:'wrap',gap:'0.5rem',marginBottom:'0.5rem'}}>
+              {charts.map(c=>(
+                <button key={c.id} onClick={()=>setActiveChart(c.id)} style={{
+                  padding:'0.45rem 0.9rem',
+                  borderRadius:20,
+                  border:`1px solid ${activeChart===c.id?c.color:'rgba(14,14,12,0.12)'}`,
+                  background: activeChart===c.id?c.color+'18':'transparent',
+                  color: c.color,
+                  fontSize:'0.62rem',
+                  fontFamily:ff,
+                  cursor:'pointer',
+                  display:'flex',
+                  alignItems:'center',
+                  gap:'0.35rem',
+                  transition:'all 0.15s'
+                }}>
+                  <span style={{width:7,height:7,borderRadius:'50%',background:c.color,display:'inline-block',flexShrink:0}}/>
+                  {c.label}
+                </button>
+              ))}
             </div>
-          </>)}
-          {paid.length===0&&<div style={{textAlign:'center',fontSize:'0.72rem',color:gray,padding:'1rem'}}>No Stripe payments recorded yet.</div>}
-        </div>
-      )}
-    </div>
+
+            {paid.length===0&&<div style={{textAlign:'center',fontSize:'0.72rem',color:gray,padding:'1rem 0'}}>No Stripe payments recorded yet.</div>}
+          </div>
+        )}
+      </div>
+    </>
   )
 }
 
