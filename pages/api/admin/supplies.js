@@ -7,6 +7,17 @@ const supabaseAdmin = createClient(
 
 export default async function handler(req, res) {
   if (req.method === 'GET') {
+    // If history param, return cost history for a supply
+    if (req.query.history) {
+      const { data, error } = await supabaseAdmin
+        .from('supply_cost_history')
+        .select('*')
+        .eq('supply_id', req.query.history)
+        .order('created_at', { ascending: false })
+        .limit(20)
+      if (error) return res.status(500).json({ error: error.message })
+      return res.status(200).json({ history: data || [] })
+    }
     const { data, error } = await supabaseAdmin
       .from('supplies')
       .select('*')
@@ -23,14 +34,27 @@ export default async function handler(req, res) {
       provider: provider||null, renewal_date: renewal_date||null, notes: notes||null, active: true
     }).select().single()
     if (error) return res.status(500).json({ error: error.message })
+    // Save initial cost history
+    await supabaseAdmin.from('supply_cost_history').insert({ supply_id: data.id, cost: parseFloat(cost) })
     return res.status(200).json({ supply: data })
   }
 
   if (req.method === 'PATCH') {
-    const { id, ...fields } = req.body
+    const { id, cost, ...fields } = req.body
     if (!id) return res.status(400).json({ error: 'id required' })
-    if (fields.cost !== undefined) fields.cost = parseFloat(fields.cost)
-    const { error } = await supabaseAdmin.from('supplies').update(fields).eq('id', id)
+    const updateData = { ...fields }
+    if (cost !== undefined) updateData.cost = parseFloat(cost)
+
+    // Get current cost to compare
+    if (cost !== undefined) {
+      const { data: current } = await supabaseAdmin.from('supplies').select('cost').eq('id', id).single()
+      if (current && parseFloat(current.cost) !== parseFloat(cost)) {
+        // Save to history only if cost changed
+        await supabaseAdmin.from('supply_cost_history').insert({ supply_id: id, cost: parseFloat(cost) })
+      }
+    }
+
+    const { error } = await supabaseAdmin.from('supplies').update(updateData).eq('id', id)
     if (error) return res.status(500).json({ error: error.message })
     return res.status(200).json({ success: true })
   }
@@ -38,6 +62,7 @@ export default async function handler(req, res) {
   if (req.method === 'DELETE') {
     const { id } = req.body
     if (!id) return res.status(400).json({ error: 'id required' })
+    await supabaseAdmin.from('supply_cost_history').delete().eq('supply_id', id)
     const { error } = await supabaseAdmin.from('supplies').delete().eq('id', id)
     if (error) return res.status(500).json({ error: error.message })
     return res.status(200).json({ success: true })
