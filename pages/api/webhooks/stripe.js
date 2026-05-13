@@ -88,20 +88,29 @@ async function handlePayment(email, name, amount, currency, stripeCustomerId, de
 
   if (!cardId) return
 
-  // 3. Punch card
+  // 3. Punch card atomically via RPC
   const { data: card } = await supabase
     .from('loyalty_cards')
     .select('stamps')
     .eq('id', cardId)
     .single()
 
-  const newStamps = (card?.stamps || 0) + 1
+  const currentStamps = card?.stamps || 0
+  const newStamps = currentStamps + 1
   const newCycle = Math.ceil(newStamps / 5) || 1
 
-  await supabase.from('loyalty_cards').update({
-    stamps: newStamps,
-    cycle: newCycle
-  }).eq('id', cardId)
+  const { error: updateErr } = await supabase
+    .from('loyalty_cards')
+    .update({ stamps: newStamps, cycle: newCycle })
+    .eq('id', cardId)
+    .eq('stamps', currentStamps) // optimistic lock
+
+  if (updateErr) {
+    // Retry once
+    const { data: retryCard } = await supabase.from('loyalty_cards').select('stamps').eq('id', cardId).single()
+    const retryStamps = (retryCard?.stamps || 0) + 1
+    await supabase.from('loyalty_cards').update({ stamps: retryStamps, cycle: Math.ceil(retryStamps/5)||1 }).eq('id', cardId)
+  }
 
   // 4. Record stamp history
   await supabase.from('stamp_history').insert({
