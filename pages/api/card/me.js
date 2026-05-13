@@ -11,7 +11,7 @@ export default async function handler(req, res) {
 
   const { data: card, error } = await supabaseAdmin
     .from('loyalty_cards')
-    .select('*, stamp_history(id,payment_amount,created_at), rewards(id,reward_type,reward_cost,status,redeemed_at)')
+    .select('*, stamp_history(id,payment_amount,created_at), rewards(id,reward_type,reward_cost,status,redeemed_at,created_at)')
     .eq('user_id', user_id)
     .single()
 
