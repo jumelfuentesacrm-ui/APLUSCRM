@@ -1198,6 +1198,7 @@ function AgendaEvent({ ev, todayFlag }) {
   const [loaded, setLoaded] = useState(false)
 
   const d = new Date(ev.start?.dateTime||ev.start?.date)
+  const name = ev.summary || 'Booking'
 
   async function loadNotes() {
     if (loaded) return
@@ -1221,9 +1222,6 @@ function AgendaEvent({ ev, todayFlag }) {
     setOpen(o=>!o)
     if (!open) loadNotes()
   }
-
-  const d = new Date(ev.start?.dateTime||ev.start?.date)
-  const name = ev.summary || 'Booking'
 
   return (
     <div style={{borderBottom:'1px solid rgba(14,14,12,0.05)'}}>
@@ -2380,4 +2378,3 @@ function FilesListForClient({ userId, showToast }) {
     </div>
   )
 }
-                                                                            
