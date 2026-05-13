@@ -614,75 +614,149 @@ function FinancialCard({ sales }) {
     { id:'services',label:'Revenue by Service', data: topProducts,   color: gold,      prefix:'$', desc:'Total revenue breakdown by product/service', isBar:true },
   ]
 
-  // SVG area chart renderer
+  // SVG area chart renderer — premium version
   function AreaChart({ data, color, prefix='$' }) {
-    const w=500, h=140, padX=48, padY=16
+    const [hovered, setHovered] = useState(null)
+    const w=520, h=160, padX=56, padY=20, padR=16
     const vals = data.map(d=>d[1])
     const maxVal = Math.max(...vals, 1)
-    const minVal = 0
+    const chartW = w - padX - padR
+    const chartH = h - padY*2
+
     const pts = data.map(([,v],i)=>({
-      x: padX + (i/(data.length-1||1))*(w-padX-padX*0.5),
-      y: padY + (1-(v-minVal)/(maxVal-minVal||1))*(h-padY*2)
+      x: padX + (i/(data.length-1||1))*chartW,
+      y: padY + (1-(v/maxVal))*chartH
     }))
-    const linePath = pts.map((p,i)=>`${i===0?'M':'L'} ${p.x} ${p.y}`).join(' ')
-    const areaPath = `${linePath} L ${pts[pts.length-1].x} ${h-padY} L ${pts[0].x} ${h-padY} Z`
-    const gridLines = [0.25,0.5,0.75,1]
+
+    // Smooth bezier curve
+    function smoothPath(points) {
+      if (points.length < 2) return ''
+      let d = `M ${points[0].x} ${points[0].y}`
+      for (let i = 1; i < points.length; i++) {
+        const prev = points[i-1], curr = points[i]
+        const cpx = (prev.x + curr.x) / 2
+        d += ` C ${cpx} ${prev.y} ${cpx} ${curr.y} ${curr.x} ${curr.y}`
+      }
+      return d
+    }
+
+    const linePath = smoothPath(pts)
+    const areaPath = pts.length > 1
+      ? `${linePath} L ${pts[pts.length-1].x} ${h-padY} L ${pts[0].x} ${h-padY} Z`
+      : ''
+
+    const gridLevels = [0, 0.25, 0.5, 0.75, 1]
+    const gradId = `grad-${color.replace('#','')}`
 
     return (
-      <div style={{width:'100%',overflowX:'auto'}}>
-        <svg viewBox={`0 0 ${w} ${h}`} style={{width:'100%',height:'auto',minWidth:280}}>
-          {/* Grid */}
-          {gridLines.map(pct=>{
-            const y = padY + (1-pct)*(h-padY*2)
-            return <g key={pct}>
-              <line x1={padX} y1={y} x2={w-padX*0.5} y2={y} stroke="rgba(14,14,12,0.07)" strokeWidth={1} strokeDasharray="3,3"/>
-              <text x={padX-4} y={y+4} fontSize={9} fill={gray} textAnchor="end">{prefix}{(maxVal*pct).toFixed(0)}</text>
-            </g>
-          })}
-          {/* Area fill */}
+      <div style={{width:'100%',position:'relative',userSelect:'none'}}>
+        {/* Tooltip */}
+        {hovered!==null && (
+          <div style={{
+            position:'absolute',
+            left: pts[hovered]?.x / w * 100 + '%',
+            top: 0,
+            transform:'translateX(-50%)',
+            background:black,
+            color:white,
+            padding:'0.4rem 0.7rem',
+            borderRadius:6,
+            fontSize:'0.62rem',
+            fontFamily:ff,
+            pointerEvents:'none',
+            whiteSpace:'nowrap',
+            zIndex:10,
+            boxShadow:'0 4px 12px rgba(0,0,0,0.2)'
+          }}>
+            <div style={{fontWeight:600}}>{prefix}{data[hovered][1].toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+            <div style={{opacity:0.65,fontSize:'0.55rem',marginTop:'0.1rem'}}>{data[hovered][0]}</div>
+          </div>
+        )}
+        <svg viewBox={`0 0 ${w} ${h}`} style={{width:'100%',height:'auto',display:'block',overflow:'visible'}}
+          onMouseLeave={()=>setHovered(null)}>
           <defs>
-            <linearGradient id={`grad-${color.replace('#','')}`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={color} stopOpacity="0.18"/>
-              <stop offset="100%" stopColor={color} stopOpacity="0.01"/>
+            <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={color} stopOpacity="0.22"/>
+              <stop offset="100%" stopColor={color} stopOpacity="0"/>
             </linearGradient>
           </defs>
-          <path d={areaPath} fill={`url(#grad-${color.replace('#','')})`}/>
-          {/* Line */}
-          <path d={linePath} fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"/>
-          {/* Dots */}
+
+          {/* Grid lines + Y labels */}
+          {gridLevels.map(pct=>{
+            const y = padY + (1-pct)*chartH
+            const val = maxVal*pct
+            const label = val>=1000 ? '$'+(val/1000).toFixed(1)+'k' : prefix+val.toFixed(0)
+            return <g key={pct}>
+              <line x1={padX} y1={y} x2={w-padR} y2={y}
+                stroke={pct===0?'rgba(14,14,12,0.12)':'rgba(14,14,12,0.06)'}
+                strokeWidth={pct===0?1.5:1} strokeDasharray={pct===0?'none':'4,4'}/>
+              {pct>0&&<text x={padX-6} y={y+4} fontSize={9} fill={gray} textAnchor="end">{label}</text>}
+            </g>
+          })}
+
+          {/* Area fill */}
+          {areaPath&&<path d={areaPath} fill={`url(#${gradId})`}/>}
+
+          {/* Smooth line */}
+          {linePath&&<path d={linePath} fill="none" stroke={color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"/>}
+
+          {/* Hover zones + dots */}
           {pts.map((p,i)=>(
-            <g key={i}>
-              <circle cx={p.x} cy={p.y} r={4} fill={color} opacity={0.9}/>
-              <title>{data[i][0]}: {prefix}{data[i][1].toFixed(2)}</title>
+            <g key={i} onMouseEnter={()=>setHovered(i)} style={{cursor:'crosshair'}}>
+              {/* invisible hover zone */}
+              <rect x={p.x-(chartW/(data.length*2))} y={padY} width={chartW/data.length} height={chartH} fill="transparent"/>
+              {/* dot — always show if hovered, else small */}
+              <circle cx={p.x} cy={p.y} r={hovered===i?5:3}
+                fill={hovered===i?color:'white'}
+                stroke={color} strokeWidth={2}
+                style={{transition:'r 0.1s'}}/>
+              {/* vertical line on hover */}
+              {hovered===i&&<line x1={p.x} y1={padY} x2={p.x} y2={h-padY} stroke={color} strokeWidth={1} strokeDasharray="3,3" opacity={0.4}/>}
             </g>
           ))}
         </svg>
+
         {/* X labels */}
-        <div style={{display:'flex',justifyContent:'space-between',paddingLeft:padX,paddingRight:padX*0.5,marginTop:'-0.25rem'}}>
-          {data.filter((_,i)=>data.length<=7||i%2===0||i===data.length-1).map(([m],i)=>(
-            <span key={i} style={{fontSize:'0.52rem',color:gray}}>{m}</span>
-          ))}
+        <div style={{display:'flex',justifyContent:'space-between',paddingLeft:padX,paddingRight:padR,marginTop:'0.35rem'}}>
+          {data.map(([m],i)=>{
+            // Show every other label if > 7 points
+            if (data.length > 7 && i % 2 !== 0 && i !== data.length-1) return <span key={i}/>
+            return <span key={i} style={{fontSize:'0.52rem',color:hovered===i?black:gray,fontWeight:hovered===i?600:400,transition:'color 0.1s'}}>{m}</span>
+          })}
         </div>
       </div>
     )
   }
 
-  // Bar chart for services
+  // Bar chart for services — premium version
   function BarChart({ data, color, prefix='$' }) {
+    const [hovered, setHovered] = useState(null)
     const maxVal = Math.max(...data.map(d=>d[1]),1)
+    const total = data.reduce((a,d)=>a+d[1],0)
     return (
       <div>
-        {data.map(([name,val],i)=>(
-          <div key={name} style={{marginBottom:'0.75rem'}}>
-            <div style={{display:'flex',justifyContent:'space-between',marginBottom:'0.25rem'}}>
-              <span style={{fontSize:'0.68rem',color:black,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:'70%'}}>{name}</span>
-              <span style={{fontSize:'0.68rem',fontWeight:600,color:black}}>{prefix}{val.toFixed(2)}</span>
+        {data.map(([name,val],i)=>{
+          const pct = Math.round(val/total*100)
+          return (
+            <div key={name} style={{marginBottom:'1rem'}}
+              onMouseEnter={()=>setHovered(i)} onMouseLeave={()=>setHovered(null)}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:'0.35rem'}}>
+                <span style={{fontSize:'0.7rem',color:hovered===i?black:gray,fontWeight:hovered===i?600:400,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:'65%',transition:'color 0.15s'}}>{name}</span>
+                <div style={{display:'flex',alignItems:'baseline',gap:'0.5rem',flexShrink:0}}>
+                  <span style={{fontSize:'0.58rem',color:gray}}>{pct}%</span>
+                  <span style={{fontSize:'0.82rem',fontWeight:600,color:black,fontFamily:ffS}}>{prefix}{val.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
+                </div>
+              </div>
+              <div style={{height:8,background:'rgba(14,14,12,0.06)',borderRadius:4,overflow:'hidden'}}>
+                <div style={{height:'100%',width:(val/maxVal*100)+'%',background:hovered===i?color:color+'cc',borderRadius:4,transition:'width 0.4s, background 0.15s'}}/>
+              </div>
             </div>
-            <div style={{height:6,background:'rgba(14,14,12,0.06)',borderRadius:3}}>
-              <div style={{height:'100%',width:(val/maxVal*100)+'%',background:color,borderRadius:3,transition:'width 0.4s'}}/>
-            </div>
-          </div>
-        ))}
+          )
+        })}
+        <div style={{marginTop:'1.25rem',paddingTop:'1rem',borderTop:'1px solid rgba(14,14,12,0.06)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <span style={{fontSize:'0.58rem',color:gray,letterSpacing:'0.08em',textTransform:'uppercase'}}>Total Revenue</span>
+          <span style={{fontSize:'1.1rem',fontFamily:ffS,fontWeight:300,color:black}}>{prefix}{total.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
+        </div>
       </div>
     )
   }
@@ -714,9 +788,32 @@ function FinancialCard({ sales }) {
             <div style={{padding:'1.25rem 1.5rem',transition:'opacity 0.22s',opacity:chartVisible?1:0}}>
               {activeChartDef.isBar
                 ? <BarChart data={activeChartDef.data} color={activeChartDef.color} prefix={activeChartDef.prefix}/>
-                : <AreaChart data={activeChartDef.data} color={activeChartDef.color} prefix={activeChartDef.prefix}/>
+                : <>
+                    {/* Summary stats row */}
+                    {!activeChartDef.data.every(d=>d[1]===0)&&(()=>{
+                      const vals = activeChartDef.data.map(d=>d[1]).filter(v=>v>0)
+                      const total = vals.reduce((a,b)=>a+b,0)
+                      const avg = vals.length>0?total/vals.length:0
+                      const peak = Math.max(...vals,0)
+                      const peakMonth = activeChartDef.data.find(d=>d[1]===peak)?.[0]||'—'
+                      return (
+                        <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'0.75rem',marginBottom:'1.5rem'}}>
+                          {[['Total',activeChartDef.prefix+total.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}),'#2d8a60'],
+                            ['Monthly Avg',activeChartDef.prefix+avg.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}),gold],
+                            ['Peak Month',peakMonth,'#5b8dee']
+                          ].map(([label,val,color])=>(
+                            <div key={label} style={{textAlign:'center',background:'rgba(14,14,12,0.025)',borderRadius:8,padding:'0.75rem 0.5rem'}}>
+                              <div style={{fontSize:'0.95rem',fontFamily:ffS,fontWeight:300,color,lineHeight:1}}>{val}</div>
+                              <div style={{fontSize:'0.5rem',color:gray,letterSpacing:'0.07em',textTransform:'uppercase',marginTop:'0.25rem'}}>{label}</div>
+                            </div>
+                          ))}
+                        </div>
+                      )
+                    })()}
+                    <AreaChart data={activeChartDef.data} color={activeChartDef.color} prefix={activeChartDef.prefix}/>
+                  </>
               }
-              {activeChartDef.data.every(d=>d[1]===0)&&<div style={{textAlign:'center',color:gray,fontSize:'0.72rem',padding:'1rem 0'}}>No data available yet.</div>}
+              {activeChartDef.data.every(d=>d[1]===0)&&<div style={{textAlign:'center',color:gray,fontSize:'0.72rem',padding:'2rem 0'}}>No data available yet.</div>}
             </div>
           </div>
         </div>
@@ -954,7 +1051,7 @@ function AdminSystemPanel({ users, cards, allUsers, loadAll, showToast }) {
                 <div style={{fontSize:'0.62rem',color:gray,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',marginTop:'0.1rem'}}>{l.target||'—'}</div>
               </div>
               <div style={{textAlign:'right',flexShrink:0}}>
-                <div style={{fontSize:'0.6rem',color:gray}}>{timeAgo(l.created_at)}</div>
+                <div style={{fontSize:'0.6rem',color:gray}}>{l.created_at?new Date(l.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+' · '+new Date(l.created_at).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}):'—'}</div>
                 <div style={{fontSize:'0.56rem',color:'rgba(14,14,12,0.3)',marginTop:'0.1rem'}}>{l.user_name||'Admin'}</div>
               </div>
             </div>
@@ -980,7 +1077,7 @@ function AdminSystemPanel({ users, cards, allUsers, loadAll, showToast }) {
                 color:u.role==='admin'?gold:'#2980b9',width:'fit-content'}}>
                 {u.role==='admin'?'Admin':'Client'}
               </span>
-              <span style={{fontSize:'0.62rem',color:gray}}>{u.last_sign_in_at?timeAgo(u.last_sign_in_at):'Never'}</span>
+              <span style={{fontSize:'0.62rem',color:gray}}>{u.last_sign_in_at?new Date(u.last_sign_in_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+' · '+new Date(u.last_sign_in_at).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}):'Never'}</span>
             </div>
           ))}
           {!sessionsLoading&&filteredSessions.length===0&&<div style={{padding:'2rem',textAlign:'center',color:gray,fontSize:'0.82rem'}}>No sessions found.</div>}
