@@ -1188,52 +1188,171 @@ function SuppliesPanel({ supplies, onAdd, onEdit, onDelete, showToast }) {
 
 function BookingsPanel() {
   const CALENDAR_ID = 'jfuentes@accountingpluscrm.com'
-  const now = new Date()
-  const [view, setView] = useState('week') // week | month | agenda
+  const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_CALENDAR_API_KEY
+  const [events, setEvents] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [view, setView] = useState('month')
+  const [currentDate, setCurrentDate] = useState(new Date())
 
-  const embedUrl = (v) => {
-    const base = 'https://calendar.google.com/calendar/embed'
-    const params = new URLSearchParams({
-      src: CALENDAR_ID,
-      ctz: 'America/Puerto_Rico',
-      mode: v === 'month' ? 'MONTH' : v === 'agenda' ? 'AGENDA' : 'WEEK',
-      showTitle: 0,
-      showNav: 1,
-      showDate: 1,
-      showPrint: 0,
-      showTabs: 0,
-      showCalendars: 0,
-      showTz: 0,
-      color: '%23B8975A',
-    })
-    return `${base}?${params.toString()}`
+  useEffect(() => { fetchEvents() }, [currentDate, view])
+
+  async function fetchEvents() {
+    setLoading(true); setError(null)
+    try {
+      const start = new Date(currentDate), end = new Date(currentDate)
+      if (view==='week') { const day=start.getDay(); start.setDate(start.getDate()-day); end.setDate(start.getDate()+7) }
+      else if (view==='month') { start.setDate(1); end.setMonth(end.getMonth()+1); end.setDate(0) }
+      else { end.setDate(end.getDate()+30) }
+      const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/events?key=${API_KEY}&timeMin=${start.toISOString()}&timeMax=${end.toISOString()}&singleEvents=true&orderBy=startTime&maxResults=50`
+      const res = await fetch(url)
+      if (!res.ok) throw new Error('failed')
+      const data = await res.json()
+      setEvents(data.items||[])
+    } catch(e) { setError('Could not load calendar. Check API key settings.') }
+    setLoading(false)
+  }
+
+  function formatTime(ev) {
+    if (!ev.start?.dateTime) return 'All day'
+    return new Date(ev.start.dateTime).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})
+  }
+  function isToday(ev) {
+    return new Date(ev.start?.dateTime||ev.start?.date).toDateString()===new Date().toDateString()
+  }
+  function getEventsForDay(date) {
+    if (!date) return []
+    return events.filter(ev=>new Date(ev.start?.dateTime||ev.start?.date).toDateString()===date.toDateString())
+  }
+  function navPrev() {
+    const d=new Date(currentDate)
+    if(view==='month') d.setMonth(d.getMonth()-1)
+    else if(view==='week') d.setDate(d.getDate()-7)
+    else d.setDate(d.getDate()-30)
+    setCurrentDate(d)
+  }
+  function navNext() {
+    const d=new Date(currentDate)
+    if(view==='month') d.setMonth(d.getMonth()+1)
+    else if(view==='week') d.setDate(d.getDate()+7)
+    else d.setDate(d.getDate()+30)
+    setCurrentDate(d)
+  }
+
+  const navLabel = view==='month'
+    ? currentDate.toLocaleDateString('en-US',{month:'long',year:'numeric'})
+    : view==='week' ? 'Week of '+currentDate.toLocaleDateString('en-US',{month:'short',day:'numeric'})
+    : 'Next 30 days'
+
+  const weekDayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
+
+  function getMonthDays() {
+    const y=currentDate.getFullYear(), m=currentDate.getMonth()
+    const firstDay=new Date(y,m,1).getDay()
+    const daysInMonth=new Date(y,m+1,0).getDate()
+    const days=[]
+    for(let i=0;i<firstDay;i++) days.push(null)
+    for(let i=1;i<=daysInMonth;i++) days.push(new Date(y,m,i))
+    return days
   }
 
   return (
     <div>
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1.25rem'}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1.25rem',flexWrap:'wrap',gap:'0.75rem'}}>
         <h2 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300}}>Bookings</h2>
-        <div style={{display:'flex',gap:'0.4rem'}}>
-          {[['week','Week'],['month','Month'],['agenda','Agenda']].map(([v,label])=>(
-            <button key={v} onClick={()=>setView(v)} style={{padding:'0.35rem 0.85rem',borderRadius:20,border:'none',cursor:'pointer',fontFamily:ff,fontSize:'0.6rem',letterSpacing:'0.08em',textTransform:'uppercase',background:view===v?black:'rgba(14,14,12,0.06)',color:view===v?white:gray,transition:'all 0.15s'}}>{label}</button>
-          ))}
+        <div style={{display:'flex',gap:'0.5rem',alignItems:'center',flexWrap:'wrap'}}>
+          <button onClick={navPrev} style={{background:'none',border:'1px solid rgba(14,14,12,0.1)',borderRadius:20,padding:'0.3rem 0.75rem',cursor:'pointer',fontFamily:ff,fontSize:'0.72rem',color:gray}}>‹</button>
+          <span style={{fontSize:'0.72rem',color:black,fontWeight:500,minWidth:140,textAlign:'center'}}>{navLabel}</span>
+          <button onClick={navNext} style={{background:'none',border:'1px solid rgba(14,14,12,0.1)',borderRadius:20,padding:'0.3rem 0.75rem',cursor:'pointer',fontFamily:ff,fontSize:'0.72rem',color:gray}}>›</button>
+          <div style={{display:'flex',gap:'0.3rem'}}>
+            {[['month','Month'],['week','Week'],['agenda','Agenda']].map(([v,l])=>(
+              <button key={v} onClick={()=>setView(v)} style={{padding:'0.35rem 0.75rem',borderRadius:20,border:'none',cursor:'pointer',fontFamily:ff,fontSize:'0.6rem',letterSpacing:'0.08em',textTransform:'uppercase',background:view===v?black:'rgba(14,14,12,0.06)',color:view===v?white:gray,transition:'all 0.15s'}}>{l}</button>
+            ))}
+          </div>
+          <button onClick={fetchEvents} style={{background:'none',border:'1px solid rgba(14,14,12,0.08)',borderRadius:20,padding:'0.3rem 0.65rem',cursor:'pointer',fontFamily:ff,fontSize:'0.6rem',color:gray}}>↺</button>
         </div>
       </div>
+
       <div style={{background:white,borderRadius:10,border:'1px solid rgba(14,14,12,0.07)',overflow:'hidden'}}>
-        <iframe
-          src={embedUrl(view)}
-          style={{width:'100%',height:600,border:'none',display:'block'}}
-          frameBorder="0"
-          scrolling="no"
-          title="Google Calendar Bookings"
-        />
+        {loading&&<div style={{padding:'3rem',textAlign:'center',color:gray,fontSize:'0.78rem'}}>Loading...</div>}
+        {error&&<div style={{padding:'3rem',textAlign:'center',color:'#c0392b',fontSize:'0.78rem'}}>{error}<br/><button onClick={fetchEvents} style={{marginTop:'0.75rem',background:black,color:white,border:'none',padding:'0.5rem 1rem',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.62rem'}}>Retry</button></div>}
+
+        {/* MONTH */}
+        {!loading&&!error&&view==='month'&&(
+          <div>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',borderBottom:'1px solid rgba(14,14,12,0.06)'}}>
+              {weekDayNames.map(d=><div key={d} style={{padding:'0.5rem',textAlign:'center',fontSize:'0.52rem',letterSpacing:'0.1em',textTransform:'uppercase',color:gray}}>{d}</div>)}
+            </div>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)'}}>
+              {getMonthDays().map((date,i)=>{
+                const dayEvs=getEventsForDay(date)
+                const today=date&&date.toDateString()===new Date().toDateString()
+                return(
+                  <div key={i} style={{minHeight:80,padding:'0.4rem',borderRight:'1px solid rgba(14,14,12,0.04)',borderBottom:'1px solid rgba(14,14,12,0.04)',background:today?'rgba(184,151,90,0.04)':'transparent'}}>
+                    {date&&<div style={{fontSize:'0.65rem',fontWeight:today?700:400,color:today?gold:black,width:22,height:22,borderRadius:'50%',background:today?'rgba(184,151,90,0.15)':'transparent',display:'flex',alignItems:'center',justifyContent:'center',marginBottom:'0.25rem'}}>{date.getDate()}</div>}
+                    {dayEvs.slice(0,2).map((ev,j)=><div key={j} title={ev.summary} style={{fontSize:'0.52rem',background:'rgba(184,151,90,0.12)',color:gold,borderRadius:3,padding:'0.15rem 0.35rem',marginBottom:'0.15rem',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{ev.summary||'Booking'}</div>)}
+                    {dayEvs.length>2&&<div style={{fontSize:'0.5rem',color:gray}}>+{dayEvs.length-2}</div>}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* WEEK */}
+        {!loading&&!error&&view==='week'&&(()=>{
+          const ws=new Date(currentDate); ws.setDate(ws.getDate()-ws.getDay())
+          const wDates=Array.from({length:7},(_,i)=>{ const d=new Date(ws); d.setDate(d.getDate()+i); return d })
+          return(
+            <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)'}}>
+              {wDates.map((d,i)=>{
+                const today=d.toDateString()===new Date().toDateString()
+                const dayEvs=getEventsForDay(d)
+                return(
+                  <div key={i} style={{padding:'0.75rem 0.5rem',borderRight:'1px solid rgba(14,14,12,0.04)',background:today?'rgba(184,151,90,0.04)':'transparent',minHeight:150}}>
+                    <div style={{fontSize:'0.52rem',color:gray,textTransform:'uppercase',letterSpacing:'0.08em'}}>{weekDayNames[i]}</div>
+                    <div style={{fontSize:'0.88rem',fontWeight:today?700:400,color:today?gold:black,marginBottom:'0.4rem'}}>{d.getDate()}</div>
+                    {dayEvs.map((ev,j)=><div key={j} style={{fontSize:'0.54rem',background:'rgba(184,151,90,0.1)',color:gold,borderRadius:3,padding:'0.2rem 0.4rem',marginBottom:'0.2rem',lineHeight:1.3}}><div style={{fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{ev.summary||'Booking'}</div><div style={{opacity:0.7}}>{formatTime(ev)}</div></div>)}
+                  </div>
+                )
+              })}
+            </div>
+          )
+        })()}
+
+        {/* AGENDA */}
+        {!loading&&!error&&view==='agenda'&&(
+          <div>
+            {events.length===0&&<div style={{padding:'2rem',textAlign:'center',color:gray,fontSize:'0.78rem'}}>No upcoming events.</div>}
+            {events.map((ev,i)=>{
+              const d=new Date(ev.start?.dateTime||ev.start?.date)
+              return(
+                <div key={ev.id||i} style={{display:'flex',alignItems:'flex-start',gap:'1rem',padding:'1rem 1.25rem',borderBottom:'1px solid rgba(14,14,12,0.05)'}}>
+                  <div style={{flexShrink:0,textAlign:'center',minWidth:48}}>
+                    <div style={{fontSize:'0.58rem',color:gray,textTransform:'uppercase'}}>{d.toLocaleDateString('en-US',{month:'short'})}</div>
+                    <div style={{fontSize:'1.4rem',fontFamily:ffS,fontWeight:300,color:isToday(ev)?gold:black,lineHeight:1}}>{d.getDate()}</div>
+                    <div style={{fontSize:'0.54rem',color:gray}}>{d.toLocaleDateString('en-US',{weekday:'short'})}</div>
+                  </div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:'0.78rem',color:black,fontWeight:500,marginBottom:'0.15rem'}}>{ev.summary||'Booking'}</div>
+                    {ev.description&&<div style={{fontSize:'0.62rem',color:gray,lineHeight:1.5,marginBottom:'0.15rem'}}>{ev.description.substring(0,100)}</div>}
+                    <div style={{fontSize:'0.6rem',color:gold}}>{formatTime(ev)}</div>
+                    {ev.location&&<div style={{fontSize:'0.58rem',color:gray,marginTop:'0.1rem'}}>📍 {ev.location}</div>}
+                  </div>
+                  {isToday(ev)&&<span style={{flexShrink:0,fontSize:'0.52rem',padding:'0.18rem 0.55rem',borderRadius:20,background:'rgba(184,151,90,0.12)',color:gold}}>Today</span>}
+                </div>
+              )
+            })}
+          </div>
+        )}
       </div>
       <div style={{marginTop:'0.75rem',fontSize:'0.6rem',color:gray,textAlign:'center'}}>
-        Synced with Google Calendar · {CALENDAR_ID} · <a href="https://calendar.app.google/WsjR7tCs3VGwnJYB6" target="_blank" rel="noreferrer" style={{color:gold}}>Open booking page ↗</a>
+        <a href="https://calendar.app.google/WsjR7tCs3VGwnJYB6" target="_blank" rel="noreferrer" style={{color:gold}}>Open booking page ↗</a>
       </div>
     </div>
   )
 }
+
 
 function AdminSystemPanel({ users, cards, allUsers, loadAll, showToast }) {
   const [tab, setTab] = useState('users')
@@ -2198,4 +2317,3 @@ function FilesListForClient({ userId, showToast }) {
     </div>
   )
 }
-                                                                                                                                   
