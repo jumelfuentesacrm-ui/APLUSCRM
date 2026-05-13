@@ -440,6 +440,7 @@ function CatalogPanel({ catalog, onSetCost, onSetSuppliers }) {
 function CostHistory({ productId }) {
   const [history, setHistory] = useState([])
   const [loading, setLoading] = useState(true)
+  const [open, setOpen] = useState(false)
 
   useEffect(()=>{
     fetch('/api/admin/catalog/history?product_id='+productId)
@@ -453,18 +454,23 @@ function CostHistory({ productId }) {
 
   return(
     <div style={{marginTop:'0.75rem'}}>
-      <div style={{fontSize:'0.52rem',letterSpacing:'0.12em',textTransform:'uppercase',color:'#6b6b67',marginBottom:'0.5rem'}}>Cost History</div>
-      <div style={{border:'1px solid rgba(14,14,12,0.07)',borderRadius:6,overflow:'hidden'}}>
-        {history.map((h,i)=>(
-          <div key={h.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'0.6rem 0.85rem',borderBottom:i<history.length-1?'1px solid rgba(14,14,12,0.05)':'none'}}>
-            <div>
-              <span style={{fontSize:'0.78rem',fontWeight:600,color:'#0e0e0c'}}>${parseFloat(h.cost).toFixed(2)}</span>
-              {h.notes&&<span style={{fontSize:'0.6rem',color:'#6b6b67',marginLeft:'0.5rem'}}>{h.notes.substring(0,40)}</span>}
+      <button onClick={()=>setOpen(o=>!o)} style={{display:'flex',alignItems:'center',justifyContent:'space-between',width:'100%',background:'rgba(14,14,12,0.03)',border:'1px solid rgba(14,14,12,0.07)',borderRadius:6,padding:'0.5rem 0.85rem',cursor:'pointer',fontFamily:ff}}>
+        <span style={{fontSize:'0.52rem',letterSpacing:'0.12em',textTransform:'uppercase',color:gray}}>Cost History ({history.length})</span>
+        <span style={{fontSize:'0.6rem',color:gray,transform:open?'rotate(180deg)':'rotate(0)',display:'inline-block',transition:'transform 0.2s'}}>▾</span>
+      </button>
+      {open&&(
+        <div style={{border:'1px solid rgba(14,14,12,0.07)',borderTop:'none',borderRadius:'0 0 6px 6px',overflow:'hidden',maxHeight:200,overflowY:'auto'}}>
+          {history.map((h,i)=>(
+            <div key={h.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'0.6rem 0.85rem',borderBottom:i<history.length-1?'1px solid rgba(14,14,12,0.05)':'none'}}>
+              <div>
+                <span style={{fontSize:'0.78rem',fontWeight:600,color:'#0e0e0c'}}>${parseFloat(h.cost).toFixed(2)}</span>
+                {h.notes&&<span style={{fontSize:'0.6rem',color:'#6b6b67',marginLeft:'0.5rem'}}>{h.notes.substring(0,40)}</span>}
+              </div>
+              <span style={{fontSize:'0.58rem',color:'#6b6b67'}}>{new Date(h.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</span>
             </div>
-            <span style={{fontSize:'0.58rem',color:'#6b6b67'}}>{new Date(h.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</span>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -1082,6 +1088,41 @@ function FinancialCard({ sales }) {
   )
 }
 
+function SupplyCostHistory({ supplyId }) {
+  const [history, setHistory] = useState([])
+  const [open, setOpen] = useState(false)
+  const [loading, setLoading] = useState(false)
+
+  useEffect(()=>{
+    if (!open || history.length>0) return
+    setLoading(true)
+    fetch('/api/admin/supplies?history='+supplyId)
+      .then(r=>r.json())
+      .then(d=>{ setHistory(d.history||[]); setLoading(false) })
+      .catch(()=>setLoading(false))
+  },[open, supplyId])
+
+  return(
+    <div style={{marginTop:'0.5rem'}}>
+      <button onClick={()=>setOpen(o=>!o)} style={{display:'flex',alignItems:'center',gap:'0.3rem',background:'none',border:'none',cursor:'pointer',fontFamily:ff,fontSize:'0.54rem',color:gray,letterSpacing:'0.08em',textTransform:'uppercase',padding:0}}>
+        Cost History {open?'▴':'▾'}
+      </button>
+      {open&&(
+        <div style={{marginTop:'0.4rem',border:'1px solid rgba(14,14,12,0.07)',borderRadius:6,overflow:'hidden',maxHeight:140,overflowY:'auto'}}>
+          {loading&&<div style={{padding:'0.5rem 0.85rem',fontSize:'0.62rem',color:gray}}>Loading...</div>}
+          {!loading&&history.length===0&&<div style={{padding:'0.5rem 0.85rem',fontSize:'0.62rem',color:gray}}>No history yet.</div>}
+          {!loading&&history.map((h,i)=>(
+            <div key={h.id||i} style={{display:'flex',justifyContent:'space-between',padding:'0.5rem 0.85rem',borderBottom:i<history.length-1?'1px solid rgba(14,14,12,0.05)':'none'}}>
+              <span style={{fontSize:'0.7rem',fontWeight:600,color:black}}>${parseFloat(h.cost).toFixed(2)}</span>
+              <span style={{fontSize:'0.6rem',color:gray}}>{new Date(h.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function SuppliesPanel({ supplies, onAdd, onEdit, onDelete, showToast }) {
   const categories = [...new Set(supplies.map(s=>s.category).filter(Boolean))]
 
@@ -1137,8 +1178,58 @@ function SuppliesPanel({ supplies, onAdd, onEdit, onDelete, showToast }) {
               <span style={{fontSize:'0.58rem',color:gray}}>{unitLabel(s.unit)}</span>
             </div>
             {s.renewal_date&&<div style={{fontSize:'0.58rem',color:gold}}>Renews {new Date(s.renewal_date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</div>}
+            <SupplyCostHistory supplyId={s.id}/>
           </div>
         ))}
+      </div>
+    </div>
+  )
+}
+
+function BookingsPanel() {
+  const CALENDAR_ID = 'jfuentes@accountingpluscrm.com'
+  const now = new Date()
+  const [view, setView] = useState('week') // week | month | agenda
+
+  const embedUrl = (v) => {
+    const base = 'https://calendar.google.com/calendar/embed'
+    const params = new URLSearchParams({
+      src: CALENDAR_ID,
+      ctz: 'America/Puerto_Rico',
+      mode: v === 'month' ? 'MONTH' : v === 'agenda' ? 'AGENDA' : 'WEEK',
+      showTitle: 0,
+      showNav: 1,
+      showDate: 1,
+      showPrint: 0,
+      showTabs: 0,
+      showCalendars: 0,
+      showTz: 0,
+      color: '%23B8975A',
+    })
+    return `${base}?${params.toString()}`
+  }
+
+  return (
+    <div>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1.25rem'}}>
+        <h2 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300}}>Bookings</h2>
+        <div style={{display:'flex',gap:'0.4rem'}}>
+          {[['week','Week'],['month','Month'],['agenda','Agenda']].map(([v,label])=>(
+            <button key={v} onClick={()=>setView(v)} style={{padding:'0.35rem 0.85rem',borderRadius:20,border:'none',cursor:'pointer',fontFamily:ff,fontSize:'0.6rem',letterSpacing:'0.08em',textTransform:'uppercase',background:view===v?black:'rgba(14,14,12,0.06)',color:view===v?white:gray,transition:'all 0.15s'}}>{label}</button>
+          ))}
+        </div>
+      </div>
+      <div style={{background:white,borderRadius:10,border:'1px solid rgba(14,14,12,0.07)',overflow:'hidden'}}>
+        <iframe
+          src={embedUrl(view)}
+          style={{width:'100%',height:600,border:'none',display:'block'}}
+          frameBorder="0"
+          scrolling="no"
+          title="Google Calendar Bookings"
+        />
+      </div>
+      <div style={{marginTop:'0.75rem',fontSize:'0.6rem',color:gray,textAlign:'center'}}>
+        Synced with Google Calendar · {CALENDAR_ID} · <a href="https://calendar.app.google/WsjR7tCs3VGwnJYB6" target="_blank" rel="noreferrer" style={{color:gold}}>Open booking page ↗</a>
       </div>
     </div>
   )
@@ -1519,6 +1610,7 @@ export default function Admin({session}){
               <span>Alerts</span>
               {getNotifications(cards).length>0&&<span style={{background:'#c0392b',color:'white',borderRadius:'50%',width:18,height:18,fontSize:'0.6rem',fontWeight:700,display:'inline-flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>{getNotifications(cards).length}</span>}
             </button>
+            <button onClick={()=>setPanel('bookings')} style={{display:'flex',alignItems:'center',padding:'0.82rem 1.5rem',fontSize:'0.72rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel==='bookings'?gold:'rgba(255,255,255,0.32)',cursor:'pointer',background:'none',border:'none',borderLeft:panel==='bookings'?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>Bookings</button>
             <div style={{height:'1px',background:'rgba(255,255,255,0.06)',margin:'0.25rem 1.5rem'}}/>
             {[['dashboard','Dashboard'],['clients','Clients'],['campaigns','Campaigns']].map(([id,label])=>(<button key={id} onClick={()=>setPanel(id)} style={{display:'flex',alignItems:'center',padding:'0.82rem 1.5rem',fontSize:'0.72rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel===id?gold:'rgba(255,255,255,0.32)',cursor:'pointer',background:'none',border:'none',borderLeft:panel===id?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>{label}</button>))}
             <div style={{height:'1px',background:'rgba(255,255,255,0.06)',margin:'0.25rem 1.5rem'}}/>
@@ -1541,6 +1633,7 @@ export default function Admin({session}){
             {panel==='dashboard'&&<DashboardPanel cards={cards} sales={sales} onSelectClient={(card)=>{setSelectedClient(card);setPanel('client')}}/>}
             {panel==='client'&&selectedClient&&<ClientProfile card={selectedClient} onBack={()=>{setSelectedClient(null);setPanel('dashboard')}}/>}
             {panel==='notifications'&&<NotificationsPanel cards={cards} users={users}/>}
+            {panel==='bookings'&&<BookingsPanel/>}
             {panel==='campaigns'&&<CampaignsPanel cards={cards} users={users}/>}
             {panel==='catalog'&&<CatalogPanel catalog={catalog} onSetCost={(item)=>{setEditCost(item);setCostForm({cost:item.catalog_costs?.cost||'',notes:item.catalog_costs?.notes||''});setModal('cost')}} onSetSuppliers={(item)=>{setSuppliersItem(item);setSuppliersText(item.catalog_costs?.suppliers||'');setSuppliersTitle('');setModal('suppliers')}}/>}
             {panel==='supplies'&&<SuppliesPanel supplies={supplies}
@@ -1636,7 +1729,7 @@ export default function Admin({session}){
             </button>
           ))}
           <button onClick={()=>setHamburgerOpen(o=>!o)}
-            className={hamburgerOpen||['clients','campaigns','catalog','system'].includes(panel)?'active':''}>
+            className={hamburgerOpen||['clients','campaigns','catalog','supplies','system','bookings'].includes(panel)?'active':''}>
             <span style={{fontSize:'1rem',lineHeight:1}}>☰</span>
           </button>
         </div>
@@ -1650,6 +1743,7 @@ export default function Admin({session}){
               paddingBottom:52}}>
               <div style={{width:36,height:3,background:'rgba(255,255,255,0.15)',borderRadius:2,margin:'0.75rem auto 0.5rem'}}/>
               {[
+                ['bookings','Bookings'],
                 ['clients','Clients'],
                 ['campaigns','Campaigns'],
                 ['catalog','Catalog'],
@@ -2104,3 +2198,4 @@ function FilesListForClient({ userId, showToast }) {
     </div>
   )
 }
+                                                                                                                                   
