@@ -595,6 +595,7 @@ function FinancialCard({ sales }) {
   const [activeChart, setActiveChart] = useState(null)
   const [chartVisible, setChartVisible] = useState(false)
   const [period, setPeriod] = useState('yearly')
+  const [salesHistoryOpen, setSalesHistoryOpen] = useState(false)
 
   function openChart(id) {
     if (activeChart === id) {
@@ -893,8 +894,55 @@ function FinancialCard({ sales }) {
 
   const activeChartDef = getCharts(period).find(c=>c.id===activeChart)
 
+  async function voidSale(saleId) {
+    if (!confirm('Void this transaction?')) return
+    await fetch('/api/admin/sales', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: saleId, status: 'voided' })
+    })
+    window.location.reload()
+  }
+
   return(
     <>
+      {/* SALES HISTORY MODAL */}
+      {salesHistoryOpen&&(
+        <div style={{position:'fixed',inset:0,background:'rgba(14,14,12,0.6)',zIndex:400,display:'flex',alignItems:'flex-end',justifyContent:'center'}} onClick={e=>e.target===e.currentTarget&&setSalesHistoryOpen(false)}>
+          <div style={{background:white,borderRadius:'14px 14px 0 0',width:'100%',maxWidth:640,maxHeight:'85vh',display:'flex',flexDirection:'column',boxShadow:'0 -8px 40px rgba(0,0,0,0.15)'}}>
+            <div style={{padding:'1.25rem 1.5rem',borderBottom:'1px solid rgba(14,14,12,0.06)',display:'flex',justifyContent:'space-between',alignItems:'center',flexShrink:0}}>
+              <div>
+                <div style={{fontFamily:ffS,fontSize:'1.2rem',fontWeight:300}}>All Transactions</div>
+                <div style={{fontSize:'0.6rem',color:gray,marginTop:'0.15rem'}}>{(sales||[]).length} records · tap Void to cancel</div>
+              </div>
+              <button onClick={()=>setSalesHistoryOpen(false)} style={{background:'none',border:'none',fontSize:'1.1rem',color:gray,cursor:'pointer'}}>✕</button>
+            </div>
+            <div style={{flex:1,overflowY:'auto',padding:'0 1.5rem'}}>
+              {(sales||[]).length===0&&<div style={{textAlign:'center',color:gray,fontSize:'0.78rem',padding:'2rem'}}>No transactions yet.</div>}
+              {[...(sales||[])].sort((a,b)=>new Date(b.sale_date)-new Date(a.sale_date)).map((s,i)=>{
+                const isVoided = s.status==='voided'
+                const isRefunded = s.status==='refunded'
+                return(
+                  <div key={s.id} style={{display:'flex',alignItems:'center',gap:'0.75rem',padding:'0.85rem 0',borderBottom:'1px solid rgba(14,14,12,0.05)',opacity:isVoided?0.45:1}}>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:'0.75rem',color:black,fontWeight:500,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{s.customer_name||s.customer_email||'—'}</div>
+                      <div style={{fontSize:'0.62rem',color:gray,marginTop:'0.1rem',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{s.product_name||'—'}</div>
+                      <div style={{fontSize:'0.58rem',color:'rgba(14,14,12,0.35)',marginTop:'0.1rem'}}>{s.sale_date?new Date(s.sale_date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):''} · {s.type||'stripe'}</div>
+                    </div>
+                    <div style={{textAlign:'right',flexShrink:0}}>
+                      <div style={{fontSize:'0.85rem',fontWeight:600,fontFamily:ffS,color:isVoided?gray:isRefunded?'#c0392b':'#2d8a60'}}>{isRefunded?'-':''}${Math.abs(parseFloat(s.amount||0)).toFixed(2)}</div>
+                      <span style={{fontSize:'0.52rem',padding:'0.15rem 0.5rem',borderRadius:20,background:isVoided?'rgba(14,14,12,0.06)':isRefunded?'rgba(192,57,43,0.08)':'rgba(45,138,96,0.08)',color:isVoided?gray:isRefunded?'#c0392b':'#2d8a60',display:'inline-block',marginTop:'0.2rem'}}>{s.status}</span>
+                    </div>
+                    {!isVoided&&!isRefunded&&(
+                      <button onClick={()=>voidSale(s.id)} style={{flexShrink:0,padding:'0.3rem 0.65rem',background:'rgba(192,57,43,0.08)',color:'#c0392b',border:'1px solid rgba(192,57,43,0.15)',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.54rem',letterSpacing:'0.07em',textTransform:'uppercase'}}>Void</button>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      )}
       {/* Chart Modal */}
       {activeChart && activeChartDef && (
         <div style={{position:'fixed',inset:0,background:'rgba(14,14,12,0.55)',zIndex:300,display:'flex',alignItems:'center',justifyContent:'center',padding:'1rem'}} onClick={e=>e.target===e.currentTarget&&openChart(activeChart)}>
@@ -977,11 +1025,13 @@ function FinancialCard({ sales }) {
         {/* HEADER — always shows KPIs */}
         <div style={{padding:'1rem 1.5rem 0'}}>
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.85rem'}}>
-            <div style={{fontFamily:ffS,fontSize:'1.1rem',fontWeight:300}}>Financial <span style={{fontSize:'0.52rem',color:gold,letterSpacing:'0.1em',textTransform:'uppercase',marginLeft:'0.5rem'}}>Stripe</span></div>
             <div style={{display:'flex',alignItems:'center',gap:'0.75rem'}}>
-              <span style={{fontSize:'0.6rem',color:gray}}>{paid.length} payment{paid.length!==1?'s':''}</span>
-              <button onClick={()=>setExpanded(e=>!e)} style={{background:'none',border:'none',cursor:'pointer',color:gray,fontSize:'0.75rem',transform:expanded?'rotate(180deg)':'rotate(0)',transition:'transform 0.2s',padding:0,lineHeight:1}}>▾</button>
+              <div style={{fontFamily:ffS,fontSize:'1.1rem',fontWeight:300}}>Financial <span style={{fontSize:'0.52rem',color:gold,letterSpacing:'0.1em',textTransform:'uppercase',marginLeft:'0.5rem'}}>Stripe</span></div>
+              <button onClick={()=>setSalesHistoryOpen(true)} style={{fontSize:'0.58rem',color:'#2980b9',background:'rgba(52,152,219,0.08)',border:'1px solid rgba(52,152,219,0.2)',borderRadius:20,padding:'0.22rem 0.65rem',cursor:'pointer',fontFamily:ff,letterSpacing:'0.06em',textTransform:'uppercase'}}>{paid.length} sales ›</button>
             </div>
+            <button onClick={()=>setExpanded(e=>!e)} style={{display:'flex',alignItems:'center',gap:'0.3rem',background:'none',border:'1px solid rgba(14,14,12,0.1)',borderRadius:20,cursor:'pointer',color:gray,fontSize:'0.58rem',padding:'0.22rem 0.65rem',fontFamily:ff,letterSpacing:'0.06em',textTransform:'uppercase',transition:'all 0.15s'}}>
+              {expanded?'Less':'More'} <span style={{display:'inline-block',transform:expanded?'rotate(180deg)':'rotate(0)',transition:'transform 0.2s',lineHeight:1}}>▾</span>
+            </button>
           </div>
 
           {/* KPIs — always visible */}
@@ -1741,9 +1791,53 @@ export default function Admin({session}){
               <button onClick={()=>setModal(null)} style={{background:'none',border:'none',fontSize:'1.1rem',cursor:'pointer',color:gray}}>x</button>
             </div>
             <p style={{fontSize:'0.72rem',color:gray,marginBottom:'1.25rem'}}>{editCost.name}</p>
+
+            {/* Supplies calculator */}
+            {supplies.length>0&&(
+              <div style={{background:'rgba(184,151,90,0.04)',border:'1px solid rgba(184,151,90,0.15)',borderRadius:8,padding:'1rem',marginBottom:'1.25rem'}}>
+                <div style={{fontSize:'0.52rem',letterSpacing:'0.12em',textTransform:'uppercase',color:gold,marginBottom:'0.75rem'}}>Calculate from Supplies</div>
+                {supplies.map(s=>{
+                  const unitLabel = s.unit==='month'?'/mo':s.unit==='year'?'/yr':' once'
+                  const qtyKey = 'cost_qty_'+s.id
+                  const qty = parseFloat(costForm[qtyKey]||0)
+                  const lineTotal = qty>0?parseFloat(s.cost)*qty:0
+                  return(
+                    <div key={s.id} style={{display:'flex',alignItems:'center',gap:'0.75rem',marginBottom:'0.5rem'}}>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontSize:'0.68rem',color:black,fontWeight:500}}>{s.name}</div>
+                        <div style={{fontSize:'0.58rem',color:gray}}>${parseFloat(s.cost).toFixed(2)}{unitLabel}</div>
+                      </div>
+                      <input type="number" min="0" step="0.1" placeholder="0"
+                        value={costForm[qtyKey]||''}
+                        onChange={e=>{
+                          const newQty = parseFloat(e.target.value||0)
+                          setCostForm(f=>{
+                            const updated = {...f,[qtyKey]:e.target.value}
+                            // Recalculate total from all supply lines
+                            const total = supplies.reduce((acc,sup)=>{
+                              const q = parseFloat(updated['cost_qty_'+sup.id]||0)
+                              return acc + (q>0?parseFloat(sup.cost)*q:0)
+                            },0)
+                            return {...updated, cost: total>0?total.toFixed(2):f.cost}
+                          })
+                        }}
+                        style={{width:55,padding:'0.3rem 0.4rem',border:'1px solid '+gl,borderRadius:3,fontFamily:ff,fontSize:'0.72rem',outline:'none',textAlign:'center'}}/>
+                      <div style={{fontSize:'0.62rem',color:lineTotal>0?'#c0392b':gray,width:55,textAlign:'right',fontWeight:lineTotal>0?600:400}}>
+                        {lineTotal>0?'$'+lineTotal.toFixed(2):'—'}
+                      </div>
+                    </div>
+                  )
+                })}
+                <div style={{display:'flex',justifyContent:'space-between',paddingTop:'0.6rem',marginTop:'0.25rem',borderTop:'1px solid rgba(14,14,12,0.07)'}}>
+                  <span style={{fontSize:'0.58rem',color:gray,letterSpacing:'0.08em',textTransform:'uppercase'}}>Total Cost</span>
+                  <span style={{fontFamily:ffS,fontSize:'1rem',fontWeight:300,color:'#c0392b'}}>${parseFloat(costForm.cost||0).toFixed(2)}</span>
+                </div>
+              </div>
+            )}
+
             <div style={{display:'flex',gap:'0.75rem',marginBottom:'1rem',alignItems:'flex-end'}}>
               <div style={{flex:1}}>
-                <label style={lbl}>Current Cost ($)</label>
+                <label style={lbl}>Cost ($) <span style={{color:gray,fontWeight:400,textTransform:'none',letterSpacing:0}}>— edit manually or calculate above</span></label>
                 <input id="cost-input" style={{...inp,marginBottom:0,fontSize:'1.1rem',fontWeight:600}} type="number" step="0.01" placeholder="0.00" value={costForm.cost} onChange={e=>setCostForm(f=>({...f,cost:e.target.value}))}/>
               </div>
               <button onClick={async()=>{
@@ -1854,11 +1948,12 @@ export default function Admin({session}){
                 if(res.ok){
                   showToast('Reward registered')
                   await fetch('/api/admin/activity-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'Registered reward',target:(form.reward_type||'1 Free Month')+' → '+(rewardCard.profiles?.business_name||rewardCard.profiles?.full_name||''),type:'reward'})})
-                  setForm({});loadAll()
-                  // Refresh card rewards in modal
+                  setForm({})
+                  // Refresh cards and update rewardCard in place
                   const updated=await fetch('/api/admin/cards').then(r=>r.json())
                   const updatedCard=(updated.cards||[]).find(c=>c.id===rewardCard.id)
-                  if(updatedCard)setRewardCard(updatedCard)
+                  if(updatedCard) setRewardCard(updatedCard)
+                  setCards(updated.cards||[])
                 }
               }} style={{width:'100%',background:black,color:white,border:'none',padding:'0.85rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Register Reward</button>
             </div>
@@ -2009,4 +2104,3 @@ function FilesListForClient({ userId, showToast }) {
     </div>
   )
 }
-                                                                                                                                   
