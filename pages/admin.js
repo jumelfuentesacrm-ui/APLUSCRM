@@ -129,7 +129,7 @@ function ClientProfile({card,onBack}){
   )
 }
 
-function ClientsPanel({users,cards,search,setSearch,onEdit,onAddPayment,onCreateCard,onCreateNew,onDelete,onFiles,onExpense}){
+function ClientsPanel({users,cards,search,setSearch,onEdit,onAddPayment,onCreateCard,onCreateNew,onDelete,onFiles,onExpense,onHistory}){
   const filtered=users.filter(u=>(u.full_name||'').toLowerCase().includes(search.toLowerCase())||(u.business_name||'').toLowerCase().includes(search.toLowerCase()))
   function getCard(uid){return cards.find(c=>c.user_id===uid)}
   function getClientStatus(uid){const card=getCard(uid);if(!card)return{label:'No Card',color:gray,bg:'rgba(14,14,12,0.06)'};return getStatus(card)}
@@ -171,6 +171,7 @@ function ClientsPanel({users,cards,search,setSearch,onEdit,onAddPayment,onCreate
                   :<button onClick={()=>onCreateCard(user.id)} style={{padding:'0.35rem 0.65rem',background:'rgba(184,151,90,0.1)',color:gold,border:'1px solid rgba(184,151,90,0.25)',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.56rem',letterSpacing:'0.07em',textTransform:'uppercase'}}>+ Card</button>
                 }
                 <button onClick={()=>onFiles(user)} style={{padding:'0.35rem 0.65rem',background:'rgba(52,152,219,0.08)',color:'#2980b9',border:'1px solid rgba(52,152,219,0.2)',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.56rem',letterSpacing:'0.07em',textTransform:'uppercase'}}>Files</button>
+                <button onClick={()=>onHistory(user)} style={{padding:'0.35rem 0.65rem',background:'rgba(45,138,96,0.08)',color:'#2d8a60',border:'1px solid rgba(45,138,96,0.2)',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.56rem',letterSpacing:'0.07em',textTransform:'uppercase'}}>History</button>
                 <button onClick={()=>onExpense(user)} style={{padding:'0.35rem 0.65rem',background:'rgba(142,68,173,0.08)',color:'#8e44ad',border:'1px solid rgba(142,68,173,0.2)',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.56rem',letterSpacing:'0.07em',textTransform:'uppercase'}}>Expense</button>
                 <button onClick={()=>onDelete(user.id)} style={{padding:'0.35rem 0.65rem',background:'rgba(192,57,43,0.08)',color:'#a93226',border:'none',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.56rem',letterSpacing:'0.07em',textTransform:'uppercase'}}>Delete</button>
               </div>
@@ -605,6 +606,7 @@ export default function Admin({session}){
   const [suppliersItem,setSuppliersItem]=useState(null)
   const [suppliersText,setSuppliersText]=useState('')
   const [expenseClient,setExpenseClient]=useState(null)
+  const [historyClient,setHistoryClient]=useState(null)
   const [sales,setSales]=useState([])
   const [expenseForm,setExpenseForm]=useState({amount:'',description:'',date:new Date().toISOString().split('T')[0]})
 
@@ -948,6 +950,22 @@ export default function Admin({session}){
           </div>
         </div>)}
 
+        {/* MODAL: History */}
+        {modal==='history'&&historyClient&&(
+          <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:500,display:'flex',alignItems:'flex-end',justifyContent:'center'}} onClick={e=>e.target===e.currentTarget&&setModal(null)}>
+            <div style={{background:white,borderRadius:'12px 12px 0 0',width:'100%',maxWidth:560,maxHeight:'85vh',display:'flex',flexDirection:'column'}}>
+              <div style={{padding:'1.5rem 1.5rem 1rem',flexShrink:0}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                  <h3 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300}}>Transaction History</h3>
+                  <button onClick={()=>setModal(null)} style={{background:'none',border:'none',fontSize:'1.1rem',cursor:'pointer',color:gray}}>x</button>
+                </div>
+                <p style={{fontSize:'0.72rem',color:gray,marginTop:'0.25rem'}}>{historyClient.business_name||historyClient.full_name}</p>
+              </div>
+              <ClientHistory client={historyClient}/>
+            </div>
+          </div>
+        )}
+
         {/* MODAL: Reward */}
         {modal==='reward'&&(<div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:500,display:'flex',alignItems:'flex-end',justifyContent:'center'}} onClick={e=>e.target===e.currentTarget&&setModal(null)}>
           <div style={{background:white,borderRadius:'12px 12px 0 0',padding:'2rem',width:'100%',maxWidth:520,maxHeight:'90vh',overflowY:'auto'}}>
@@ -970,6 +988,52 @@ export default function Admin({session}){
         {toast&&<div style={{position:'fixed',bottom:'5rem',right:'1rem',background:black,color:white,padding:'0.85rem 1.25rem',borderRadius:8,fontSize:'0.74rem',borderLeft:'3px solid '+gold,zIndex:9999,maxWidth:280}}>{toast}</div>}
       </div>
     </>
+  )
+}
+
+function ClientHistory({ client }) {
+  const [sales, setSales] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(()=>{
+    fetch('/api/admin/sales?email='+encodeURIComponent(client.email||''))
+      .then(r=>r.json())
+      .then(d=>{ setSales(d.sales||[]); setLoading(false) })
+      .catch(()=>setLoading(false))
+  },[client.id])
+
+  const total = sales.filter(s=>s.status==='paid').reduce((a,s)=>a+parseFloat(s.amount||0),0)
+
+  return(
+    <div style={{display:'flex',flexDirection:'column',flex:1,minHeight:0}}>
+      {/* Scrollable list */}
+      <div style={{flex:1,overflowY:'auto',padding:'0 1.5rem'}}>
+        {loading&&<div style={{textAlign:'center',color:'#6b6b67',fontSize:'0.78rem',padding:'2rem'}}>Loading...</div>}
+        {!loading&&sales.length===0&&<div style={{textAlign:'center',color:'#6b6b67',fontSize:'0.78rem',padding:'2rem'}}>No transactions found.</div>}
+        {!loading&&sales.length>0&&(
+          <div style={{border:'1px solid rgba(14,14,12,0.07)',borderRadius:8,overflow:'hidden'}}>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 120px 100px',padding:'0.5rem 1rem',background:'rgba(14,14,12,0.03)',fontSize:'0.52rem',letterSpacing:'0.1em',textTransform:'uppercase',color:'#6b6b67',gap:'0.5rem'}}>
+              <span>Transaction ID</span><span>Date</span><span style={{textAlign:'right'}}>Amount</span>
+            </div>
+            {sales.map((s,i)=>(
+              <div key={s.id} style={{display:'grid',gridTemplateColumns:'1fr 120px 100px',padding:'0.75rem 1rem',borderTop:'1px solid rgba(14,14,12,0.05)',alignItems:'center',gap:'0.5rem'}}>
+                <div style={{fontSize:'0.62rem',color:'#6b6b67',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontFamily:'monospace'}}>{s.id}</div>
+                <div style={{fontSize:'0.68rem',color:'#0e0e0c'}}>{new Date(s.sale_date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</div>
+                <div style={{fontSize:'0.75rem',fontWeight:600,color:s.status==='paid'?'#2d8a60':'#c0392b',textAlign:'right'}}>{s.status==='refunded'?'-':''}${Math.abs(parseFloat(s.amount||0)).toFixed(2)}</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      {/* Total — always visible at bottom */}
+      <div style={{padding:'1rem 1.5rem 1.5rem',borderTop:'1px solid rgba(14,14,12,0.07)',flexShrink:0,display:'flex',justifyContent:'space-between',alignItems:'center',background:'#f8f6f1'}}>
+        <span style={{fontSize:'0.62rem',color:'#6b6b67',letterSpacing:'0.1em',textTransform:'uppercase'}}>{sales.filter(s=>s.status==='paid').length} payment{sales.filter(s=>s.status==='paid').length!==1?'s':''}</span>
+        <div style={{textAlign:'right'}}>
+          <div style={{fontSize:'0.56rem',color:'#6b6b67',letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:'0.15rem'}}>Total Spent</div>
+          <div style={{fontSize:'1.1rem',fontFamily:'Cormorant Garamond,serif',fontWeight:300,color:'#0e0e0c'}}>${total.toFixed(2)}</div>
+        </div>
+      </div>
+    </div>
   )
 }
 
