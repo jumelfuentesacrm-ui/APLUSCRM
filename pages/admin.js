@@ -1186,6 +1186,92 @@ function SuppliesPanel({ supplies, onAdd, onEdit, onDelete, showToast }) {
   )
 }
 
+function AgendaEvent({ ev, isToday, formatTime }) {
+  const [open, setOpen] = useState(false)
+  const [notes, setNotes] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [loaded, setLoaded] = useState(false)
+
+  const d = new Date(ev.start?.dateTime||ev.start?.date)
+
+  async function loadNotes() {
+    if (loaded) return
+    const res = await fetch('/api/admin/booking-notes?event_id='+encodeURIComponent(ev.id))
+    const data = await res.json()
+    setNotes(data.notes||'')
+    setLoaded(true)
+  }
+
+  async function saveNotes() {
+    setSaving(true)
+    await fetch('/api/admin/booking-notes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ event_id: ev.id, notes })
+    })
+    setSaving(false)
+  }
+
+  function handleOpen() {
+    setOpen(o=>!o)
+    if (!open) loadNotes()
+  }
+
+  // Extract name from summary or description
+  const name = ev.summary || 'Booking'
+
+  return (
+    <div style={{borderBottom:'1px solid rgba(14,14,12,0.05)'}}>
+      {/* Row — click to expand */}
+      <div onClick={handleOpen} style={{display:'flex',alignItems:'center',gap:'1rem',padding:'0.85rem 1.25rem',cursor:'pointer',transition:'background 0.1s',background:open?'rgba(14,14,12,0.02)':'transparent'}}>
+        <div style={{flexShrink:0,textAlign:'center',minWidth:44}}>
+          <div style={{fontSize:'0.55rem',color:'#6b6b67',textTransform:'uppercase'}}>{d.toLocaleDateString('en-US',{month:'short'})}</div>
+          <div style={{fontSize:'1.3rem',fontFamily:ffS,fontWeight:300,color:isToday?gold:black,lineHeight:1}}>{d.getDate()}</div>
+          <div style={{fontSize:'0.52rem',color:'#6b6b67'}}>{d.toLocaleDateString('en-US',{weekday:'short'})}</div>
+        </div>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontSize:'0.78rem',color:black,fontWeight:500,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{name}</div>
+          <div style={{fontSize:'0.6rem',color:gold,marginTop:'0.1rem'}}>{formatTime(ev)}</div>
+        </div>
+        <div style={{display:'flex',alignItems:'center',gap:'0.5rem',flexShrink:0}}>
+          {isToday&&<span style={{fontSize:'0.52rem',padding:'0.15rem 0.5rem',borderRadius:20,background:'rgba(184,151,90,0.12)',color:gold}}>Today</span>}
+          <span style={{fontSize:'0.65rem',color:'#6b6b67',transform:open?'rotate(180deg)':'rotate(0)',display:'inline-block',transition:'transform 0.2s'}}>▾</span>
+        </div>
+      </div>
+
+      {/* Expanded details + notes */}
+      {open&&(
+        <div style={{padding:'0 1.25rem 1.25rem',borderTop:'1px solid rgba(14,14,12,0.04)'}}>
+          {/* Event details */}
+          {ev.description&&(
+            <div style={{marginBottom:'1rem',background:'rgba(14,14,12,0.02)',borderRadius:6,padding:'0.75rem',border:'1px solid rgba(14,14,12,0.05)'}}>
+              <div style={{fontSize:'0.5rem',letterSpacing:'0.1em',textTransform:'uppercase',color:'#6b6b67',marginBottom:'0.5rem'}}>Client Info</div>
+              {ev.description.split('\n').filter(l=>l.trim()).map((line,j)=>(
+                <div key={j} style={{fontSize:'0.68rem',color:black,lineHeight:1.7}}>{line}</div>
+              ))}
+            </div>
+          )}
+          {ev.location&&<div style={{fontSize:'0.62rem',color:'#6b6b67',marginBottom:'0.75rem'}}>{ev.location}</div>}
+          {ev.end?.dateTime&&<div style={{fontSize:'0.62rem',color:gold,marginBottom:'0.75rem'}}>{formatTime(ev)} – {new Date(ev.end.dateTime).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div>}
+
+          {/* Notes */}
+          <div style={{fontSize:'0.5rem',letterSpacing:'0.1em',textTransform:'uppercase',color:'#6b6b67',marginBottom:'0.4rem'}}>Notes</div>
+          <textarea
+            value={notes}
+            onChange={e=>setNotes(e.target.value)}
+            placeholder="Add notes about this booking..."
+            rows={3}
+            style={{width:'100%',padding:'0.65rem',border:'1px solid #e8e5de',borderRadius:4,fontFamily:ff,fontSize:'0.72rem',outline:'none',resize:'vertical',boxSizing:'border-box',color:black,lineHeight:1.6}}
+          />
+          <button onClick={saveNotes} disabled={saving} style={{marginTop:'0.4rem',padding:'0.45rem 1rem',background:black,color:white,border:'none',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.58rem',letterSpacing:'0.1em',textTransform:'uppercase',opacity:saving?0.6:1}}>
+            {saving?'Saving…':'Save Notes'}
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function BookingsPanel() {
   const CALENDAR_ID = 'jfuentes@accountingpluscrm.com'
   const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_CALENDAR_API_KEY
@@ -1324,25 +1410,7 @@ function BookingsPanel() {
         {!loading&&!error&&view==='agenda'&&(
           <div>
             {events.length===0&&<div style={{padding:'2rem',textAlign:'center',color:gray,fontSize:'0.78rem'}}>No upcoming events.</div>}
-            {events.map((ev,i)=>{
-              const d=new Date(ev.start?.dateTime||ev.start?.date)
-              return(
-                <div key={ev.id||i} style={{display:'flex',alignItems:'flex-start',gap:'1rem',padding:'1rem 1.25rem',borderBottom:'1px solid rgba(14,14,12,0.05)'}}>
-                  <div style={{flexShrink:0,textAlign:'center',minWidth:48}}>
-                    <div style={{fontSize:'0.58rem',color:gray,textTransform:'uppercase'}}>{d.toLocaleDateString('en-US',{month:'short'})}</div>
-                    <div style={{fontSize:'1.4rem',fontFamily:ffS,fontWeight:300,color:isToday(ev)?gold:black,lineHeight:1}}>{d.getDate()}</div>
-                    <div style={{fontSize:'0.54rem',color:gray}}>{d.toLocaleDateString('en-US',{weekday:'short'})}</div>
-                  </div>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontSize:'0.78rem',color:black,fontWeight:500,marginBottom:'0.15rem'}}>{ev.summary||'Booking'}</div>
-                    {ev.description&&<div style={{fontSize:'0.62rem',color:gray,lineHeight:1.5,marginBottom:'0.15rem'}}>{ev.description.substring(0,100)}</div>}
-                    <div style={{fontSize:'0.6rem',color:gold}}>{formatTime(ev)}</div>
-                    {ev.location&&<div style={{fontSize:'0.58rem',color:gray,marginTop:'0.1rem'}}>📍 {ev.location}</div>}
-                  </div>
-                  {isToday(ev)&&<span style={{flexShrink:0,fontSize:'0.52rem',padding:'0.18rem 0.55rem',borderRadius:20,background:'rgba(184,151,90,0.12)',color:gold}}>Today</span>}
-                </div>
-              )
-            })}
+            {events.map((ev,i)=><AgendaEvent key={ev.id||i} ev={ev} isToday={isToday(ev)} formatTime={formatTime}/>)}
           </div>
         )}
       </div>
