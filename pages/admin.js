@@ -524,6 +524,23 @@ function ExpenseHistory({ clientId, showToast }) {
 function FinancialCard({ sales }) {
   const [expanded, setExpanded] = useState(false)
   const [activeChart, setActiveChart] = useState(null)
+  const [chartVisible, setChartVisible] = useState(false)
+
+  function openChart(id) {
+    if (activeChart === id) {
+      // toggle off
+      setChartVisible(false)
+      setTimeout(() => setActiveChart(null), 220)
+    } else if (activeChart) {
+      // switch chart — fade out then in
+      setChartVisible(false)
+      setTimeout(() => { setActiveChart(id); setChartVisible(true) }, 220)
+    } else {
+      // first open
+      setActiveChart(id)
+      setTimeout(() => setChartVisible(true), 20)
+    }
+  }
 
   const paid = (sales||[]).filter(s=>s.status==='paid')
   const refunds = (sales||[]).filter(s=>s.status==='refunded')
@@ -676,25 +693,30 @@ function FinancialCard({ sales }) {
     <>
       {/* Chart Modal */}
       {activeChart && activeChartDef && (
-        <div style={{position:'fixed',inset:0,background:'rgba(14,14,12,0.55)',zIndex:300,display:'flex',alignItems:'center',justifyContent:'center',padding:'1rem'}} onClick={e=>e.target===e.currentTarget&&setActiveChart(null)}>
-          <div style={{background:white,borderRadius:14,width:'100%',maxWidth:620,maxHeight:'85vh',overflowY:'auto',boxShadow:'0 24px 60px rgba(0,0,0,0.18)'}}>
-            {/* Modal header */}
+        <div style={{position:'fixed',inset:0,background:'rgba(14,14,12,0.55)',zIndex:300,display:'flex',alignItems:'center',justifyContent:'center',padding:'1rem'}} onClick={e=>e.target===e.currentTarget&&openChart(activeChart)}>
+          <div style={{background:white,borderRadius:14,width:'100%',maxWidth:640,maxHeight:'85vh',overflowY:'auto',boxShadow:'0 24px 60px rgba(0,0,0,0.18)',transition:'opacity 0.22s',opacity:chartVisible?1:0}}>
             <div style={{padding:'1.25rem 1.5rem',borderBottom:'1px solid rgba(14,14,12,0.07)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
               <div>
                 <div style={{fontFamily:ffS,fontSize:'1.15rem',fontWeight:300,color:black}}>{activeChartDef.label}</div>
                 <div style={{fontSize:'0.58rem',color:gray,marginTop:'0.2rem'}}>{activeChartDef.desc}</div>
               </div>
-              <button onClick={()=>setActiveChart(null)} style={{background:'none',border:'none',fontSize:'1.1rem',color:gray,cursor:'pointer',padding:'0.25rem 0.5rem'}}>✕</button>
+              <button onClick={()=>openChart(activeChart)} style={{background:'none',border:'none',fontSize:'1.1rem',color:gray,cursor:'pointer',padding:'0.25rem 0.5rem'}}>✕</button>
             </div>
-            {/* Chart */}
-            <div style={{padding:'1.5rem'}}>
+            {/* Chart switcher inside modal */}
+            <div style={{padding:'0.75rem 1.5rem 0',display:'flex',gap:'0.4rem',flexWrap:'wrap'}}>
+              {charts.map(c=>(
+                <button key={c.id} onClick={()=>openChart(c.id)} style={{padding:'0.3rem 0.75rem',borderRadius:20,border:`1px solid ${activeChart===c.id?c.color:'rgba(14,14,12,0.1)'}`,background:activeChart===c.id?c.color+'18':'transparent',color:activeChart===c.id?c.color:gray,fontSize:'0.58rem',fontFamily:ff,cursor:'pointer',display:'flex',alignItems:'center',gap:'0.3rem',transition:'all 0.15s'}}>
+                  <span style={{width:6,height:6,borderRadius:'50%',background:c.color,display:'inline-block',flexShrink:0}}/>
+                  {c.label}
+                </button>
+              ))}
+            </div>
+            <div style={{padding:'1.25rem 1.5rem',transition:'opacity 0.22s',opacity:chartVisible?1:0}}>
               {activeChartDef.isBar
                 ? <BarChart data={activeChartDef.data} color={activeChartDef.color} prefix={activeChartDef.prefix}/>
                 : <AreaChart data={activeChartDef.data} color={activeChartDef.color} prefix={activeChartDef.prefix}/>
               }
-              {activeChartDef.data.every(d=>d[1]===0) && (
-                <div style={{textAlign:'center',color:gray,fontSize:'0.72rem',padding:'1rem 0'}}>No data available yet.</div>
-              )}
+              {activeChartDef.data.every(d=>d[1]===0)&&<div style={{textAlign:'center',color:gray,fontSize:'0.72rem',padding:'1rem 0'}}>No data available yet.</div>}
             </div>
           </div>
         </div>
@@ -702,62 +724,269 @@ function FinancialCard({ sales }) {
 
       {/* Financial Card */}
       <div style={{background:white,borderRadius:10,border:'1px solid rgba(14,14,12,0.07)',overflow:'hidden',marginBottom:'1.5rem'}}>
-        <div onClick={()=>setExpanded(e=>!e)} style={{padding:'1.25rem 1.5rem',cursor:'pointer',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-          <div>
+
+        {/* HEADER — always shows KPIs */}
+        <div style={{padding:'1rem 1.5rem 0'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.85rem'}}>
             <div style={{fontFamily:ffS,fontSize:'1.1rem',fontWeight:300}}>Financial <span style={{fontSize:'0.52rem',color:gold,letterSpacing:'0.1em',textTransform:'uppercase',marginLeft:'0.5rem'}}>Stripe</span></div>
-            <div style={{fontSize:'0.62rem',color:gray,marginTop:'0.15rem'}}>{paid.length} payment{paid.length!==1?'s':''} · Net ${netSales.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+            <div style={{display:'flex',alignItems:'center',gap:'0.75rem'}}>
+              <span style={{fontSize:'0.6rem',color:gray}}>{paid.length} payment{paid.length!==1?'s':''}</span>
+              <button onClick={()=>setExpanded(e=>!e)} style={{background:'none',border:'none',cursor:'pointer',color:gray,fontSize:'0.75rem',transform:expanded?'rotate(180deg)':'rotate(0)',transition:'transform 0.2s',padding:0,lineHeight:1}}>▾</button>
+            </div>
           </div>
-          <span style={{fontSize:'0.75rem',color:gray,transform:expanded?'rotate(180deg)':'rotate(0)',transition:'transform 0.2s',display:'inline-block'}}>▾</span>
+
+          {/* KPIs — always visible */}
+          <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'0.5rem',marginBottom:'1rem'}}>
+            {[
+              ['YTD Revenue', '$'+ytdSales.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}), '#2d8a60'],
+              ['This Month',  '$'+thisMonthSales.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}), gold],
+              ['Avg Order',   '$'+avgOrder.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}), '#5b8dee'],
+            ].map(([label,val,color])=>(
+              <div key={label} style={{textAlign:'center',background:'rgba(14,14,12,0.025)',borderRadius:8,padding:'0.65rem 0.25rem'}}>
+                <div style={{fontSize:'0.95rem',fontFamily:ffS,fontWeight:300,color,lineHeight:1}}>{val}</div>
+                <div style={{fontSize:'0.5rem',color:gray,letterSpacing:'0.07em',textTransform:'uppercase',marginTop:'0.25rem'}}>{label}</div>
+              </div>
+            ))}
+          </div>
         </div>
 
+        {/* EXPANDED — chart chips */}
         {expanded&&(
-          <div style={{borderTop:'1px solid rgba(14,14,12,0.06)',padding:'1.25rem 1.5rem'}}>
-
-            {/* Top 3 KPIs */}
-            <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'0.75rem',marginBottom:'1.5rem'}}>
-              {[
-                ['Revenue YTD',   '$'+ytdSales.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}), '#2d8a60'],
-                ['This Month',    '$'+thisMonthSales.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}), gold],
-                ['Avg Order',     '$'+avgOrder.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}), '#5b8dee'],
-              ].map(([label,val,color])=>(
-                <div key={label} style={{textAlign:'center',background:'rgba(14,14,12,0.025)',borderRadius:8,padding:'0.85rem 0.5rem'}}>
-                  <div style={{fontSize:'1.05rem',fontFamily:ffS,fontWeight:300,color,marginBottom:'0.2rem',lineHeight:1}}>{val}</div>
-                  <div style={{fontSize:'0.52rem',color:gray,letterSpacing:'0.08em',textTransform:'uppercase',marginTop:'0.3rem'}}>{label}</div>
-                </div>
-              ))}
-            </div>
-
-            {/* Divider + label */}
-            <div style={{fontSize:'0.52rem',letterSpacing:'0.14em',textTransform:'uppercase',color:gray,marginBottom:'0.75rem'}}>Gráficas — toca para ver</div>
-
-            {/* Chart chips */}
-            <div style={{display:'flex',flexWrap:'wrap',gap:'0.5rem',marginBottom:'0.5rem'}}>
+          <div style={{borderTop:'1px solid rgba(14,14,12,0.06)',padding:'0.85rem 1.5rem'}}>
+            <div style={{fontSize:'0.5rem',letterSpacing:'0.14em',textTransform:'uppercase',color:gray,marginBottom:'0.6rem'}}>Charts — tap to view</div>
+            <div style={{display:'flex',flexWrap:'wrap',gap:'0.4rem'}}>
               {charts.map(c=>(
-                <button key={c.id} onClick={()=>setActiveChart(c.id)} style={{
-                  padding:'0.45rem 0.9rem',
+                <button key={c.id} onClick={()=>openChart(c.id)} style={{
+                  padding:'0.4rem 0.85rem',
                   borderRadius:20,
                   border:`1px solid ${activeChart===c.id?c.color:'rgba(14,14,12,0.12)'}`,
                   background: activeChart===c.id?c.color+'18':'transparent',
                   color: c.color,
-                  fontSize:'0.62rem',
+                  fontSize:'0.6rem',
                   fontFamily:ff,
                   cursor:'pointer',
                   display:'flex',
                   alignItems:'center',
-                  gap:'0.35rem',
+                  gap:'0.3rem',
                   transition:'all 0.15s'
                 }}>
-                  <span style={{width:7,height:7,borderRadius:'50%',background:c.color,display:'inline-block',flexShrink:0}}/>
+                  <span style={{width:6,height:6,borderRadius:'50%',background:c.color,display:'inline-block',flexShrink:0}}/>
                   {c.label}
                 </button>
               ))}
             </div>
-
-            {paid.length===0&&<div style={{textAlign:'center',fontSize:'0.72rem',color:gray,padding:'1rem 0'}}>No Stripe payments recorded yet.</div>}
+            {paid.length===0&&<div style={{textAlign:'center',fontSize:'0.72rem',color:gray,padding:'0.75rem 0 0'}}>No Stripe payments recorded yet.</div>}
           </div>
         )}
       </div>
     </>
+  )
+}
+
+function AdminSystemPanel({ users, cards, allUsers, loadAll, showToast }) {
+  const [tab, setTab] = useState('users')
+  const [search, setSearch] = useState('')
+  const [roleChanging, setRoleChanging] = useState(null)
+  const [log, setLog] = useState([])
+  const [logLoading, setLogLoading] = useState(false)
+  const [sessions, setSessions] = useState([])
+  const [sessionsLoading, setSessionsLoading] = useState(false)
+
+  useEffect(() => {
+    if (tab === 'log') loadLog()
+    if (tab === 'sessions') loadSessions()
+  }, [tab])
+
+  async function loadLog() {
+    setLogLoading(true)
+    try {
+      const res = await fetch('/api/admin/activity-log')
+      const data = await res.json()
+      setLog(data.log || [])
+    } catch(e) { console.error(e) }
+    setLogLoading(false)
+  }
+
+  async function loadSessions() {
+    setSessionsLoading(true)
+    try {
+      const res = await fetch('/api/admin/users?all=1')
+      const data = await res.json()
+      setSessions(data.users || [])
+    } catch(e) { console.error(e) }
+    setSessionsLoading(false)
+  }
+
+  async function changeRole(u) {
+    const newRole = u.role === 'admin' ? 'client' : 'admin'
+    setRoleChanging(u.id)
+    await fetch('/api/admin/users', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: u.id, role: newRole })
+    })
+    await fetch('/api/admin/activity-log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: newRole==='admin'?'Promoted to Admin':'Revoked Admin', target: u.business_name||u.full_name, type: 'role' })
+    })
+    showToast(`Role updated → ${newRole}`)
+    setRoleChanging(null)
+    loadAll()
+  }
+
+  const typeColor = { punch:'#2d8a60', create:gold, edit:'#5b8dee', file:'#8e44ad', reward:gold, delete:'#c0392b', role:'#e67e22' }
+  const typeIcon  = { punch:'●', create:'+', edit:'✎', file:'↑', reward:'★', delete:'×', role:'⚑' }
+
+  const displayUsers = (allUsers||users).filter(u =>
+    (u.full_name||'').toLowerCase().includes(search.toLowerCase()) ||
+    (u.business_name||'').toLowerCase().includes(search.toLowerCase()) ||
+    (u.email||'').toLowerCase().includes(search.toLowerCase())
+  )
+
+  const filteredLog = log.filter(l =>
+    (l.user_name||'').toLowerCase().includes(search.toLowerCase()) ||
+    (l.action||'').toLowerCase().includes(search.toLowerCase()) ||
+    (l.target||'').toLowerCase().includes(search.toLowerCase())
+  )
+
+  const filteredSessions = sessions.filter(u =>
+    (u.full_name||'').toLowerCase().includes(search.toLowerCase()) ||
+    (u.email||'').toLowerCase().includes(search.toLowerCase())
+  )
+
+  function getCard(uid) { return cards.find(c=>c.user_id===uid) }
+
+  function timeAgo(ts) {
+    if (!ts) return '—'
+    const diff = (Date.now() - new Date(ts)) / 1000
+    if (diff < 60) return 'Just now'
+    if (diff < 3600) return Math.floor(diff/60) + ' min ago'
+    if (diff < 86400) return Math.floor(diff/3600) + ' hr ago'
+    if (diff < 172800) return 'Yesterday'
+    return Math.floor(diff/86400) + ' days ago'
+  }
+
+  const tabStyle = (t) => ({
+    padding:'0.5rem 1rem', borderRadius:20, border:'none', cursor:'pointer', fontFamily:ff,
+    fontSize:'0.62rem', letterSpacing:'0.08em', textTransform:'uppercase',
+    background: tab===t ? black : 'rgba(14,14,12,0.06)',
+    color: tab===t ? white : gray,
+    transition:'all 0.15s'
+  })
+
+  return (
+    <div>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1.5rem'}}>
+        <h2 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300}}>System Admin</h2>
+        <div style={{fontSize:'0.62rem',color:gray}}>{(allUsers||users).length} users total</div>
+      </div>
+
+      <input type="text" placeholder="Search users, actions, targets..." value={search} onChange={e=>setSearch(e.target.value)}
+        style={{width:'100%',padding:'0.7rem 1rem',border:'1px solid '+gl,borderRadius:3,fontFamily:ff,fontSize:'0.82rem',outline:'none',marginBottom:'1.25rem',boxSizing:'border-box',background:white}}/>
+
+      <div style={{display:'flex',gap:'0.5rem',marginBottom:'1.5rem'}}>
+        <button style={tabStyle('users')} onClick={()=>setTab('users')}>Users & Roles</button>
+        <button style={tabStyle('log')} onClick={()=>setTab('log')}>Activity Log</button>
+        <button style={tabStyle('sessions')} onClick={()=>setTab('sessions')}>Sessions</button>
+      </div>
+
+      {/* USERS & ROLES */}
+      {tab==='users'&&(
+        <div style={{background:white,borderRadius:10,border:'1px solid rgba(14,14,12,0.07)',overflow:'hidden'}}>
+          <div style={{display:'grid',gridTemplateColumns:'2fr 1fr 1fr 1fr',padding:'0.6rem 1.25rem',borderBottom:'1px solid rgba(14,14,12,0.06)',fontSize:'0.52rem',letterSpacing:'0.1em',textTransform:'uppercase',color:gray}}>
+            <span>User</span><span>Role</span><span>Card</span><span>Actions</span>
+          </div>
+          {displayUsers.map(u=>{
+            const card = getCard(u.id)
+            const isAdmin = u.role === 'admin'
+            return (
+              <div key={u.id} style={{display:'grid',gridTemplateColumns:'2fr 1fr 1fr 1fr',padding:'0.85rem 1.25rem',borderBottom:'1px solid rgba(14,14,12,0.04)',alignItems:'center',gap:'0.5rem'}}>
+                <div style={{minWidth:0}}>
+                  <div style={{fontSize:'0.75rem',color:black,fontWeight:500,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{u.business_name||u.full_name}</div>
+                  <div style={{fontSize:'0.6rem',color:gray,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{u.email||'—'}</div>
+                </div>
+                <span style={{fontSize:'0.58rem',padding:'0.18rem 0.55rem',borderRadius:20,
+                  background:isAdmin?'rgba(184,151,90,0.12)':'rgba(52,152,219,0.08)',
+                  color:isAdmin?gold:'#2980b9',width:'fit-content',whiteSpace:'nowrap'}}>
+                  {isAdmin?'Admin':'Client'}
+                </span>
+                <span style={{fontSize:'0.62rem',color:card?'#2d8a60':gray}}>
+                  {card?'#'+card.card_number:'No card'}
+                </span>
+                <div style={{display:'flex',gap:'0.35rem',flexWrap:'wrap'}}>
+                  <button onClick={()=>changeRole(u)} disabled={roleChanging===u.id}
+                    style={{padding:'0.3rem 0.6rem',background:isAdmin?'rgba(192,57,43,0.08)':'rgba(184,151,90,0.1)',
+                      color:isAdmin?'#c0392b':gold,border:isAdmin?'none':'1px solid rgba(184,151,90,0.25)',
+                      borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.54rem',letterSpacing:'0.06em',textTransform:'uppercase',opacity:roleChanging===u.id?0.5:1}}>
+                    {roleChanging===u.id?'Saving…':isAdmin?'Revoke Admin':'Make Admin'}
+                  </button>
+                  <button onClick={()=>window.open('/card','_blank')}
+                    style={{padding:'0.3rem 0.6rem',background:'rgba(91,141,238,0.08)',color:'#5b8dee',
+                      border:'1px solid rgba(91,141,238,0.2)',borderRadius:3,cursor:'pointer',
+                      fontFamily:ff,fontSize:'0.54rem',letterSpacing:'0.06em',textTransform:'uppercase'}}>
+                    View
+                  </button>
+                </div>
+              </div>
+            )
+          })}
+          {displayUsers.length===0&&<div style={{padding:'2rem',textAlign:'center',color:gray,fontSize:'0.82rem'}}>No users found.</div>}
+        </div>
+      )}
+
+      {/* ACTIVITY LOG */}
+      {tab==='log'&&(
+        <div style={{background:white,borderRadius:10,border:'1px solid rgba(14,14,12,0.07)',overflow:'hidden'}}>
+          <div style={{padding:'0.75rem 1.25rem',borderBottom:'1px solid rgba(14,14,12,0.06)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+            <span style={{fontSize:'0.6rem',color:gray,letterSpacing:'0.1em',textTransform:'uppercase'}}>Recent activity</span>
+            <button onClick={loadLog} style={{background:'none',border:'none',cursor:'pointer',fontSize:'0.6rem',color:gray,fontFamily:ff,letterSpacing:'0.08em',textTransform:'uppercase'}}>↺ Refresh</button>
+          </div>
+          {logLoading&&<div style={{padding:'2rem',textAlign:'center',color:gray,fontSize:'0.78rem'}}>Loading...</div>}
+          {!logLoading&&filteredLog.length===0&&<div style={{padding:'2rem',textAlign:'center',color:gray,fontSize:'0.82rem'}}>No activity yet.</div>}
+          {!logLoading&&filteredLog.map((l,i)=>(
+            <div key={l.id} style={{display:'flex',alignItems:'center',gap:'0.85rem',padding:'0.85rem 1.25rem',borderBottom:'1px solid rgba(14,14,12,0.04)'}}>
+              <div style={{width:28,height:28,borderRadius:'50%',background:(typeColor[l.type]||gray)+'18',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'0.7rem',color:typeColor[l.type]||gray,flexShrink:0,fontWeight:700}}>
+                {typeIcon[l.type]||'·'}
+              </div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:'0.72rem',color:black,fontWeight:500}}>{l.action}</div>
+                <div style={{fontSize:'0.62rem',color:gray,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',marginTop:'0.1rem'}}>{l.target||'—'}</div>
+              </div>
+              <div style={{textAlign:'right',flexShrink:0}}>
+                <div style={{fontSize:'0.6rem',color:gray}}>{timeAgo(l.created_at)}</div>
+                <div style={{fontSize:'0.56rem',color:'rgba(14,14,12,0.3)',marginTop:'0.1rem'}}>{l.user_name||'Admin'}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* SESSIONS */}
+      {tab==='sessions'&&(
+        <div style={{background:white,borderRadius:10,border:'1px solid rgba(14,14,12,0.07)',overflow:'hidden'}}>
+          <div style={{display:'grid',gridTemplateColumns:'2fr 1fr 1fr',padding:'0.6rem 1.25rem',borderBottom:'1px solid rgba(14,14,12,0.06)',fontSize:'0.52rem',letterSpacing:'0.1em',textTransform:'uppercase',color:gray}}>
+            <span>User</span><span>Role</span><span>Last Sign In</span>
+          </div>
+          {sessionsLoading&&<div style={{padding:'2rem',textAlign:'center',color:gray,fontSize:'0.78rem'}}>Loading...</div>}
+          {!sessionsLoading&&filteredSessions.map((u,i)=>(
+            <div key={u.id} style={{display:'grid',gridTemplateColumns:'2fr 1fr 1fr',padding:'0.85rem 1.25rem',borderBottom:'1px solid rgba(14,14,12,0.04)',alignItems:'center',gap:'0.5rem'}}>
+              <div style={{minWidth:0}}>
+                <div style={{fontSize:'0.75rem',color:black,fontWeight:500,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{u.business_name||u.full_name||'—'}</div>
+                <div style={{fontSize:'0.6rem',color:gray,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{u.email||'—'}</div>
+              </div>
+              <span style={{fontSize:'0.58rem',padding:'0.18rem 0.55rem',borderRadius:20,
+                background:u.role==='admin'?'rgba(184,151,90,0.12)':'rgba(52,152,219,0.08)',
+                color:u.role==='admin'?gold:'#2980b9',width:'fit-content'}}>
+                {u.role==='admin'?'Admin':'Client'}
+              </span>
+              <span style={{fontSize:'0.62rem',color:gray}}>{u.last_sign_in_at?timeAgo(u.last_sign_in_at):'Never'}</span>
+            </div>
+          ))}
+          {!sessionsLoading&&filteredSessions.length===0&&<div style={{padding:'2rem',textAlign:'center',color:gray,fontSize:'0.82rem'}}>No sessions found.</div>}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -789,6 +1018,7 @@ export default function Admin({session}){
   const [expenseClient,setExpenseClient]=useState(null)
   const [historyClient,setHistoryClient]=useState(null)
   const [sales,setSales]=useState([])
+  const [allUsers,setAllUsers]=useState([])
   const [expenseForm,setExpenseForm]=useState({amount:'',description:'',date:new Date().toISOString().split('T')[0]})
 
   useEffect(()=>{
@@ -806,6 +1036,8 @@ export default function Admin({session}){
       fetch('/api/admin/catalog').then(r=>r.json())
     ])
     setCards(c.cards||[]);setUsers(u.users||[]);setRewards(r.rewards||[]);setCatalog(cat.items||[])
+    // Load all users (including admins) for system panel
+    fetch('/api/admin/users?all=1').then(r=>r.json()).then(d=>setAllUsers(d.users||[])).catch(()=>{})
     // Load sales for financial card
     fetch('/api/admin/sales').then(r=>r.json()).then(d=>setSales(d.sales||[])).catch(e=>console.error('Sales fetch error:',e))
     setLoading(false)
@@ -817,7 +1049,12 @@ export default function Admin({session}){
     if(!punchId){showToast('Select a client');return}
     const res=await fetch('/api/admin/punch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({card_id:punchId,payment_amount:punchAmt})})
     const data=await res.json()
-    if(res.ok){showToast(data.message);setPunchId('');setPunchAmt('');loadAll()}
+    if(res.ok){
+      showToast(data.message)
+      const card=cards.find(c=>c.id===punchId)
+      await fetch('/api/admin/activity-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'Punch card',target:card?.profiles?.business_name||card?.profiles?.full_name||'Client',type:'punch'})})
+      setPunchId('');setPunchAmt('');loadAll()
+    }
     else showToast('Error: '+data.error)
   }
 
@@ -825,7 +1062,11 @@ export default function Admin({session}){
     if(!form.new_email||!form.new_password){showToast('Email and password required');return}
     const res=await fetch('/api/admin/users',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:form.new_email,password:form.new_password,full_name:form.new_name,business_name:form.new_business,phone:form.new_phone})})
     const data=await res.json()
-    if(res.ok){showToast('Client created');setForm(f=>({...f,new_email:'',new_password:'',new_name:'',new_business:'',new_phone:'',user_id:data.user.id}));loadAll()}
+    if(res.ok){
+      showToast('Client created')
+      await fetch('/api/admin/activity-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'Created client',target:form.new_business||form.new_name||form.new_email,type:'create'})})
+      setForm(f=>({...f,new_email:'',new_password:'',new_name:'',new_business:'',new_phone:'',user_id:data.user.id}));loadAll()
+    }
     else showToast('Error: '+data.error)
   }
 
@@ -839,7 +1080,9 @@ export default function Admin({session}){
 
   async function deleteCard(id){
     if(!confirm('Delete this card?'))return
+    const card=cards.find(c=>c.id===id)
     await fetch('/api/admin/cards',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})})
+    await fetch('/api/admin/activity-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'Deleted card',target:(card?.profiles?.business_name||card?.profiles?.full_name||'')+(card?' · #'+card.card_number:''),type:'delete'})})
     showToast('Card deleted');loadAll()
   }
 
@@ -847,7 +1090,12 @@ export default function Admin({session}){
     const card=cards.find(c=>c.user_id===form.reward_user_id)
     if(!card){showToast('User has no active card');return}
     const res=await fetch('/api/admin/rewards',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({card_id:card.id,user_id:form.reward_user_id,reward_type:form.reward_type||'1 Free Month',reward_cost:form.reward_cost,notes:form.reward_notes})})
-    if(res.ok){showToast('Reward registered');setModal(null);setForm({});loadAll()}
+    if(res.ok){
+      showToast('Reward registered')
+      const u=users.find(u=>u.id===form.reward_user_id)
+      await fetch('/api/admin/activity-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'Registered reward',target:(form.reward_type||'1 Free Month')+' → '+(u?.business_name||u?.full_name||''),type:'reward'})})
+      setModal(null);setForm({});loadAll()
+    }
   }
 
   async function deleteReward(id){
@@ -903,6 +1151,8 @@ export default function Admin({session}){
             </div>)}
             <div style={{height:'1px',background:'rgba(255,255,255,0.06)',margin:'0.25rem 1.5rem'}}/>
             <button onClick={()=>setPanel('catalog')} style={{display:'flex',alignItems:'center',padding:'0.82rem 1.5rem',fontSize:'0.72rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel==='catalog'?gold:'rgba(255,255,255,0.32)',cursor:'pointer',background:'none',border:'none',borderLeft:panel==='catalog'?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>Catalog</button>
+            <div style={{height:'1px',background:'rgba(255,255,255,0.06)',margin:'0.25rem 1.5rem'}}/>
+            <button onClick={()=>setPanel('system')} style={{display:'flex',alignItems:'center',padding:'0.82rem 1.5rem',fontSize:'0.72rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel==='system'?gold:'rgba(255,255,255,0.32)',cursor:'pointer',background:'none',border:'none',borderLeft:panel==='system'?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>Admin Panel</button>
           </div>
 
           {/* MAIN */}
@@ -912,13 +1162,14 @@ export default function Admin({session}){
             {panel==='notifications'&&<NotificationsPanel cards={cards} users={users}/>}
             {panel==='campaigns'&&<CampaignsPanel cards={cards} users={users}/>}
             {panel==='catalog'&&<CatalogPanel catalog={catalog} onSetCost={(item)=>{setEditCost(item);setCostForm({cost:item.catalog_costs?.cost||'',notes:item.catalog_costs?.notes||''});setModal('cost')}} onSetSuppliers={(item)=>{setSuppliersItem(item);setSuppliersText(item.catalog_costs?.suppliers||'');setSuppliersTitle('');setModal('suppliers')}}/>}
+            {panel==='system'&&<AdminSystemPanel users={users} cards={cards} allUsers={allUsers} loadAll={loadAll} showToast={showToast}/>}
             {panel==='loyalty'&&(<div><h2 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300,marginBottom:'1.5rem'}}>Loyalty Program</h2><div style={{display:'flex',flexDirection:'column',gap:'0.75rem'}}>{[['cards','Cards','Create and manage loyalty cards'],['punch','Punch','Register payments and stamps'],['rewards','Rewards','Register and view redeemed rewards']].map(([id,label,desc])=>(<div key={id} onClick={()=>setPanel(id)} style={{background:white,borderRadius:10,padding:'1.25rem 1.5rem',border:'1px solid rgba(14,14,12,0.07)',cursor:'pointer',display:'flex',justifyContent:'space-between',alignItems:'center'}}><div><div style={{fontFamily:ffS,fontSize:'1.1rem',fontWeight:300,color:black,marginBottom:'0.2rem'}}>{label}</div><div style={{fontSize:'0.68rem',color:gray}}>{desc}</div></div><div style={{color:gold,fontSize:'1rem'}}>›</div></div>))}</div></div>)}
             {panel==='clients'&&<ClientsPanel users={users} cards={cards} search={clientSearch} setSearch={setClientSearch}
               onEdit={(u)=>{setEditingClient(u);setEditForm({name:u.full_name||'',business:u.business_name||'',phone:u.phone||'',email:'',password:''});setModal('editclient')}}
               onAddPayment={(card)=>{setPunchId(card.id);setPanel('punch')}}
               onCreateCard={(uid)=>{setForm({user_id:uid});setModal('card')}}
               onCreateNew={()=>{setForm({});setModal('card')}}
-              onDelete={async(uid)=>{if(!confirm('Delete this client?'))return;await fetch('/api/admin/users',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:uid})});showToast('Client deleted');loadAll()}}
+              onDelete={async(uid)=>{if(!confirm('Delete this client?'))return;const u=users.find(u=>u.id===uid);await fetch('/api/admin/users',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:uid})});await fetch('/api/admin/activity-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'Deleted client',target:u?.business_name||u?.full_name||'',type:'delete'})});showToast('Client deleted');loadAll()}}
               onFiles={(u)=>{setFilesClient(u);setModal('files')}}
               onExpense={(u)=>{setExpenseClient(u);setExpenseForm({amount:'',description:'',date:new Date().toISOString().split('T')[0]});setModal('expense')}}
               onHistory={(u)=>{setHistoryClient(u);setModal('history')}}
@@ -1038,7 +1289,7 @@ export default function Admin({session}){
             <label style={lbl}>New Email (optional)</label><input style={inp} type="email" placeholder="Leave empty to keep current" value={editForm.email||''} onChange={e=>setEditForm(f=>({...f,email:e.target.value}))}/>
             <label style={lbl}>New Password (optional)</label><input style={inp} type="text" placeholder="Leave empty to keep current" value={editForm.password||''} onChange={e=>setEditForm(f=>({...f,password:e.target.value}))}/>
             <div style={{display:'flex',gap:'0.75rem'}}>
-              <button onClick={async()=>{await fetch('/api/admin/users',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:editingClient.id,full_name:editForm.name,business_name:editForm.business,phone:editForm.phone,email:editForm.email||null,password:editForm.password||null})});showToast('Client updated');setModal(null);setEditingClient(null);loadAll()}} style={{flex:1,background:black,color:white,border:'none',padding:'0.85rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Save</button>
+              <button onClick={async()=>{await fetch('/api/admin/users',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:editingClient.id,full_name:editForm.name,business_name:editForm.business,phone:editForm.phone,email:editForm.email||null,password:editForm.password||null})});await fetch('/api/admin/activity-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'Edited client',target:editForm.business||editForm.name||'',type:'edit'})});showToast('Client updated');setModal(null);setEditingClient(null);loadAll()}} style={{flex:1,background:black,color:white,border:'none',padding:'0.85rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Save</button>
               <button onClick={()=>setModal(null)} style={{background:'rgba(14,14,12,0.06)',color:black,border:'none',padding:'0.85rem 1.25rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Cancel</button>
             </div>
           </div>
