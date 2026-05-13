@@ -16,17 +16,27 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'POST') {
-    const { customer_name, customer_email, product_name, amount, type, status, notes, sale_date } = req.body
+    const { customer_id, customer_name, customer_email, product_name, amount, type, status, notes, sale_date } = req.body
     const { error } = await supabase.from('sales').insert({
-      id: 'cash_'+Date.now(),
+      id: (type==='manual'?'manual_':'cash_')+Date.now(),
+      customer_id: customer_id || null,
       customer_name, customer_email,
-      product_name, amount: parseFloat(amount),
+      product_name: product_name || 'Manual Payment',
+      amount: parseFloat(amount),
       currency: 'usd',
       type: type || 'cash',
       status: status || 'paid',
       notes,
       sale_date: sale_date || new Date().toISOString()
     })
+    if (error) return res.status(500).json({ error: error.message })
+    return res.status(200).json({ success: true })
+  }
+
+  if (req.method === 'PATCH') {
+    const { id, status } = req.body
+    if (!id || !status) return res.status(400).json({ error: 'id and status required' })
+    const { error } = await supabase.from('sales').update({ status }).eq('id', id)
     if (error) return res.status(500).json({ error: error.message })
     return res.status(200).json({ success: true })
   }
