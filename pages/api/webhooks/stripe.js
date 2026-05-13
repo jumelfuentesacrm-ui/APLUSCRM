@@ -18,6 +18,99 @@ async function getRawBody(req) {
   })
 }
 
+function generateCardNumber() {
+  return 'AC-' + Math.random().toString(36).substring(2, 8).toUpperCase()
+}
+
+async function handlePayment(email, name, amount, currency, stripeCustomerId, description) {
+  if (!email) return
+
+  // 1. Find or create profile
+  let userId = null
+  const { data: existing } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('email', email)
+    .single()
+
+  if (existing) {
+    userId = existing.id
+  } else {
+    // Create auth user
+    const { data: authUser, error: authErr } = await supabase.auth.admin.createUser({
+      email,
+      email_confirm: true,
+      user_metadata: { full_name: name || email }
+    })
+    if (authErr) return
+    userId = authUser.user.id
+
+    // Create profile
+    await supabase.from('profiles').upsert({
+      id: userId,
+      email,
+      full_name: name || email,
+      role: 'client'
+    })
+  }
+
+  if (!userId) return
+
+  // 2. Find or create loyalty card
+  let cardId = null
+  const { data: existingCard } = await supabase
+    .from('loyalty_cards')
+    .select('id, stamps')
+    .eq('user_id', userId)
+    .single()
+
+  if (existingCard) {
+    cardId = existingCard.id
+  } else {
+    // Generate unique card number
+    let cardNumber = generateCardNumber()
+    let tries = 0
+    while (tries < 5) {
+      const { data: taken } = await supabase.from('loyalty_cards').select('id').eq('card_number', cardNumber).single()
+      if (!taken) break
+      cardNumber = generateCardNumber()
+      tries++
+    }
+
+    const { data: newCard } = await supabase
+      .from('loyalty_cards')
+      .insert({ user_id: userId, card_number: cardNumber, stamps: 0, cycle: 1 })
+      .select()
+      .single()
+
+    if (newCard) cardId = newCard.id
+  }
+
+  if (!cardId) return
+
+  // 3. Punch card
+  const { data: card } = await supabase
+    .from('loyalty_cards')
+    .select('stamps')
+    .eq('id', cardId)
+    .single()
+
+  const newStamps = (card?.stamps || 0) + 1
+  const newCycle = Math.ceil(newStamps / 5) || 1
+
+  await supabase.from('loyalty_cards').update({
+    stamps: newStamps,
+    cycle: newCycle
+  }).eq('id', cardId)
+
+  // 4. Record stamp history
+  await supabase.from('stamp_history').insert({
+    card_id: cardId,
+    user_id: userId,
+    payment_amount: '$' + (amount / 100).toFixed(2)
+  })
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
 
@@ -37,14 +130,12 @@ export default async function handler(req, res) {
   // PRODUCTS
   if (type === 'product.created' || type === 'product.updated') {
     await supabase.from('catalog_items').upsert({
-      id: obj.id,
-      name: obj.name,
+      id: obj.id, name: obj.name,
       description: obj.description || null,
       active: obj.active,
       updated_at: new Date().toISOString()
     })
   }
-
   if (type === 'product.deleted') {
     await supabase.from('catalog_items').delete().eq('id', obj.id)
   }
@@ -52,23 +143,21 @@ export default async function handler(req, res) {
   // PRICES
   if (type === 'price.created' || type === 'price.updated') {
     await supabase.from('catalog_prices').upsert({
-      id: obj.id,
-      product_id: obj.product,
+      id: obj.id, product_id: obj.product,
       amount: obj.unit_amount ? obj.unit_amount / 100 : null,
       currency: obj.currency,
       interval: obj.recurring?.interval || null,
       active: obj.active
     })
   }
-
   if (type === 'price.deleted') {
     await supabase.from('catalog_prices').delete().eq('id', obj.id)
   }
 
-  // PAYMENTS
+  // PAYMENT INTENT — one-time payments
   if (type === 'payment_intent.succeeded') {
-    const existing = await supabase.from('sales').select('id').eq('id', obj.id).single()
-    if (!existing.data) {
+    const { data: existingSale } = await supabase.from('sales').select('id').eq('id', obj.id).single()
+    if (!existingSale) {
       await supabase.from('sales').insert({
         id: obj.id,
         customer_id: obj.customer || null,
@@ -80,12 +169,17 @@ export default async function handler(req, res) {
         sale_date: new Date(obj.created * 1000).toISOString()
       })
     }
+    // Auto punch card
+    const email = obj.receipt_email
+    const charge = obj.charges?.data?.[0]
+    const name = charge?.billing_details?.name || null
+    await handlePayment(email, name, obj.amount, obj.currency, obj.customer, obj.description)
   }
 
-  // INVOICES (subscriptions)
+  // INVOICE — subscriptions
   if (type === 'invoice.paid') {
-    const existing = await supabase.from('sales').select('id').eq('id', obj.id).single()
-    if (!existing.data) {
+    const { data: existingSale } = await supabase.from('sales').select('id').eq('id', obj.id).single()
+    if (!existingSale) {
       const lineItem = obj.lines?.data?.[0]
       await supabase.from('sales').insert({
         id: obj.id,
@@ -102,6 +196,15 @@ export default async function handler(req, res) {
         sale_date: new Date(obj.created * 1000).toISOString()
       })
     }
+    // Auto punch card
+    await handlePayment(
+      obj.customer_email,
+      obj.customer_name,
+      obj.amount_paid,
+      obj.currency,
+      obj.customer,
+      obj.lines?.data?.[0]?.description
+    )
   }
 
   if (type === 'invoice.payment_failed') {
@@ -131,12 +234,7 @@ export default async function handler(req, res) {
   }
 
   // SUBSCRIPTIONS
-  if (type === 'customer.subscription.created' || type === 'customer.subscription.updated') {
-    // Handled via invoice.paid - no extra action needed
-  }
-
   if (type === 'customer.subscription.deleted') {
-    // Mark any pending sales as cancelled
     await supabase.from('sales').update({ status: 'cancelled' })
       .eq('customer_id', obj.customer)
       .eq('status', 'pending')
