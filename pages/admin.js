@@ -340,9 +340,9 @@ function CatalogPanel({ catalog, onSetCost, onSetSuppliers }) {
     const price = getPrice(item)
     const cost = getCost(item)
     const margin = getMargin(item)
+    const suppliers = item.catalog_costs?.[0]?.suppliers
     return (
       <div style={{padding:'0.9rem 1.25rem',borderBottom:'1px solid rgba(14,14,12,0.05)'}}>
-        {/* Name + status */}
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'0.6rem'}}>
           <div style={{flex:1,minWidth:0,marginRight:'0.75rem'}}>
             <div style={{fontSize:'0.78rem',fontWeight:600,color:black,lineHeight:1.3}}>{item.name}</div>
@@ -350,27 +350,27 @@ function CatalogPanel({ catalog, onSetCost, onSetSuppliers }) {
           </div>
           <span style={{fontSize:'0.52rem',padding:'0.15rem 0.55rem',borderRadius:20,background:item.active?'rgba(45,138,96,0.1)':'rgba(192,57,43,0.1)',color:item.active?'#2d8a60':'#c0392b',whiteSpace:'nowrap',flexShrink:0}}>{item.active?'Active':'Inactive'}</span>
         </div>
-        {/* Price / Cost / Margin row */}
-        <div style={{display:'flex',gap:'0.5rem',marginBottom:'0.65rem',flexWrap:'wrap'}}>
-          <div style={{background:'rgba(14,14,12,0.04)',borderRadius:6,padding:'0.35rem 0.65rem',minWidth:80}}>
-            <div style={{fontSize:'0.48rem',color:gray,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:'0.15rem'}}>Price</div>
-            <div style={{fontSize:'0.75rem',fontWeight:700,color:black}}>{formatPrice(item)}</div>
+        {/* Price / Cost / Margin — inline pill row */}
+        <div style={{display:'flex',alignItems:'center',gap:'0.5rem',marginBottom:'0.65rem',flexWrap:'wrap'}}>
+          <div style={{display:'flex',alignItems:'center',gap:'0.25rem'}}>
+            <span style={{fontSize:'0.48rem',color:gray,letterSpacing:'0.08em',textTransform:'uppercase'}}>Price</span>
+            <span style={{fontSize:'0.78rem',fontWeight:700,color:black}}>{formatPrice(item)}</span>
           </div>
-          <div style={{background:'rgba(14,14,12,0.04)',borderRadius:6,padding:'0.35rem 0.65rem',minWidth:80}}>
-            <div style={{fontSize:'0.48rem',color:gray,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:'0.15rem'}}>Cost</div>
-            <div style={{fontSize:'0.75rem',fontWeight:600,color:cost!==null?black:'rgba(14,14,12,0.3)'}}>{cost!==null?'$'+cost.toFixed(2):'—'}</div>
+          <span style={{color:gray,fontSize:'0.7rem'}}>·</span>
+          <div style={{display:'flex',alignItems:'center',gap:'0.25rem'}}>
+            <span style={{fontSize:'0.48rem',color:gray,letterSpacing:'0.08em',textTransform:'uppercase'}}>Cost</span>
+            <span style={{fontSize:'0.78rem',fontWeight:600,color:cost!==null?black:'rgba(14,14,12,0.25)'}}>{cost!==null?'$'+cost.toFixed(2):'—'}</span>
           </div>
-          <div style={{background:margin!==null?mc(margin)+'18':'rgba(14,14,12,0.04)',borderRadius:6,padding:'0.35rem 0.65rem',minWidth:80}}>
-            <div style={{fontSize:'0.48rem',color:gray,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:'0.15rem'}}>Margin</div>
-            <div style={{fontSize:'0.75rem',fontWeight:700,color:margin!==null?mc(margin):'rgba(14,14,12,0.3)'}}>{margin!==null?margin+'%':'—'}</div>
+          <span style={{color:gray,fontSize:'0.7rem'}}>·</span>
+          <div style={{display:'flex',alignItems:'center',gap:'0.25rem'}}>
+            <span style={{fontSize:'0.48rem',color:gray,letterSpacing:'0.08em',textTransform:'uppercase'}}>Margin</span>
+            <span style={{fontSize:'0.78rem',fontWeight:700,color:margin!==null?mc(margin):'rgba(14,14,12,0.25)'}}>{margin!==null?margin+'%':'—'}</span>
           </div>
-          {margin!==null&&<div style={{display:'flex',alignItems:'center',flex:1,minWidth:80}}>
-            <div style={{flex:1,height:4,background:'rgba(14,14,12,0.06)',borderRadius:2}}>
-              <div style={{height:'100%',width:Math.min(margin,100)+'%',background:mc(margin),borderRadius:2}}/>
-            </div>
+          {margin!==null&&<div style={{flex:1,height:3,background:'rgba(14,14,12,0.06)',borderRadius:2,minWidth:40}}>
+            <div style={{height:'100%',width:Math.min(margin,100)+'%',background:mc(margin),borderRadius:2}}/>
           </div>}
         </div>
-        {/* Buttons */}
+        {suppliers&&<div style={{fontSize:'0.62rem',color:gray,marginBottom:'0.6rem',fontStyle:'italic'}}>{suppliers.substring(0,80)}{suppliers.length>80?'...':''}</div>}
         <div style={{display:'flex',gap:'0.4rem',flexWrap:'wrap'}}>
           <button onClick={()=>onSetCost(item)} style={{padding:'0.4rem 0.85rem',background:'rgba(184,151,90,0.08)',color:gold,border:'1px solid rgba(184,151,90,0.25)',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.58rem',letterSpacing:'0.08em',textTransform:'uppercase'}}>{cost!==null?'Edit Cost':'Set Cost'}</button>
           <button onClick={()=>onSetSuppliers(item)} style={{padding:'0.4rem 0.85rem',background:'rgba(52,152,219,0.08)',color:'#2980b9',border:'1px solid rgba(52,152,219,0.2)',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.58rem',letterSpacing:'0.08em',textTransform:'uppercase'}}>Suppliers</button>
@@ -763,7 +763,7 @@ export default function Admin({session}){
             {panel==='client'&&selectedClient&&<ClientProfile card={selectedClient} onBack={()=>{setSelectedClient(null);setPanel('dashboard')}}/>}
             {panel==='notifications'&&<NotificationsPanel cards={cards} users={users}/>}
             {panel==='campaigns'&&<CampaignsPanel cards={cards} users={users}/>}
-            {panel==='catalog'&&<CatalogPanel catalog={catalog} onSetCost={(item)=>{setEditCost(item);setCostForm({cost:item.catalog_costs?.[0]?.cost||'',notes:item.catalog_costs?.[0]?.notes||''});setModal('cost')}} onSetSuppliers={(item)=>{setSuppliersItem(item);setSuppliersText(item.catalog_costs?.[0]?.notes||'');setSuppliersTitle('');setModal('suppliers')}}/>}
+            {panel==='catalog'&&<CatalogPanel catalog={catalog} onSetCost={(item)=>{setEditCost(item);setCostForm({cost:item.catalog_costs?.[0]?.cost||'',notes:item.catalog_costs?.[0]?.notes||''});setModal('cost')}} onSetSuppliers={(item)=>{setSuppliersItem(item);setSuppliersText(item.catalog_costs?.[0]?.suppliers||'');setSuppliersTitle('');setModal('suppliers')}}/>}
             {panel==='loyalty'&&(<div><h2 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300,marginBottom:'1.5rem'}}>Loyalty Program</h2><div style={{display:'flex',flexDirection:'column',gap:'0.75rem'}}>{[['cards','Cards','Create and manage loyalty cards'],['punch','Punch','Register payments and stamps'],['rewards','Rewards','Register and view redeemed rewards']].map(([id,label,desc])=>(<div key={id} onClick={()=>setPanel(id)} style={{background:white,borderRadius:10,padding:'1.25rem 1.5rem',border:'1px solid rgba(14,14,12,0.07)',cursor:'pointer',display:'flex',justifyContent:'space-between',alignItems:'center'}}><div><div style={{fontFamily:ffS,fontSize:'1.1rem',fontWeight:300,color:black,marginBottom:'0.2rem'}}>{label}</div><div style={{fontSize:'0.68rem',color:gray}}>{desc}</div></div><div style={{color:gold,fontSize:'1rem'}}>›</div></div>))}</div></div>)}
             {panel==='clients'&&<ClientsPanel users={users} cards={cards} search={clientSearch} setSearch={setClientSearch}
               onEdit={(u)=>{setEditingClient(u);setEditForm({name:u.full_name||'',business:u.business_name||'',phone:u.phone||'',email:'',password:''});setModal('editclient')}}
@@ -964,7 +964,7 @@ export default function Admin({session}){
               </div>
               <button onClick={async()=>{
                 if(!costForm.cost){showToast('Enter a cost first');return}
-                const r=await fetch('/api/admin/catalog',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({product_id:editCost.id,cost:costForm.cost,notes:costForm.notes})})
+                const r=await fetch('/api/admin/catalog',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({product_id:editCost.id,cost:costForm.cost})})
                 const d=await r.json()
                 if(r.ok){
                   showToast('Cost saved ✓')
@@ -974,8 +974,6 @@ export default function Admin({session}){
                 } else showToast('Error: '+(d.error||'Unknown'))
               }} style={{padding:'0.78rem 1.25rem',background:black,color:white,border:'none',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.62rem',letterSpacing:'0.12em',textTransform:'uppercase',flexShrink:0}}>Save</button>
             </div>
-            <label style={lbl}>Notes (optional)</label>
-            <input id="cost-notes" style={inp} type="text" placeholder="e.g. Vercel $20/mo, domain $12/yr..." value={costForm.notes} onChange={e=>setCostForm(f=>({...f,notes:e.target.value}))}/>
             <CostHistory productId={editCost.id}/>
             <button onClick={()=>setModal(null)} style={{width:'100%',background:'rgba(14,14,12,0.06)',color:black,border:'none',padding:'0.75rem',fontFamily:ff,fontSize:'0.62rem',letterSpacing:'0.12em',textTransform:'uppercase',borderRadius:3,cursor:'pointer',marginTop:'0.5rem'}}>Close</button>
           </div>
@@ -998,7 +996,7 @@ export default function Admin({session}){
             </div>
             <div style={{display:'flex',gap:'0.75rem'}}>
               <button onClick={async()=>{
-                const r=await fetch('/api/admin/catalog',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({product_id:suppliersItem.id,cost:suppliersItem.catalog_costs?.[0]?.cost||0,notes:suppliersText})})
+                const r=await fetch('/api/admin/catalog',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({product_id:suppliersItem.id,suppliers:suppliersText})})
                 const d=await r.json()
                 if(r.ok){showToast('Saved ✓');fetch('/api/admin/catalog').then(r=>r.json()).then(d=>setCatalog(d.items||[]))}
                 else showToast('Error: '+(d.error||'Unknown'))
@@ -1054,7 +1052,7 @@ function ClientHistory({ client }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(()=>{
-    fetch('/api/admin/sales?email='+encodeURIComponent(client.email||''))
+    fetch('/api/admin/sales?email='+encodeURIComponent(client.email||client.user_email||''))
       .then(r=>r.json())
       .then(d=>{ setSales(d.sales||[]); setLoading(false) })
       .catch(()=>setLoading(false))
