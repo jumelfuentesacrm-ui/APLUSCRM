@@ -1414,18 +1414,18 @@ export default function Admin({session}){
 
         {/* MOBILE NAV */}
         <div className="mobile-nav">
-          {[['notifications','Alerts'],['dashboard','Dashboard'],['loyalty','Loyalty']].map(([id,label])=>(
+          {[
+            ['notifications','Alerts'],
+            ['dashboard','Dashboard'],
+            ['loyalty','Loyalty'],
+          ].map(([id,label])=>(
             <button key={id} onClick={()=>{setPanel(id);setHamburgerOpen(false)}}
               className={panel===id||(['cards','punch','rewards'].includes(panel)&&id==='loyalty')?'active':''}>
-              <span style={{fontSize:'1rem',lineHeight:1}}>
-                {id==='notifications'?'🔔':id==='dashboard'?'◻':id==='loyalty'?'★':''}
-              </span>
               {label}
             </button>
           ))}
           <button onClick={()=>setHamburgerOpen(o=>!o)}
             className={hamburgerOpen||['clients','campaigns','catalog','system'].includes(panel)?'active':''}>
-            <span style={{fontSize:'1.1rem',lineHeight:1}}>☰</span>
             More
           </button>
         </div>
@@ -1433,27 +1433,25 @@ export default function Admin({session}){
         {/* HAMBURGER DRAWER */}
         {hamburgerOpen&&(
           <>
-            {/* backdrop */}
             <div onClick={()=>setHamburgerOpen(false)}
               style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.45)',zIndex:195}}/>
-            {/* drawer */}
             <div style={{position:'fixed',bottom:56,left:0,right:0,background:ink,zIndex:196,
               borderRadius:'16px 16px 0 0',borderTop:'1px solid rgba(184,151,90,0.15)',
-              padding:'0.5rem 0 0.25rem'}}>
+              padding:'0.5rem 0 0.5rem'}}>
               <div style={{width:36,height:3,background:'rgba(255,255,255,0.15)',borderRadius:2,margin:'0 auto 0.75rem'}}/>
               {[
-                ['clients','Clients','👥'],
-                ['campaigns','Campaigns','📣'],
-                ['catalog','Catalog','📋'],
-                ['system','Admin Panel','⚙️'],
-              ].map(([id,label,icon])=>(
+                ['clients','Clients'],
+                ['campaigns','Campaigns'],
+                ['catalog','Catalog'],
+                ['system','Admin Panel'],
+              ].map(([id,label])=>(
                 <button key={id} onClick={()=>{setPanel(id);setHamburgerOpen(false)}}
-                  style={{display:'flex',alignItems:'center',gap:'0.85rem',width:'100%',padding:'0.9rem 1.5rem',
-                    background:panel===id?'rgba(184,151,90,0.1)':'none',border:'none',
+                  style={{display:'flex',alignItems:'center',width:'100%',padding:'0.9rem 1.5rem',
+                    background:panel===id?'rgba(184,151,90,0.08)':'none',border:'none',
                     borderLeft:panel===id?'2px solid '+gold:'2px solid transparent',
-                    color:panel===id?gold:'rgba(255,255,255,0.7)',
-                    fontFamily:ff,fontSize:'0.82rem',letterSpacing:'0.04em',cursor:'pointer',textAlign:'left'}}>
-                  <span style={{fontSize:'1.1rem',width:24,textAlign:'center'}}>{icon}</span>
+                    color:panel===id?gold:'rgba(255,255,255,0.65)',
+                    fontFamily:ff,fontSize:'0.72rem',letterSpacing:'0.1em',textTransform:'uppercase',
+                    cursor:'pointer',textAlign:'left'}}>
                   {label}
                 </button>
               ))}
