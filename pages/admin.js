@@ -1426,7 +1426,7 @@ export default function Admin({session}){
           ))}
           <button onClick={()=>setHamburgerOpen(o=>!o)}
             className={hamburgerOpen||['clients','campaigns','catalog','system'].includes(panel)?'active':''}>
-            ☰
+            <span style={{fontSize:'1rem',lineHeight:1}}>☰</span>
           </button>
         </div>
 
@@ -1436,7 +1436,7 @@ export default function Admin({session}){
             <div onClick={()=>setHamburgerOpen(false)}
               style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.45)',zIndex:195}}/>
             <div style={{position:'fixed',bottom:52,left:0,right:0,background:ink,zIndex:196,
-              borderRadius:'16px 16px 0 0',borderTop:'1px solid rgba(184,151,90,0.2)',
+              borderRadius:'16px 16px 0 0',
               paddingBottom:0}}>
               <div style={{width:36,height:3,background:'rgba(255,255,255,0.15)',borderRadius:2,margin:'0.75rem auto 0.5rem'}}/>
               {[
