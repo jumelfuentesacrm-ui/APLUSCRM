@@ -525,6 +525,7 @@ function FinancialCard({ sales }) {
   const [expanded, setExpanded] = useState(false)
   const [activeChart, setActiveChart] = useState(null)
   const [chartVisible, setChartVisible] = useState(false)
+  const [period, setPeriod] = useState('yearly')
 
   function openChart(id) {
     if (activeChart === id) {
@@ -553,17 +554,67 @@ function FinancialCard({ sales }) {
   const ytdSales = paid.filter(s=>new Date(s.sale_date).getFullYear()===now.getFullYear()).reduce((a,s)=>a+parseFloat(s.amount||0),0)
   const thisMonthSales = paid.filter(s=>{const d=new Date(s.sale_date);return d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth()}).reduce((a,s)=>a+parseFloat(s.amount||0),0)
 
-  // Build monthly buckets (last 12 months)
-  const buildMonthly = (items, valueKey) => {
+
+  // ── Period builders ──────────────────────────────────────────────
+  function buildData(items, valueKey, period) {
     const map = {}
-    items.forEach(s=>{
+    const filtered = items.filter(s => {
       const d = new Date(s.sale_date)
-      const key = d.toLocaleDateString('en-US',{month:'short',year:'2-digit'})
+      if (period === 'weekly') { const wk = new Date(now); wk.setDate(now.getDate()-27); return d >= wk }
+      if (period === 'monthly') return d.getFullYear()===now.getFullYear() && d.getMonth()===now.getMonth()
+      if (period === 'ytd') return d.getFullYear()===now.getFullYear()
+      if (period === 'yearly') return true
+      return true
+    })
+
+    filtered.forEach(s => {
+      const d = new Date(s.sale_date)
+      let key
+      if (period === 'weekly')  key = d.toLocaleDateString('en-US',{month:'short',day:'numeric'})
+      else if (period === 'monthly') key = d.toLocaleDateString('en-US',{month:'short',day:'numeric'})
+      else if (period === 'ytd') key = d.toLocaleDateString('en-US',{month:'short'})
+      else key = d.toLocaleDateString('en-US',{month:'short',year:'2-digit'})
       map[key] = (map[key]||0) + Math.abs(parseFloat(s[valueKey]||0))
     })
-    // Last 12 months in order
+
+    if (period === 'weekly') {
+      const result = []
+      for (let i=27; i>=0; i--) {
+        const d = new Date(now); d.setDate(now.getDate()-i)
+        const key = d.toLocaleDateString('en-US',{month:'short',day:'numeric'})
+        if (!result.find(r=>r[0]===key)) result.push([key, map[key]||0])
+      }
+      // Group by week
+      const weeks = []
+      for (let i=0; i<4; i++) {
+        const slice = result.slice(i*7, i*7+7)
+        const label = slice[0]?.[0] + ' – ' + slice[slice.length-1]?.[0]
+        weeks.push([label, slice.reduce((a,b)=>a+b[1],0)])
+      }
+      return weeks
+    }
+    if (period === 'monthly') {
+      const result = []
+      const daysInMonth = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate()
+      for (let i=1; i<=daysInMonth; i++) {
+        const d = new Date(now.getFullYear(), now.getMonth(), i)
+        const key = d.toLocaleDateString('en-US',{month:'short',day:'numeric'})
+        result.push([key, map[key]||0])
+      }
+      return result
+    }
+    if (period === 'ytd') {
+      const result = []
+      for (let i=0; i<=now.getMonth(); i++) {
+        const d = new Date(now.getFullYear(), i, 1)
+        const key = d.toLocaleDateString('en-US',{month:'short'})
+        result.push([key, map[key]||0])
+      }
+      return result
+    }
+    // yearly — last 12 months
     const result = []
-    for(let i=11;i>=0;i--){
+    for (let i=11; i>=0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth()-i, 1)
       const key = d.toLocaleDateString('en-US',{month:'short',year:'2-digit'})
       result.push([key, map[key]||0])
@@ -571,48 +622,58 @@ function FinancialCard({ sales }) {
     return result
   }
 
-  const revenueMonthly = buildMonthly(paid, 'amount')
-  const refundMonthly = buildMonthly(refunds, 'amount')
-
-  // MRR: sum of current month recurring
-  const mrrMonthly = buildMonthly(paid.filter(s=>s.type==='recurring'||s.type==='subscription'), 'amount')
-
-  // Revenue by product monthly (for Services chart — show top 5 products stacked)
-  const byProduct = {}
-  paid.forEach(s=>{
-    const name=s.product_name||'Other'
-    byProduct[name]=(byProduct[name]||0)+parseFloat(s.amount||0)
-  })
-  const topProducts = Object.entries(byProduct).sort((a,b)=>b[1]-a[1]).slice(0,5)
-
-  // AOV monthly
-  const aovMonthly = (() => {
-    const map = {}
-    paid.forEach(s=>{
+  function buildAOV(items, period) {
+    const filtered = items.filter(s => {
       const d = new Date(s.sale_date)
-      const key = d.toLocaleDateString('en-US',{month:'short',year:'2-digit'})
-      if(!map[key]) map[key]={sum:0,count:0}
+      if (period === 'weekly') { const wk = new Date(now); wk.setDate(now.getDate()-27); return d >= wk }
+      if (period === 'monthly') return d.getFullYear()===now.getFullYear() && d.getMonth()===now.getMonth()
+      if (period === 'ytd') return d.getFullYear()===now.getFullYear()
+      return true
+    })
+    const map = {}
+    filtered.forEach(s => {
+      const d = new Date(s.sale_date)
+      let key
+      if (period === 'monthly') key = d.toLocaleDateString('en-US',{month:'short',day:'numeric'})
+      else if (period === 'ytd') key = d.toLocaleDateString('en-US',{month:'short'})
+      else key = d.toLocaleDateString('en-US',{month:'short',year:'2-digit'})
+      if (!map[key]) map[key] = {sum:0,count:0}
       map[key].sum += parseFloat(s.amount||0)
       map[key].count += 1
     })
-    const result = []
-    for(let i=11;i>=0;i--){
-      const d = new Date(now.getFullYear(), now.getMonth()-i, 1)
-      const key = d.toLocaleDateString('en-US',{month:'short',year:'2-digit'})
-      const entry = map[key]
-      result.push([key, entry ? entry.sum/entry.count : 0])
-    }
-    return result
-  })()
+    const base = buildData(items, 'amount', period)
+    return base.map(([key]) => [key, map[key] ? map[key].sum/map[key].count : 0])
+  }
 
-  // Chart definitions
-  const charts = [
-    { id:'revenue', label:'Revenue Over Time', data: revenueMonthly, color:'#2d8a60', prefix:'$', desc:'Monthly gross revenue from all paid transactions' },
-    { id:'mrr',     label:'MRR',               data: mrrMonthly,    color: gold,      prefix:'$', desc:'Monthly Recurring Revenue from subscriptions' },
-    { id:'aov',     label:'Avg Order Value',    data: aovMonthly,    color:'#5b8dee',  prefix:'$', desc:'Average transaction value per month' },
-    { id:'refunds', label:'Refunds',            data: refundMonthly, color:'#c0392b',  prefix:'$', desc:'Monthly refund totals' },
-    { id:'services',label:'Revenue by Service', data: topProducts,   color: gold,      prefix:'$', desc:'Total revenue breakdown by product/service', isBar:true },
-  ]
+  function buildServices(items, period) {
+    const filtered = items.filter(s => {
+      const d = new Date(s.sale_date)
+      if (period === 'weekly') { const wk = new Date(now); wk.setDate(now.getDate()-27); return d >= wk }
+      if (period === 'monthly') return d.getFullYear()===now.getFullYear() && d.getMonth()===now.getMonth()
+      if (period === 'ytd') return d.getFullYear()===now.getFullYear()
+      return true
+    })
+    const map = {}
+    filtered.forEach(s => {
+      const name = s.product_name||'Other'
+      map[name] = (map[name]||0) + parseFloat(s.amount||0)
+    })
+    return Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,5)
+  }
+
+  // Chart definitions — period-aware (period comes from modal state)
+  function getCharts(period) {
+    return [
+      { id:'revenue', label:'Revenue Over Time', getData: p=>buildData(paid,'amount',p),    color:'#2d8a60', prefix:'$', desc:'Gross revenue from paid transactions' },
+      { id:'mrr',     label:'MRR',               getData: p=>buildData(paid.filter(s=>s.type==='recurring'||s.type==='subscription'),'amount',p), color:gold, prefix:'$', desc:'Monthly Recurring Revenue' },
+      { id:'aov',     label:'Avg Order Value',    getData: p=>buildAOV(paid,p),              color:'#5b8dee', prefix:'$', desc:'Average transaction value' },
+      { id:'refunds', label:'Refunds',            getData: p=>buildData(refunds,'amount',p), color:'#c0392b', prefix:'$', desc:'Refund totals' },
+      { id:'services',label:'Revenue by Service', getData: p=>buildServices(paid,p),         color:gold,      prefix:'$', desc:'Revenue breakdown by product/service', isBar:true },
+    ]
+  }
+
+  const charts = getCharts('yearly')
+
 
   // SVG area chart renderer — premium version
   function AreaChart({ data, color, prefix='$' }) {
@@ -761,14 +822,15 @@ function FinancialCard({ sales }) {
     )
   }
 
-  const activeChartDef = charts.find(c=>c.id===activeChart)
+  const activeChartDef = getCharts(period).find(c=>c.id===activeChart)
 
   return(
     <>
       {/* Chart Modal */}
       {activeChart && activeChartDef && (
         <div style={{position:'fixed',inset:0,background:'rgba(14,14,12,0.55)',zIndex:300,display:'flex',alignItems:'center',justifyContent:'center',padding:'1rem'}} onClick={e=>e.target===e.currentTarget&&openChart(activeChart)}>
-          <div style={{background:white,borderRadius:14,width:'100%',maxWidth:640,maxHeight:'85vh',overflowY:'auto',boxShadow:'0 24px 60px rgba(0,0,0,0.18)',transition:'opacity 0.22s',opacity:chartVisible?1:0}}>
+          <div style={{background:white,borderRadius:14,width:'100%',maxWidth:640,maxHeight:'88vh',overflowY:'auto',boxShadow:'0 24px 60px rgba(0,0,0,0.18)',transition:'opacity 0.22s',opacity:chartVisible?1:0}}>
+            {/* Modal header */}
             <div style={{padding:'1.25rem 1.5rem',borderBottom:'1px solid rgba(14,14,12,0.07)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
               <div>
                 <div style={{fontFamily:ffS,fontSize:'1.15rem',fontWeight:300,color:black}}>{activeChartDef.label}</div>
@@ -776,44 +838,65 @@ function FinancialCard({ sales }) {
               </div>
               <button onClick={()=>openChart(activeChart)} style={{background:'none',border:'none',fontSize:'1.1rem',color:gray,cursor:'pointer',padding:'0.25rem 0.5rem'}}>✕</button>
             </div>
-            {/* Chart switcher inside modal */}
-            <div style={{padding:'0.75rem 1.5rem 0',display:'flex',gap:'0.4rem',flexWrap:'wrap'}}>
-              {charts.map(c=>(
-                <button key={c.id} onClick={()=>openChart(c.id)} style={{padding:'0.3rem 0.75rem',borderRadius:20,border:`1px solid ${activeChart===c.id?c.color:'rgba(14,14,12,0.1)'}`,background:activeChart===c.id?c.color+'18':'transparent',color:activeChart===c.id?c.color:gray,fontSize:'0.58rem',fontFamily:ff,cursor:'pointer',display:'flex',alignItems:'center',gap:'0.3rem',transition:'all 0.15s'}}>
-                  <span style={{width:6,height:6,borderRadius:'50%',background:c.color,display:'inline-block',flexShrink:0}}/>
-                  {c.label}
-                </button>
-              ))}
+
+            {/* Period selector + chart switcher */}
+            <div style={{padding:'0.85rem 1.5rem',borderBottom:'1px solid rgba(14,14,12,0.05)',display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:'0.5rem'}}>
+              {/* Period pills */}
+              <div style={{display:'flex',gap:'0.3rem'}}>
+                {[['weekly','Weekly'],['monthly','Monthly'],['ytd','YTD'],['yearly','Yearly']].map(([p,label])=>(
+                  <button key={p} onClick={()=>setPeriod(p)} style={{
+                    padding:'0.3rem 0.75rem',borderRadius:20,fontFamily:ff,fontSize:'0.58rem',cursor:'pointer',
+                    border:'1px solid '+(period===p?black:'rgba(14,14,12,0.12)'),
+                    background:period===p?black:'transparent',
+                    color:period===p?white:gray,
+                    transition:'all 0.15s'
+                  }}>{label}</button>
+                ))}
+              </div>
+              {/* Chart switcher */}
+              <div style={{display:'flex',gap:'0.3rem',flexWrap:'wrap'}}>
+                {getCharts(period).map(c=>(
+                  <button key={c.id} onClick={()=>openChart(c.id)} style={{padding:'0.3rem 0.65rem',borderRadius:20,border:`1px solid ${activeChart===c.id?c.color:'rgba(14,14,12,0.1)'}`,background:activeChart===c.id?c.color+'18':'transparent',color:activeChart===c.id?c.color:gray,fontSize:'0.56rem',fontFamily:ff,cursor:'pointer',display:'flex',alignItems:'center',gap:'0.25rem',transition:'all 0.15s'}}>
+                    <span style={{width:5,height:5,borderRadius:'50%',background:c.color,display:'inline-block',flexShrink:0}}/>
+                    {c.label}
+                  </button>
+                ))}
+              </div>
             </div>
+
+            {/* Chart content */}
             <div style={{padding:'1.25rem 1.5rem',transition:'opacity 0.22s',opacity:chartVisible?1:0}}>
-              {activeChartDef.isBar
-                ? <BarChart data={activeChartDef.data} color={activeChartDef.color} prefix={activeChartDef.prefix}/>
-                : <>
-                    {/* Summary stats row */}
-                    {!activeChartDef.data.every(d=>d[1]===0)&&(()=>{
-                      const vals = activeChartDef.data.map(d=>d[1]).filter(v=>v>0)
-                      const total = vals.reduce((a,b)=>a+b,0)
-                      const avg = vals.length>0?total/vals.length:0
-                      const peak = Math.max(...vals,0)
-                      const peakMonth = activeChartDef.data.find(d=>d[1]===peak)?.[0]||'—'
-                      return (
-                        <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'0.75rem',marginBottom:'1.5rem'}}>
-                          {[['Total',activeChartDef.prefix+total.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}),'#2d8a60'],
-                            ['Monthly Avg',activeChartDef.prefix+avg.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}),gold],
-                            ['Peak Month',peakMonth,'#5b8dee']
-                          ].map(([label,val,color])=>(
-                            <div key={label} style={{textAlign:'center',background:'rgba(14,14,12,0.025)',borderRadius:8,padding:'0.75rem 0.5rem'}}>
-                              <div style={{fontSize:'0.95rem',fontFamily:ffS,fontWeight:300,color,lineHeight:1}}>{val}</div>
-                              <div style={{fontSize:'0.5rem',color:gray,letterSpacing:'0.07em',textTransform:'uppercase',marginTop:'0.25rem'}}>{label}</div>
-                            </div>
-                          ))}
-                        </div>
-                      )
-                    })()}
-                    <AreaChart data={activeChartDef.data} color={activeChartDef.color} prefix={activeChartDef.prefix}/>
-                  </>
-              }
-              {activeChartDef.data.every(d=>d[1]===0)&&<div style={{textAlign:'center',color:gray,fontSize:'0.72rem',padding:'2rem 0'}}>No data available yet.</div>}
+              {(()=>{
+                const chartData = activeChartDef.getData(period)
+                const isEmpty = chartData.every(d=>d[1]===0)
+                return <>
+                  {!isEmpty && !activeChartDef.isBar && (()=>{
+                    const vals = chartData.map(d=>d[1]).filter(v=>v>0)
+                    const total = vals.reduce((a,b)=>a+b,0)
+                    const avg = vals.length>0?total/vals.length:0
+                    const peak = Math.max(...vals,0)
+                    const peakLabel = chartData.find(d=>d[1]===peak)?.[0]||'—'
+                    return (
+                      <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'0.75rem',marginBottom:'1.5rem'}}>
+                        {[['Total',activeChartDef.prefix+total.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}),'#2d8a60'],
+                          ['Avg',activeChartDef.prefix+avg.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}),gold],
+                          ['Peak',peakLabel,'#5b8dee']
+                        ].map(([label,val,color])=>(
+                          <div key={label} style={{textAlign:'center',background:'rgba(14,14,12,0.025)',borderRadius:8,padding:'0.75rem 0.5rem'}}>
+                            <div style={{fontSize:'0.95rem',fontFamily:ffS,fontWeight:300,color,lineHeight:1}}>{val}</div>
+                            <div style={{fontSize:'0.5rem',color:gray,letterSpacing:'0.07em',textTransform:'uppercase',marginTop:'0.25rem'}}>{label}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )
+                  })()}
+                  {activeChartDef.isBar
+                    ? <BarChart data={chartData} color={activeChartDef.color} prefix={activeChartDef.prefix}/>
+                    : <AreaChart data={chartData} color={activeChartDef.color} prefix={activeChartDef.prefix}/>
+                  }
+                  {isEmpty&&<div style={{textAlign:'center',color:gray,fontSize:'0.72rem',padding:'2rem 0'}}>No data for this period.</div>}
+                </>
+              })()}
             </div>
           </div>
         </div>
@@ -852,7 +935,7 @@ function FinancialCard({ sales }) {
           <div style={{borderTop:'1px solid rgba(14,14,12,0.06)',padding:'0.85rem 1.5rem'}}>
             <div style={{fontSize:'0.5rem',letterSpacing:'0.14em',textTransform:'uppercase',color:gray,marginBottom:'0.6rem'}}>Charts — tap to view</div>
             <div style={{display:'flex',flexWrap:'wrap',gap:'0.4rem'}}>
-              {charts.map(c=>(
+              {getCharts('yearly').map(c=>(
                 <button key={c.id} onClick={()=>openChart(c.id)} style={{
                   padding:'0.4rem 0.85rem',
                   borderRadius:20,
@@ -1089,6 +1172,7 @@ function AdminSystemPanel({ users, cards, allUsers, loadAll, showToast }) {
 
 export default function Admin({session}){
   const [panel,setPanel]=useState('dashboard')
+  const [hamburgerOpen,setHamburgerOpen]=useState(false)
   const [cards,setCards]=useState([])
   const [users,setUsers]=useState([])
   const [rewards,setRewards]=useState([])
@@ -1330,8 +1414,1805 @@ export default function Admin({session}){
 
         {/* MOBILE NAV */}
         <div className="mobile-nav">
-          {[['notifications','Alerts'],['loyalty','Loyalty'],['dashboard','Dashboard'],['clients','Clients'],['campaigns','Campaigns'],['catalog','Catalog']].map(([id,label])=>(<button key={id} onClick={()=>setPanel(id)} className={panel===id||(['cards','punch','rewards'].includes(panel)&&id==='loyalty')?'active':''}>{label}</button>))}
+          {[['notifications','Alerts'],['dashboard','Dashboard'],['loyalty','Loyalty']].map(([id,label])=>(
+            <button key={id} onClick={()=>{setPanel(id);setHamburgerOpen(false)}}
+              className={panel===id||(['cards','punch','rewards'].includes(panel)&&id==='loyalty')?'active':''}>
+              <span style={{fontSize:'1rem',lineHeight:1}}>
+                {id==='notifications'?'🔔':id==='dashboard'?'◻':id==='loyalty'?'★':''}
+              </span>
+              {label}
+            </button>
+          ))}
+          <button onClick={()=>setHamburgerOpen(o=>!o)}
+            className={hamburgerOpen||['clients','campaigns','catalog','system'].includes(panel)?'active':''}>
+            <span style={{fontSize:'1.1rem',lineHeight:1}}>☰</span>
+            More
+          </button>
         </div>
+
+        {/* HAMBURGER DRAWER */}
+        {hamburgerOpen&&(
+          <>
+            {/* backdrop */}
+            <div onClick={()=>setHamburgerOpen(false)}
+              style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.45)',zIndex:195}}/>
+            {/* drawer */}
+            <div style={{position:'fixed',bottom:56,left:0,right:0,background:ink,zIndex:196,
+              borderRadius:'16px 16px 0 0',borderTop:'1px solid rgba(184,151,90,0.15)',
+              padding:'0.5rem 0 0.25rem'}}>
+              <div style={{width:36,height:3,background:'rgba(255,255,255,0.15)',borderRadius:2,margin:'0 auto 0.75rem'}}/>
+              {[
+                ['clients','Clients','👥'],
+                ['campaigns','Campaigns','📣'],
+                ['catalog','Catalog','📋'],
+                ['system','Admin Panel','⚙️'],
+              ].map(([id,label,icon])=>(
+                <button key={id} onClick={()=>{setPanel(id);setHamburgerOpen(false)}}
+                  style={{display:'flex',alignItems:'center',gap:'0.85rem',width:'100%',padding:'0.9rem 1.5rem',
+                    background:panel===id?'rgba(184,151,90,0.1)':'none',border:'none',
+                    borderLeft:panel===id?'2px solid '+gold:'2px solid transparent',
+                    color:panel===id?gold:'rgba(255,255,255,0.7)',
+                    fontFamily:ff,fontSize:'0.82rem',letterSpacing:'0.04em',cursor:'pointer',textAlign:'left'}}>
+                  <span style={{fontSize:'1.1rem',width:24,textAlign:'center'}}>{icon}</span>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* MODAL: New Card */}
+        {modal==='card'&&(<div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:500,display:'flex',alignItems:'flex-end',justifyContent:'center'}} onClick={e=>e.target===e.currentTarget&&setModal(null)}>
+          <div style={{background:white,borderRadius:'12px 12px 0 0',padding:'2rem',width:'100%',maxWidth:520,maxHeight:'90vh',overflowY:'auto'}}>
+            <h3 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300,marginBottom:'1.5rem'}}>New Card</h3>
+            <div style={{background:'rgba(184,151,90,0.05)',border:'1px solid rgba(184,151,90,0.2)',borderRadius:8,padding:'1.25rem',marginBottom:'1.25rem'}}>
+              <div style={{fontSize:'0.58rem',letterSpacing:'0.14em',textTransform:'uppercase',color:gold,marginBottom:'1rem'}}>Create New Client</div>
+              <label style={lbl}>Full Name</label><input style={inp} type="text" placeholder="Client name" value={form.new_name||''} onChange={e=>upd('new_name',e.target.value)}/>
+              <label style={lbl}>Business Name</label><input style={inp} type="text" placeholder="Business name" value={form.new_business||''} onChange={e=>upd('new_business',e.target.value)}/>
+              <label style={lbl}>Phone</label><input style={inp} type="tel" placeholder="787-000-0000" value={form.new_phone||''} onChange={e=>upd('new_phone',e.target.value)}/>
+              <label style={lbl}>Email</label><input style={inp} type="email" placeholder="email@business.com" value={form.new_email||''} onChange={e=>upd('new_email',e.target.value)}/>
+              <label style={lbl}>Temporary Password</label><input style={{...inp,marginBottom:0}} type="text" placeholder="min. 6 characters" value={form.new_password||''} onChange={e=>upd('new_password',e.target.value)}/>
+              <button onClick={createClient} style={{width:'100%',background:gold,color:white,border:'none',padding:'0.75rem',fontFamily:ff,fontSize:'0.62rem',letterSpacing:'0.12em',textTransform:'uppercase',borderRadius:3,cursor:'pointer',marginTop:'0.85rem'}}>Create Client</button>
+            </div>
+            <div style={{fontSize:'0.58rem',letterSpacing:'0.14em',textTransform:'uppercase',color:gray,marginBottom:'0.75rem',textAlign:'center'}}>— or select existing —</div>
+            <label style={lbl}>Existing Client</label>
+            <select value={form.user_id||''} onChange={e=>upd('user_id',e.target.value)} style={inp}><option value="">Select client</option>{users.map(u=><option key={u.id} value={u.id}>{u.business_name||u.full_name}</option>)}</select>
+            <label style={lbl}>Notes (optional)</label><input style={inp} type="text" placeholder="Additional info..." value={form.notes||''} onChange={e=>upd('notes',e.target.value)}/>
+            <div style={{display:'flex',gap:'0.75rem'}}>
+              <button onClick={createCard} style={{flex:1,background:black,color:white,border:'none',padding:'0.85rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Assign Card</button>
+              <button onClick={()=>setModal(null)} style={{background:'rgba(14,14,12,0.06)',color:black,border:'none',padding:'0.85rem 1.25rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Cancel</button>
+            </div>
+          </div>
+        </div>)}
+
+        {/* MODAL: QR */}
+        {modal==='qr'&&qrCard&&(<div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:500,display:'flex',alignItems:'center',justifyContent:'center',padding:'1.25rem'}} onClick={e=>e.target===e.currentTarget&&setModal(null)}>
+          <div style={{background:white,borderRadius:12,padding:'2rem',width:'100%',maxWidth:360,textAlign:'center'}}>
+            <h3 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300,marginBottom:'0.25rem'}}>QR Code</h3>
+            <p style={{fontSize:'0.72rem',color:gray,marginBottom:'0.5rem'}}>{qrCard.profiles?.business_name||qrCard.profiles?.full_name}</p>
+            <p style={{fontSize:'0.6rem',color:gray,marginBottom:'1.25rem'}}>#{qrCard.card_number}</p>
+            <div style={{display:'flex',justifyContent:'center',marginBottom:'1.25rem'}}><img src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(cardUrl(qrCard))}&color=0e0e0c&bgcolor=f8f6f1`} alt="QR" style={{borderRadius:8,border:'1px solid '+gl,padding:8,background:white}} width={200} height={200}/></div>
+            <p style={{fontSize:'0.58rem',color:gray,marginBottom:'1.25rem',wordBreak:'break-all',lineHeight:1.6}}>{cardUrl(qrCard)}</p>
+            <div style={{display:'flex',gap:'0.75rem'}}>
+              <button onClick={()=>window.open(cardUrl(qrCard),'_blank')} style={{flex:1,background:black,color:white,border:'none',padding:'0.85rem',fontFamily:ff,fontSize:'0.62rem',letterSpacing:'0.12em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Open</button>
+              <button onClick={()=>{navigator.clipboard.writeText(cardUrl(qrCard));showToast('Link copied!')}} style={{flex:1,background:'rgba(184,151,90,0.1)',color:gold,border:'1px solid rgba(184,151,90,0.25)',padding:'0.85rem',fontFamily:ff,fontSize:'0.62rem',letterSpacing:'0.12em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Copy</button>
+              <button onClick={()=>setModal(null)} style={{background:'rgba(14,14,12,0.06)',color:black,border:'none',padding:'0.85rem 0.75rem',fontFamily:ff,fontSize:'0.62rem',letterSpacing:'0.12em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>X</button>
+            </div>
+          </div>
+        </div>)}
+
+        {/* MODAL: Edit Client */}
+        {modal==='editclient'&&editingClient&&(<div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:500,display:'flex',alignItems:'flex-end',justifyContent:'center'}} onClick={e=>e.target===e.currentTarget&&setModal(null)}>
+          <div style={{background:white,borderRadius:'12px 12px 0 0',padding:'2rem',width:'100%',maxWidth:520,maxHeight:'90vh',overflowY:'auto'}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1.5rem'}}>
+              <h3 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300}}>Edit Client</h3>
+              <button onClick={()=>setModal(null)} style={{background:'none',border:'none',fontSize:'1.1rem',cursor:'pointer',color:gray}}>x</button>
+            </div>
+            <label style={lbl}>Full Name</label><input style={inp} type="text" value={editForm.name||''} onChange={e=>setEditForm(f=>({...f,name:e.target.value}))}/>
+            <label style={lbl}>Business Name</label><input style={inp} type="text" value={editForm.business||''} onChange={e=>setEditForm(f=>({...f,business:e.target.value}))}/>
+            <label style={lbl}>Phone</label><input style={inp} type="tel" value={editForm.phone||''} onChange={e=>setEditForm(f=>({...f,phone:e.target.value}))}/>
+            <label style={lbl}>New Email (optional)</label><input style={inp} type="email" placeholder="Leave empty to keep current" value={editForm.email||''} onChange={e=>setEditForm(f=>({...f,email:e.target.value}))}/>
+            <label style={lbl}>New Password (optional)</label><input style={inp} type="text" placeholder="Leave empty to keep current" value={editForm.password||''} onChange={e=>setEditForm(f=>({...f,password:e.target.value}))}/>
+            <div style={{display:'flex',gap:'0.75rem'}}>
+              <button onClick={async()=>{await fetch('/api/admin/users',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:editingClient.id,full_name:editForm.name,business_name:editForm.business,phone:editForm.phone,email:editForm.email||null,password:editForm.password||null})});await fetch('/api/admin/activity-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'Edited client',target:editForm.business||editForm.name||'',type:'edit'})});showToast('Client updated');setModal(null);setEditingClient(null);loadAll()}} style={{flex:1,background:black,color:white,border:'none',padding:'0.85rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Save</button>
+              <button onClick={()=>setModal(null)} style={{background:'rgba(14,14,12,0.06)',color:black,border:'none',padding:'0.85rem 1.25rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Cancel</button>
+            </div>
+          </div>
+        </div>)}
+
+        {/* MODAL: Files */}
+        {modal==='files'&&filesClient&&(<div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:500,display:'flex',alignItems:'flex-end',justifyContent:'center'}} onClick={e=>e.target===e.currentTarget&&setModal(null)}>
+          <div style={{background:white,borderRadius:'12px 12px 0 0',padding:'2rem',width:'100%',maxWidth:520,maxHeight:'90vh',overflowY:'auto'}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1.5rem'}}>
+              <h3 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300}}>Files — {filesClient.business_name||filesClient.full_name}</h3>
+              <button onClick={()=>setModal(null)} style={{background:'none',border:'none',fontSize:'1.1rem',cursor:'pointer',color:gray}}>x</button>
+            </div>
+            <div style={{border:'2px dashed rgba(184,151,90,0.3)',borderRadius:8,padding:'2rem',textAlign:'center',marginBottom:'1.25rem',background:'rgba(184,151,90,0.03)'}}>
+              <div style={{fontSize:'1.5rem',marginBottom:'0.5rem'}}>+</div>
+              <div style={{fontSize:'0.78rem',color:gray,marginBottom:'0.75rem'}}>Drag files here or click to select</div>
+              <input type="file" multiple accept=".pdf,.doc,.docx,.jpg,.png,.csv,.xlsx" onChange={async(e)=>{const files=Array.from(e.target.files);for(const file of files){const fd=new FormData();fd.append('file',file);fd.append('user_id',filesClient.id);const res=await fetch('/api/admin/files',{method:'POST',body:fd});const data=await res.json();if(res.ok)showToast(file.name+' uploaded');else showToast('Error: '+data.error)};e.target.value='';setModal(null);setTimeout(()=>setModal('files'),100)}} style={{display:'none'}} id="file-input"/>
+              <label htmlFor="file-input" style={{background:black,color:white,padding:'0.6rem 1.25rem',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.62rem',letterSpacing:'0.12em',textTransform:'uppercase'}}>Select Files</label>
+            </div>
+            <FilesListForClient userId={filesClient.id} showToast={showToast}/>
+          </div>
+        </div>)}
+
+        {/* MODAL: Expense */}
+        {modal==='expense'&&expenseClient&&(<div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:500,display:'flex',alignItems:'flex-end',justifyContent:'center'}} onClick={e=>e.target===e.currentTarget&&setModal(null)}>
+          <div style={{background:white,borderRadius:'12px 12px 0 0',padding:'2rem',width:'100%',maxWidth:520,maxHeight:'90vh',overflowY:'auto'}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.25rem'}}>
+              <h3 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300}}>Expenses</h3>
+              <button onClick={()=>setModal(null)} style={{background:'none',border:'none',fontSize:'1.1rem',cursor:'pointer',color:gray}}>x</button>
+            </div>
+            <p style={{fontSize:'0.72rem',color:gray,marginBottom:'1.5rem'}}>{expenseClient.business_name||expenseClient.full_name}</p>
+            <label style={lbl}>Amount ($)</label><input style={inp} type="number" step="0.01" placeholder="0.00" value={expenseForm.amount} onChange={e=>setExpenseForm(f=>({...f,amount:e.target.value}))}/>
+            <label style={lbl}>Description</label><input style={inp} type="text" placeholder="e.g. Domain renewal, hosting..." value={expenseForm.description} onChange={e=>setExpenseForm(f=>({...f,description:e.target.value}))}/>
+            <label style={lbl}>Date</label><input style={{...inp}} type="date" value={expenseForm.date} onChange={e=>setExpenseForm(f=>({...f,date:e.target.value}))}/>
+            <div style={{display:'flex',alignItems:'center',gap:'0.75rem',marginBottom:'1rem'}}>
+              <input type="checkbox" id="recurring-cb" checked={expenseForm.recurring||false} onChange={e=>setExpenseForm(f=>({...f,recurring:e.target.checked}))} style={{width:16,height:16,cursor:'pointer'}}/>
+              <label htmlFor="recurring-cb" style={{fontSize:'0.72rem',color:black,cursor:'pointer'}}>Recurring expense</label>
+            </div>
+            {expenseForm.recurring&&(
+              <div style={{marginBottom:'1rem'}}>
+                <label style={lbl}>Interval</label>
+                <select value={expenseForm.recurring_interval||'month'} onChange={e=>setExpenseForm(f=>({...f,recurring_interval:e.target.value}))} style={{...inp,marginBottom:0}}>
+                  <option value="week">Weekly</option>
+                  <option value="month">Monthly</option>
+                  <option value="year">Yearly</option>
+                </select>
+              </div>
+            )}
+            <div style={{display:'flex',gap:'0.75rem',marginBottom:'1.5rem'}}>
+              <button onClick={async()=>{
+                const res=await fetch('/api/admin/expenses',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({client_id:expenseClient.id,amount:expenseForm.amount,description:expenseForm.description,recurring:expenseForm.recurring||false,recurring_interval:expenseForm.recurring_interval||'month',expense_date:expenseForm.date})})
+                if(res.ok){showToast('Expense saved');setExpenseForm({amount:'',description:'',date:new Date().toISOString().split('T')[0],recurring:false,recurring_interval:'month'})}
+                else showToast('Error saving expense')
+              }} style={{flex:1,background:black,color:white,border:'none',padding:'0.85rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Save Expense</button>
+              <button onClick={()=>setModal(null)} style={{background:'rgba(14,14,12,0.06)',color:black,border:'none',padding:'0.85rem 1.25rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Close</button>
+            </div>
+            <ExpenseHistory clientId={expenseClient.id} showToast={showToast}/>
+          </div>
+        </div>)}
+
+        {/* MODAL: Set Cost */}
+        {modal==='cost'&&editCost&&(<div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:500,display:'flex',alignItems:'flex-end',justifyContent:'center'}} onClick={e=>e.target===e.currentTarget&&setModal(null)}>
+          <div style={{background:white,borderRadius:'12px 12px 0 0',padding:'2rem',width:'100%',maxWidth:520,maxHeight:'90vh',overflowY:'auto'}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.25rem'}}>
+              <h3 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300}}>Set Cost</h3>
+              <button onClick={()=>setModal(null)} style={{background:'none',border:'none',fontSize:'1.1rem',cursor:'pointer',color:gray}}>x</button>
+            </div>
+            <p style={{fontSize:'0.72rem',color:gray,marginBottom:'1.25rem'}}>{editCost.name}</p>
+            <div style={{display:'flex',gap:'0.75rem',marginBottom:'1rem',alignItems:'flex-end'}}>
+              <div style={{flex:1}}>
+                <label style={lbl}>Current Cost ($)</label>
+                <input id="cost-input" style={{...inp,marginBottom:0,fontSize:'1.1rem',fontWeight:600}} type="number" step="0.01" placeholder="0.00" value={costForm.cost} onChange={e=>setCostForm(f=>({...f,cost:e.target.value}))}/>
+              </div>
+              <button onClick={async()=>{
+                if(!costForm.cost){showToast('Enter a cost first');return}
+                const r=await fetch('/api/admin/catalog',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({product_id:editCost.id,cost:costForm.cost})})
+                const d=await r.json()
+                if(r.ok){
+                  showToast('Cost saved ✓')
+                  fetch('/api/admin/catalog').then(r=>r.json()).then(d=>setCatalog(d.items||[]))
+                  setEditCost(d.item||editCost)
+                  setCostForm(f=>({...f,cost:d.item?.catalog_costs?.[0]?.cost||f.cost}))
+                } else showToast('Error: '+(d.error||'Unknown'))
+              }} style={{padding:'0.78rem 1.25rem',background:black,color:white,border:'none',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.62rem',letterSpacing:'0.12em',textTransform:'uppercase',flexShrink:0}}>Save</button>
+            </div>
+            <CostHistory productId={editCost.id}/>
+            <button onClick={()=>setModal(null)} style={{width:'100%',background:'rgba(14,14,12,0.06)',color:black,border:'none',padding:'0.75rem',fontFamily:ff,fontSize:'0.62rem',letterSpacing:'0.12em',textTransform:'uppercase',borderRadius:3,cursor:'pointer',marginTop:'0.5rem'}}>Close</button>
+          </div>
+        </div>)}
+
+        {/* MODAL: Suppliers */}
+        {modal==='suppliers'&&suppliersItem&&(<div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:500,display:'flex',alignItems:'flex-end',justifyContent:'center'}} onClick={e=>e.target===e.currentTarget&&setModal(null)}>
+          <div style={{background:white,borderRadius:'12px 12px 0 0',padding:'2rem',width:'100%',maxWidth:520,maxHeight:'90vh',overflowY:'auto'}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.25rem'}}>
+              <h3 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300}}>Suppliers</h3>
+              <button onClick={()=>setModal(null)} style={{background:'none',border:'none',fontSize:'1.1rem',cursor:'pointer',color:gray}}>x</button>
+            </div>
+            <p style={{fontSize:'0.72rem',color:gray,marginBottom:'1.25rem'}}>{suppliersItem.name}</p>
+            <div style={{background:'rgba(184,151,90,0.04)',border:'1px solid rgba(184,151,90,0.15)',borderRadius:8,padding:'1rem',marginBottom:'1rem'}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.5rem'}}>
+                <input value={suppliersTitle} onChange={e=>setSuppliersTitle(e.target.value)} placeholder="Note title..." style={{background:'none',border:'none',outline:'none',fontFamily:ffS,fontSize:'1rem',fontWeight:300,color:black,flex:1}} id="suppliers-title"/>
+                <span style={{fontSize:'0.58rem',color:gray,flexShrink:0,marginLeft:'0.5rem'}}>{new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</span>
+              </div>
+              <textarea id="suppliers-text" value={suppliersText} onChange={e=>setSuppliersText(e.target.value)} rows={6} placeholder="e.g. Vercel hosting, GoDaddy domain, Supabase..." style={{width:'100%',background:'none',border:'none',outline:'none',fontFamily:ff,fontSize:'0.82rem',color:black,resize:'vertical',boxSizing:'border-box',lineHeight:1.7}}/>
+            </div>
+            <div style={{display:'flex',gap:'0.75rem'}}>
+              <button onClick={async()=>{
+                const r=await fetch('/api/admin/catalog',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({product_id:suppliersItem.id,suppliers:suppliersText})})
+                const d=await r.json()
+                if(r.ok){showToast('Saved ✓');fetch('/api/admin/catalog').then(r=>r.json()).then(d=>setCatalog(d.items||[]))}
+                else showToast('Error: '+(d.error||'Unknown'))
+              }} style={{flex:1,background:black,color:white,border:'none',padding:'0.85rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Save</button>
+              <button onClick={()=>setModal(null)} style={{background:'rgba(14,14,12,0.06)',color:black,border:'none',padding:'0.85rem 1.25rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Close</button>
+            </div>
+          </div>
+        </div>)}
+
+        {/* MODAL: History */}
+        {modal==='history'&&historyClient&&(
+          <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:500,display:'flex',alignItems:'flex-end',justifyContent:'center'}} onClick={e=>e.target===e.currentTarget&&setModal(null)}>
+            <div style={{background:white,borderRadius:'12px 12px 0 0',width:'100%',maxWidth:560,maxHeight:'85vh',display:'flex',flexDirection:'column'}}>
+              <div style={{padding:'1.5rem 1.5rem 1rem',flexShrink:0}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                  <h3 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300}}>Transaction History</h3>
+                  <button onClick={()=>setModal(null)} style={{background:'none',border:'none',fontSize:'1.1rem',cursor:'pointer',color:gray}}>x</button>
+                </div>
+                <p style={{fontSize:'0.72rem',color:gray,marginTop:'0.25rem'}}>{historyClient.business_name||historyClient.full_name}</p>
+              </div>
+              <ClientHistory client={historyClient}/>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL: Reward */}
+        {modal==='reward'&&(<div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:500,display:'flex',alignItems:'flex-end',justifyContent:'center'}} onClick={e=>e.target===e.currentTarget&&setModal(null)}>
+          <div style={{background:white,borderRadius:'12px 12px 0 0',padding:'2rem',width:'100%',maxWidth:520,maxHeight:'90vh',overflowY:'auto'}}>
+            <h3 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300,marginBottom:'0.35rem'}}>Register Reward</h3>
+            <p style={{fontSize:'0.72rem',color:gray,marginBottom:'1.5rem'}}>Document the reward with type and cost.</p>
+            <label style={lbl}>Client</label><select value={form.reward_user_id||''} onChange={e=>upd('reward_user_id',e.target.value)} style={inp}><option value="">Select</option>{users.map(u=><option key={u.id} value={u.id}>{u.business_name||u.full_name}</option>)}</select>
+            <label style={lbl}>Reward Type</label><select value={form.reward_type||'1 Free Month'} onChange={e=>upd('reward_type',e.target.value)} style={inp}>{['1 Free Month','50% Discount','Extra Service','Other'].map(t=><option key={t}>{t}</option>)}</select>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.75rem'}}>
+              <div><label style={lbl}>Cost</label><input style={{...inp,marginBottom:0}} type="text" placeholder="$0.00" value={form.reward_cost||''} onChange={e=>upd('reward_cost',e.target.value)}/></div>
+              <div><label style={lbl}>Date</label><input style={{...inp,marginBottom:0}} type="date" value={form.reward_date||new Date().toISOString().split('T')[0]} onChange={e=>upd('reward_date',e.target.value)}/></div>
+            </div>
+            <label style={{...lbl,marginTop:'1rem'}}>Notes (optional)</label><input style={inp} type="text" placeholder="Details..." value={form.reward_notes||''} onChange={e=>upd('reward_notes',e.target.value)}/>
+            <div style={{display:'flex',gap:'0.75rem',marginTop:'0.5rem'}}>
+              <button onClick={saveReward} style={{flex:1,background:black,color:white,border:'none',padding:'0.85rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Register Reward</button>
+              <button onClick={()=>setModal(null)} style={{background:'rgba(14,14,12,0.06)',color:black,border:'none',padding:'0.85rem 1.25rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Cancel</button>
+            </div>
+          </div>
+        </div>)}
+
+        {toast&&<div style={{position:'fixed',bottom:'5rem',right:'1rem',background:black,color:white,padding:'0.85rem 1.25rem',borderRadius:8,fontSize:'0.74rem',borderLeft:'3px solid '+gold,zIndex:9999,maxWidth:280}}>{toast}</div>}
+      </div>
+    </>
+  )
+}
+
+function ClientHistory({ client }) {
+  const [sales, setSales] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(()=>{
+    fetch('/api/admin/sales?email='+encodeURIComponent(client.email||client.user_email||''))
+      .then(r=>r.json())
+      .then(d=>{ setSales(d.sales||[]); setLoading(false) })
+      .catch(()=>setLoading(false))
+  },[client.id])
+
+  const total = sales.filter(s=>s.status==='paid').reduce((a,s)=>a+parseFloat(s.amount||0),0)
+
+  return(
+    <div style={{display:'flex',flexDirection:'column',flex:1,minHeight:0}}>
+      {/* Scrollable list */}
+      <div style={{flex:1,overflowY:'auto',padding:'0 1.5rem'}}>
+        {loading&&<div style={{textAlign:'center',color:'#6b6b67',fontSize:'0.78rem',padding:'2rem'}}>Loading...</div>}
+        {!loading&&sales.length===0&&<div style={{textAlign:'center',color:'#6b6b67',fontSize:'0.78rem',padding:'2rem'}}>No transactions found.</div>}
+        {!loading&&sales.length>0&&(
+          <div style={{border:'1px solid rgba(14,14,12,0.07)',borderRadius:8,overflow:'hidden'}}>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 120px 100px',padding:'0.5rem 1rem',background:'rgba(14,14,12,0.03)',fontSize:'0.52rem',letterSpacing:'0.1em',textTransform:'uppercase',color:'#6b6b67',gap:'0.5rem'}}>
+              <span>Transaction ID</span><span>Date</span><span style={{textAlign:'right'}}>Amount</span>
+            </div>
+            {sales.map((s,i)=>(
+              <div key={s.id} style={{display:'grid',gridTemplateColumns:'1fr 120px 100px',padding:'0.75rem 1rem',borderTop:'1px solid rgba(14,14,12,0.05)',alignItems:'center',gap:'0.5rem'}}>
+                <div style={{fontSize:'0.62rem',color:'#6b6b67',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontFamily:'monospace'}}>{s.id}</div>
+                <div style={{fontSize:'0.68rem',color:'#0e0e0c'}}>{new Date(s.sale_date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</div>
+                <div style={{fontSize:'0.75rem',fontWeight:600,color:s.status==='paid'?'#2d8a60':'#c0392b',textAlign:'right'}}>{s.status==='refunded'?'-':''}${Math.abs(parseFloat(s.amount||0)).toFixed(2)}</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      {/* Total — always visible at bottom */}
+      <div style={{padding:'1rem 1.5rem 1.5rem',borderTop:'1px solid rgba(14,14,12,0.07)',flexShrink:0,display:'flex',justifyContent:'space-between',alignItems:'center',background:'#f8f6f1'}}>
+        <span style={{fontSize:'0.62rem',color:'#6b6b67',letterSpacing:'0.1em',textTransform:'uppercase'}}>{sales.filter(s=>s.status==='paid').length} payment{sales.filter(s=>s.status==='paid').length!==1?'s':''}</span>
+        <div style={{textAlign:'right'}}>
+          <div style={{fontSize:'0.56rem',color:'#6b6b67',letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:'0.15rem'}}>Total Spent</div>
+          <div style={{fontSize:'1.1rem',fontFamily:'Cormorant Garamond,serif',fontWeight:300,color:'#0e0e0c'}}>${total.toFixed(2)}</div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function FilesListForClient({ userId, showToast }) {
+  const [files, setFiles] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(()=>{ loadFiles() },[userId])
+
+  async function loadFiles() {
+    setLoading(true)
+    const res = await fetch('/api/admin/files?user_id='+userId)
+    const data = await res.json()
+    setFiles(data.files||[])
+    setLoading(false)
+  }
+
+  async function deleteFile(path) {
+    await fetch('/api/admin/files', { method:'DELETE', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ path }) })
+    showToast('File deleted')
+    loadFiles()
+  }
+
+  async function viewFile(name) {
+    window.open('/api/admin/files?user_id='+userId+'&file='+encodeURIComponent(name),'_blank')
+  }
+
+  if(loading) return <div style={{textAlign:'center',color:'#6b6b67',fontSize:'0.78rem',padding:'1rem 0'}}>Loading...</div>
+  if(files.length===0) return <div style={{textAlign:'center',color:'#6b6b67',fontSize:'0.78rem',padding:'1rem 0'}}>No files saved yet.</div>
+
+  return(
+    <div>
+      <div style={{fontSize:'0.56rem',letterSpacing:'0.13em',textTransform:'uppercase',color:'#6b6b67',marginBottom:'0.75rem'}}>Saved files</div>
+      {files.map(f=>(<div key={f.name} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0.75rem 0',borderBottom:'1px solid rgba(14,14,12,0.06)'}}><div style={{fontSize:'0.78rem',color:'#0e0e0c',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',flex:1,marginRight:'1rem'}}>{f.name.replace(/^\d+_/,'')}</div><div style={{display:'flex',gap:'0.4rem',flexShrink:0}}><button onClick={()=>viewFile(f.name)} style={{padding:'0.3rem 0.65rem',background:'rgba(184,151,90,0.1)',color:'#b8975a',border:'1px solid rgba(184,151,90,0.25)',borderRadius:3,cursor:'pointer',fontFamily:'DM Sans,sans-serif',fontSize:'0.56rem',textTransform:'uppercase'}}>View</button><button onClick={()=>deleteFile('clients/'+userId+'/'+f.name)} style={{padding:'0.3rem 0.65rem',background:'rgba(192,57,43,0.08)',color:'#a93226',border:'none',borderRadius:3,cursor:'pointer',fontFamily:'DM Sans,sans-serif',fontSize:'0.56rem',textTransform:'uppercase'}}>x</button></div></div>))}
+    </div>
+  )
+}import { useEffect, useState } from 'react'
+import { supabase } from '../lib/supabase'
+
+const gold='#b8975a',black='#0e0e0c',white='#f8f6f1',gray='#6b6b67',gl='#e8e5de',ink='#1c1c1a'
+const ff='DM Sans,sans-serif',ffS='Cormorant Garamond,serif'
+
+function getStatus(card) {
+  if (!card) return { label:'New', color:'#8e44ad', bg:'rgba(142,68,173,0.1)' }
+  const stamps = card.stamps || 0
+  let days = null
+  if (card.stamp_history && card.stamp_history.length > 0) {
+    const last = new Date(card.stamp_history[card.stamp_history.length-1].created_at)
+    days = (Date.now()-last)/(1000*60*60*24)
+  }
+  if (days !== null) {
+    if (days >= 66) return { label:'Cancelled', color:'#c0392b', bg:'rgba(192,57,43,0.1)' }
+    if (days >= 38) return { label:'Late Fee', color:'#e74c3c', bg:'rgba(231,76,60,0.1)' }
+    if (days >= 35) return { label:'Grace', color:'#e67e22', bg:'rgba(230,126,34,0.1)' }
+  }
+  if (stamps >= 15) return { label:'VIP', color:'#b8975a', bg:'rgba(184,151,90,0.12)' }
+  if (stamps >= 10) return { label:'Regular', color:'#2d8a60', bg:'rgba(45,138,96,0.1)' }
+  if (stamps >= 5) return { label:'Active', color:'#3498db', bg:'rgba(52,152,219,0.1)' }
+  return { label:'New', color:'#8e44ad', bg:'rgba(142,68,173,0.1)' }
+}
+
+function getDaysSinceLastPurchase(card) {
+  if (!card||!card.stamp_history||card.stamp_history.length===0) return null
+  const last = new Date(card.stamp_history[card.stamp_history.length-1].created_at)
+  return Math.floor((Date.now()-last)/(1000*60*60*24))
+}
+
+function getNotifications(cards) {
+  const alerts = []
+  cards.forEach(card => {
+    const days = getDaysSinceLastPurchase(card)
+    if (days === null) return
+    const name = card.profiles?.business_name || card.profiles?.full_name || 'Client'
+    if (days >= 66) alerts.push({ card, days, level: 3, msg: `${name} — Service cancelled (${days} days)` })
+    else if (days >= 38) alerts.push({ card, days, level: 3, msg: `${name} — $30 late fee applied (${days} days)` })
+    else if (days >= 35) alerts.push({ card, days, level: 2, msg: `${name} — Grace period, 3 days to pay (${days} days)` })
+    else if (days >= 30) alerts.push({ card, days, level: 1, msg: `${name} — Payment due soon (${days} days)` })
+  })
+  return alerts.sort((a,b) => b.days - a.days)
+}
+
+function DashboardPanel({ cards, sales, onSelectClient }) {
+  const totalClients=cards.length
+  const sorted=[...cards].sort((a,b)=>(b.stamps||0)-(a.stamps||0))
+  const top5=sorted.slice(0,5)
+  const maxStamps=top5[0]?.stamps||1
+  const clientDonut=[
+    {label:'VIP',value:cards.filter(c=>getStatus(c).label==='VIP').length,color:'#b8975a'},
+    {label:'Regular',value:cards.filter(c=>getStatus(c).label==='Regular').length,color:'#2d8a60'},
+    {label:'Active',value:cards.filter(c=>getStatus(c).label==='Active').length,color:'#3498db'},
+    {label:'New',value:cards.filter(c=>getStatus(c).label==='New').length,color:'#8e44ad'},
+    {label:'Grace',value:cards.filter(c=>getStatus(c).label==='Grace').length,color:'#e67e22'},
+    {label:'Late Fee',value:cards.filter(c=>getStatus(c).label==='Late Fee').length,color:'#e74c3c'},
+    {label:'Cancelled',value:cards.filter(c=>getStatus(c).label==='Cancelled').length,color:'#c0392b'},
+  ].filter(d=>d.value>0)
+  function makeSegs(data){const total=data.reduce((a,d)=>a+d.value,0)||1;let cum=0;return data.map(d=>{const s=cum;cum+=d.value/total;return{...d,start:s,pct:d.value/total}})}
+  function polar(pct){const a=pct*2*Math.PI-Math.PI/2;return{x:50+35*Math.cos(a),y:50+35*Math.sin(a)}}
+  function arc(start,pct){if(pct>=1)return'M 50 15 A 35 35 0 1 1 49.99 15 Z';const s=polar(start),e=polar(start+pct),lg=pct>0.5?1:0;return`M 50 50 L ${s.x} ${s.y} A 35 35 0 ${lg} 1 ${e.x} ${e.y} Z`}
+  function Donut({segs,center}){return(<svg viewBox="0 0 100 100" style={{width:100,height:100,flexShrink:0}}>{segs.map((d,i)=><path key={i} d={arc(d.start,d.pct)} fill={d.color} opacity={0.85}/>)}<circle cx="50" cy="50" r="22" fill={white}/>{center}</svg>)}
+  const clientSegs=makeSegs(clientDonut)
+  return(
+    <div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1rem',marginBottom:'1.5rem'}} className="donut-grid">
+        <div style={{background:white,borderRadius:10,padding:'1.5rem',border:'1px solid rgba(14,14,12,0.07)'}}>
+          <div style={{fontFamily:ffS,fontSize:'1.1rem',fontWeight:300,marginBottom:'1.25rem'}}>Clients</div>
+          <div style={{display:'flex',alignItems:'center',gap:'1rem'}}>
+            <Donut segs={clientSegs} center={<text x="50" y="54" textAnchor="middle" style={{fontSize:14,fontFamily:ffS,fill:black}}>{totalClients}</text>}/>
+            <div style={{flex:1}}>{clientDonut.map(d=>(<div key={d.label} style={{display:'flex',alignItems:'center',gap:'0.4rem',marginBottom:'0.4rem'}}><div style={{width:7,height:7,borderRadius:'50%',background:d.color,flexShrink:0}}/><span style={{fontSize:'0.62rem',color:gray,flex:1}}>{d.label}</span><span style={{fontSize:'0.62rem',fontWeight:500,color:black}}>{d.value}</span></div>))}</div>
+          </div>
+        </div>
+        <FinancialCard sales={sales}/>
+        <div style={{background:white,borderRadius:10,padding:'1.5rem',border:'1px solid rgba(14,14,12,0.07)',position:'relative',display:'none'}}>
+          <div style={{fontFamily:ffS,fontSize:'1.1rem',fontWeight:300,marginBottom:'1.25rem'}}>Financial Legacy</div>
+          <div style={{display:'flex',alignItems:'center',gap:'1rem'}}>
+            <svg viewBox="0 0 100 100" style={{width:100,height:100,flexShrink:0}}><path d="M 50 15 A 35 35 0 1 1 49.99 15 Z" fill="rgba(14,14,12,0.06)" opacity="0.85"/><circle cx="50" cy="50" r="22" fill={white}/><text x="50" y="54" textAnchor="middle" style={{fontSize:8,fontFamily:ff,fill:gray}}>Clover</text></svg>
+            <div style={{flex:1}}>{[['Gross Sales','#2d8a60'],['Gross Exp.','#c0392b'],['Net Profit',gold]].map(([label,color])=>(<div key={label} style={{display:'flex',alignItems:'center',gap:'0.4rem',marginBottom:'0.4rem'}}><div style={{width:7,height:7,borderRadius:'50%',background:color,flexShrink:0}}/><span style={{fontSize:'0.62rem',color:gray,flex:1}}>{label}</span><span style={{fontSize:'0.62rem',color:'rgba(14,14,12,0.25)'}}>—</span></div>))}</div>
+          </div>
+          <div style={{position:'absolute',bottom:'1rem',left:0,right:0,textAlign:'center',fontSize:'0.54rem',color:'rgba(14,14,12,0.3)',letterSpacing:'0.1em',textTransform:'uppercase'}}>Pending Clover data</div>
+        </div>
+      </div>
+      <div style={{background:white,borderRadius:10,padding:'1.5rem',border:'1px solid rgba(14,14,12,0.07)',marginBottom:'1.5rem'}}>
+        <div style={{fontFamily:ffS,fontSize:'1.1rem',fontWeight:300,marginBottom:'1.25rem'}}>Top Clients</div>
+        {top5.map((card,i)=>(<div key={card.id} onClick={()=>onSelectClient(card)} style={{display:'flex',alignItems:'center',gap:'0.6rem',marginBottom:'0.75rem',cursor:'pointer'}}><div style={{width:18,height:18,borderRadius:'50%',background:i===0?gold:'rgba(14,14,12,0.06)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'0.58rem',fontWeight:600,color:i===0?black:gray,flexShrink:0}}>{i+1}</div><div style={{flex:1,minWidth:0}}><div style={{fontSize:'0.72rem',color:black,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{card.profiles?.business_name||card.profiles?.full_name}</div><div style={{height:3,background:'rgba(14,14,12,0.06)',borderRadius:2,marginTop:'0.25rem'}}><div style={{height:'100%',width:((card.stamps||0)/maxStamps*100)+'%',background:i===0?gold:'rgba(14,14,12,0.15)',borderRadius:2}}/></div></div><div style={{fontSize:'0.65rem',color:gray,flexShrink:0}}>{card.stamps} stamps</div></div>))}
+        {top5.length===0&&<div style={{fontSize:'0.82rem',color:gray,textAlign:'center',padding:'1rem 0'}}>No clients yet.</div>}
+      </div>
+      <div style={{background:white,borderRadius:10,border:'1px solid rgba(14,14,12,0.07)',overflow:'hidden'}}>
+        <div style={{padding:'1rem 1.25rem',borderBottom:'1px solid rgba(14,14,12,0.06)',fontFamily:ffS,fontSize:'1.1rem',fontWeight:300}}>All Clients</div>
+        {sorted.map(card=>{const status=getStatus(card);const cur=card.stamps%5===0&&card.stamps>0?5:card.stamps%5;return(<div key={card.id} onClick={()=>onSelectClient(card)} style={{display:'flex',alignItems:'center',gap:'0.75rem',padding:'0.85rem 1.25rem',borderBottom:'1px solid rgba(14,14,12,0.04)',cursor:'pointer'}}><div style={{flex:1,minWidth:0}}><div style={{fontSize:'0.78rem',color:black,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{card.profiles?.business_name||card.profiles?.full_name}</div><div style={{fontSize:'0.62rem',color:gray,marginTop:'0.1rem'}}>#{card.card_number}</div></div><div style={{display:'flex',gap:2,flexShrink:0}}>{Array.from({length:5},(_,j)=><div key={j} style={{width:7,height:7,borderRadius:'50%',background:j<cur?gold:'rgba(14,14,12,0.08)'}}/>)}</div><span style={{fontSize:'0.56rem',padding:'0.18rem 0.6rem',borderRadius:20,background:status.bg,color:status.color,whiteSpace:'nowrap',flexShrink:0}}>{status.label}</span><div style={{color:gray,fontSize:'0.75rem'}}>›</div></div>);})}
+        {sorted.length===0&&<div style={{padding:'2rem',textAlign:'center',color:gray,fontSize:'0.82rem'}}>No clients yet.</div>}
+      </div>
+    </div>
+  )
+}
+
+function ClientProfile({card,onBack}){
+  if(!card)return null
+  const cur=card.stamps%5===0&&card.stamps>0?5:card.stamps%5
+  const cycle=Math.ceil((card.stamps||1)/5)||1
+  const totalPaid=card.stamp_history?.length||0
+  const rewardsClaimed=card.rewards?.filter(r=>r.status==='Canjeado').length||0
+  return(
+    <div>
+      <button onClick={onBack} style={{display:'flex',alignItems:'center',gap:'0.5rem',background:'none',border:'none',cursor:'pointer',color:gray,fontFamily:ff,fontSize:'0.65rem',letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:'1.5rem',padding:0}}>← Back to Dashboard</button>
+      <div style={{background:black,borderRadius:12,padding:'1.75rem',marginBottom:'1.25rem',position:'relative',overflow:'hidden'}}>
+        <div style={{position:'absolute',inset:0,background:'radial-gradient(ellipse 60% 50% at 0% 50%,rgba(184,151,90,0.08) 0%,transparent 70%)'}}/>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',flexWrap:'wrap',gap:'1rem',marginBottom:'1.25rem'}}>
+          <div>
+            <div style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300,color:white,marginBottom:'0.2rem'}}>{card.profiles?.full_name}</div>
+            <div style={{fontSize:'0.7rem',color:'rgba(255,255,255,0.4)'}}>{card.profiles?.business_name} · #{card.card_number}</div>
+            {card.profiles?.phone&&<div style={{fontSize:'0.68rem',color:'rgba(255,255,255,0.35)',marginTop:'0.2rem'}}>{card.profiles?.phone}</div>}
+          </div>
+          <div style={{display:'flex',gap:'0.5rem',flexWrap:'wrap'}}>
+            {[['Cycle',cycle],['Stamps',cur+'/5'],['Payments',totalPaid],['Rewards',rewardsClaimed]].map(([label,val])=>(<div key={label} style={{textAlign:'center',background:'rgba(255,255,255,0.05)',borderRadius:8,padding:'0.6rem 0.85rem',border:'1px solid rgba(184,151,90,0.1)'}}><div style={{fontFamily:ffS,fontSize:'1.2rem',fontWeight:300,color:gold,lineHeight:1}}>{val}</div><div style={{fontSize:'0.5rem',letterSpacing:'0.1em',textTransform:'uppercase',color:'rgba(255,255,255,0.3)',marginTop:'0.2rem'}}>{label}</div></div>))}
+          </div>
+        </div>
+        <div style={{display:'flex',gap:'0.4rem'}}>{Array.from({length:5},(_,i)=><div key={i} style={{flex:1,height:5,borderRadius:3,background:i<cur?gold:'rgba(255,255,255,0.08)'}}/>)}</div>
+        <div style={{fontSize:'0.58rem',color:'rgba(255,255,255,0.3)',marginTop:'0.4rem'}}>{cur===0&&card.stamps>0?'Reward available':cur+'/5 stamps in current cycle'}</div>
+      </div>
+      <div style={{background:white,borderRadius:10,border:'1px solid rgba(14,14,12,0.07)',overflow:'hidden',marginBottom:'1rem'}}>
+        <div style={{padding:'1rem 1.25rem',borderBottom:'1px solid rgba(14,14,12,0.06)',fontFamily:ffS,fontSize:'1.1rem',fontWeight:300}}>Payment History</div>
+        {card.stamp_history?.length>0?[...card.stamp_history].reverse().map((h,i)=>(<div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'0.85rem 1.25rem',borderBottom:'1px solid rgba(14,14,12,0.04)'}}><div><div style={{fontSize:'0.78rem',color:black}}>Payment registered{h.payment_amount?' · '+h.payment_amount:''}</div><div style={{fontSize:'0.62rem',color:gray,marginTop:'0.1rem'}}>{new Date(h.created_at).toLocaleDateString('en-US',{day:'numeric',month:'long',year:'numeric'})}</div></div><span style={{fontSize:'0.58rem',padding:'0.2rem 0.65rem',borderRadius:20,background:'rgba(184,151,90,0.1)',color:gold,border:'1px solid rgba(184,151,90,0.2)'}}>+1 stamp</span></div>)):<div style={{padding:'1.5rem',textAlign:'center',color:gray,fontSize:'0.82rem'}}>No history yet.</div>}
+      </div>
+      {card.rewards?.length>0&&(<div style={{background:white,borderRadius:10,border:'1px solid rgba(14,14,12,0.07)',overflow:'hidden'}}><div style={{padding:'1rem 1.25rem',borderBottom:'1px solid rgba(14,14,12,0.06)',fontFamily:ffS,fontSize:'1.1rem',fontWeight:300}}>Rewards</div>{card.rewards.map((r,i)=>(<div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'0.85rem 1.25rem',borderBottom:'1px solid rgba(14,14,12,0.04)'}}><div><div style={{fontSize:'0.78rem',color:black}}>{r.reward_type}</div>{r.reward_cost&&<div style={{fontSize:'0.65rem',color:gold,marginTop:'0.1rem'}}>{r.reward_cost}</div>}</div><span style={{fontSize:'0.58rem',padding:'0.2rem 0.65rem',borderRadius:20,background:'rgba(45,138,96,0.1)',color:'#2d8a60'}}>{r.status}</span></div>))}</div>)}
+    </div>
+  )
+}
+
+function ClientsPanel({users,cards,search,setSearch,onEdit,onAddPayment,onCreateCard,onCreateNew,onDelete,onFiles,onExpense,onHistory}){
+  const filtered=users.filter(u=>(u.full_name||'').toLowerCase().includes(search.toLowerCase())||(u.business_name||'').toLowerCase().includes(search.toLowerCase()))
+  function getCard(uid){return cards.find(c=>c.user_id===uid)}
+  function getClientStatus(uid){const card=getCard(uid);if(!card)return{label:'No Card',color:gray,bg:'rgba(14,14,12,0.06)'};return getStatus(card)}
+  return(
+    <div>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1.25rem'}}>
+        <h2 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300}}>Clients</h2>
+        <div style={{display:'flex',alignItems:'center',gap:'0.75rem'}}>
+          <div style={{fontSize:'0.62rem',color:gray}}>{users.length} registered</div>
+          <button onClick={onCreateNew} style={{background:black,color:white,border:'none',padding:'0.6rem 1.1rem',fontFamily:ff,fontSize:'0.6rem',letterSpacing:'0.12em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>+ New</button>
+        </div>
+      </div>
+      <input type="text" placeholder="Search by name or business..." value={search} onChange={e=>setSearch(e.target.value)} style={{width:'100%',padding:'0.7rem 1rem',border:'1px solid '+gl,borderRadius:3,fontFamily:ff,fontSize:'0.82rem',outline:'none',marginBottom:'1.25rem',boxSizing:'border-box',background:white}}/>
+      <div style={{background:white,borderRadius:10,border:'1px solid rgba(14,14,12,0.07)',overflow:'hidden'}}>
+        <div style={{display:'grid',gridTemplateColumns:'2fr 1fr 1fr auto',padding:'0.6rem 1.25rem',borderBottom:'1px solid rgba(14,14,12,0.06)',fontSize:'0.54rem',letterSpacing:'0.1em',textTransform:'uppercase',color:gray}}>
+          <span>Client</span><span>Status</span><span>Stamps</span><span>Actions</span>
+        </div>
+        {filtered.map(user=>{
+          const card=getCard(user.id)
+          const status=getClientStatus(user.id)
+          const cur=card?(card.stamps%5===0&&card.stamps>0?5:card.stamps%5):0
+          const lastPay=card?.stamp_history?.length>0?new Date(card.stamp_history[card.stamp_history.length-1].created_at).toLocaleDateString('en-US',{month:'short',day:'numeric'}):null
+          return(
+            <div key={user.id} style={{display:'grid',gridTemplateColumns:'2fr 120px 100px 1fr',padding:'0.85rem 1.25rem',borderBottom:'1px solid rgba(14,14,12,0.04)',alignItems:'center',gap:'0.5rem'}}>
+              <div style={{minWidth:0}}>
+                <div style={{fontSize:'0.78rem',color:black,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontWeight:500}}>{user.business_name||user.full_name}</div>
+                <div style={{fontSize:'0.62rem',color:gray,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{user.business_name?user.full_name:user.email}</div>
+                {lastPay&&<div style={{fontSize:'0.58rem',color:'rgba(14,14,12,0.3)',marginTop:'0.1rem'}}>Last payment: {lastPay}</div>}
+              </div>
+              <span style={{fontSize:'0.58rem',padding:'0.2rem 0.6rem',borderRadius:20,background:status.bg,color:status.color,whiteSpace:'nowrap',width:'fit-content'}}>{status.label}</span>
+              <div style={{display:'flex',gap:2,alignItems:'center'}}>
+                {Array.from({length:5},(_,j)=><div key={j} style={{width:8,height:8,borderRadius:'50%',background:j<cur?gold:'rgba(14,14,12,0.08)'}}/>)}
+                <span style={{fontSize:'0.58rem',color:gray,marginLeft:'0.3rem'}}>{card?.stamps||0}</span>
+              </div>
+              <div style={{display:'flex',gap:'0.35rem',flexWrap:'wrap',justifyContent:'flex-end',alignItems:'center'}}>
+                <button onClick={()=>onEdit(user)} style={{padding:'0.35rem 0.65rem',background:'rgba(14,14,12,0.06)',color:black,border:'none',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.56rem',letterSpacing:'0.07em',textTransform:'uppercase'}}>Edit</button>
+                {card
+                  ?<button onClick={()=>onAddPayment(card)} style={{padding:'0.35rem 0.65rem',background:black,color:white,border:'none',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.56rem',letterSpacing:'0.07em',textTransform:'uppercase'}}>+ Pay</button>
+                  :<button onClick={()=>onCreateCard(user.id)} style={{padding:'0.35rem 0.65rem',background:'rgba(184,151,90,0.1)',color:gold,border:'1px solid rgba(184,151,90,0.25)',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.56rem',letterSpacing:'0.07em',textTransform:'uppercase'}}>+ Card</button>
+                }
+                <button onClick={()=>onFiles(user)} style={{padding:'0.35rem 0.65rem',background:'rgba(52,152,219,0.08)',color:'#2980b9',border:'1px solid rgba(52,152,219,0.2)',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.56rem',letterSpacing:'0.07em',textTransform:'uppercase'}}>Files</button>
+                <button onClick={()=>onHistory(user)} style={{padding:'0.35rem 0.65rem',background:'rgba(45,138,96,0.08)',color:'#2d8a60',border:'1px solid rgba(45,138,96,0.2)',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.56rem',letterSpacing:'0.07em',textTransform:'uppercase'}}>History</button>
+                <button onClick={()=>onExpense(user)} style={{padding:'0.35rem 0.65rem',background:'rgba(142,68,173,0.08)',color:'#8e44ad',border:'1px solid rgba(142,68,173,0.2)',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.56rem',letterSpacing:'0.07em',textTransform:'uppercase'}}>Expense</button>
+                <button onClick={()=>onDelete(user.id)} style={{padding:'0.35rem 0.65rem',background:'rgba(192,57,43,0.08)',color:'#a93226',border:'none',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.56rem',letterSpacing:'0.07em',textTransform:'uppercase'}}>Delete</button>
+              </div>
+            </div>
+          )
+        })}
+        {filtered.length===0&&<div style={{padding:'2rem',textAlign:'center',color:gray,fontSize:'0.82rem'}}>No clients found.</div>}
+      </div>
+    </div>
+  )
+}
+
+function NotificationsPanel({ cards, users }) {
+  const alerts = getNotifications(cards)
+  const levelColor = { 1: '#b8975a', 2: '#e67e22', 3: '#c0392b' }
+  return (
+    <div>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1.5rem'}}>
+        <h2 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300}}>Alerts</h2>
+        <div style={{fontSize:'0.62rem',color:gray}}>{alerts.length} active alert{alerts.length!==1?'s':''}</div>
+      </div>
+      {alerts.length===0
+        ?<div style={{background:white,borderRadius:10,padding:'2rem',textAlign:'center',border:'1px solid rgba(14,14,12,0.07)',color:gray,fontSize:'0.82rem'}}>No alerts — all clients are up to date.</div>
+        :<div style={{display:'flex',flexDirection:'column',gap:'0.75rem'}}>
+          {alerts.map((alert,i)=>{
+            const user=users.find(u=>u.id===alert.card.user_id)
+            return(
+              <div key={i} style={{background:white,borderRadius:10,border:'1px solid rgba(14,14,12,0.07)',overflow:'hidden'}}>
+                <div style={{background:`${levelColor[alert.level]}0d`,borderLeft:'3px solid '+levelColor[alert.level],padding:'1rem 1.25rem',display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
+                  <div>
+                    <div style={{fontFamily:ffS,fontSize:'1rem',fontWeight:300,color:black,marginBottom:'0.2rem'}}>{alert.card.profiles?.business_name||alert.card.profiles?.full_name}</div>
+                    <div style={{fontSize:'0.7rem',color:gray}}>{alert.msg}</div>
+                    {user?.phone&&<div style={{fontSize:'0.68rem',color:gray,marginTop:'0.2rem'}}>{user.phone}</div>}
+                  </div>
+                  <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:'0.4rem',flexShrink:0,marginLeft:'1rem'}}>
+                    <span style={{fontSize:'0.58rem',padding:'0.2rem 0.65rem',borderRadius:20,background:`${levelColor[alert.level]}22`,color:levelColor[alert.level],whiteSpace:'nowrap'}}>Alert {alert.level}/3</span>
+                    <span style={{fontSize:'0.62rem',color:levelColor[alert.level],fontWeight:600}}>{alert.days} days</span>
+                  </div>
+                </div>
+                {user?.phone&&(<div style={{padding:'0.75rem 1.25rem',borderTop:'1px solid rgba(14,14,12,0.05)'}}><button onClick={()=>{const phone=user.phone.replace(/[^0-9]/g,'');const fp=phone.startsWith('1')?phone:'1'+phone;const msg=`Hi ${alert.card.profiles?.full_name||''}, we noticed your account at ${alert.card.profiles?.business_name||''} has a pending balance of ${alert.days} days. Please contact us to keep your service active.`;window.open(`https://wa.me/${fp}?text=${encodeURIComponent(msg)}`,'_blank')}} style={{padding:'0.4rem 1rem',background:black,color:white,border:'none',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.58rem',letterSpacing:'0.08em',textTransform:'uppercase'}}>Send WhatsApp</button></div>)}
+              </div>
+            )
+          })}
+        </div>
+      }
+    </div>
+  )
+}
+
+function CampaignsPanel({ cards, users }) {
+  const [selectedGroup, setSelectedGroup] = useState(null)
+  const [message, setMessage] = useState('')
+  const [sent, setSent] = useState(false)
+  function classifyClient(card) {
+    const status = getStatus(card).label
+    if (status === 'VIP') return 'vip'
+    if (status === 'Regular') return 'regulares'
+    if (status === 'Active') return 'activos'
+    if (status === 'Cancelled') return 'cancelados'
+    if (status === 'Late Fee' || status === 'Grace') return 'recargo'
+    return 'nuevos'
+  }
+  const groups = {
+    vip:        { label:'VIP',        desc:'15+ stamps, up to date',      color:'#b8975a', bg:'rgba(184,151,90,0.12)', cards: cards.filter(c=>classifyClient(c)==='vip') },
+    regulares:  { label:'Regular',    desc:'10-14 stamps, up to date',    color:'#2d8a60', bg:'rgba(45,138,96,0.1)',   cards: cards.filter(c=>classifyClient(c)==='regulares') },
+    activos:    { label:'Active',     desc:'5-9 stamps, up to date',      color:'#3498db', bg:'rgba(52,152,219,0.1)',  cards: cards.filter(c=>classifyClient(c)==='activos') },
+    nuevos:     { label:'New',        desc:'1-4 stamps, up to date',      color:'#8e44ad', bg:'rgba(142,68,173,0.1)',  cards: cards.filter(c=>classifyClient(c)==='nuevos') },
+    recargo:    { label:'Late Fee',   desc:'35-65 days — $30 applied',    color:'#e74c3c', bg:'rgba(231,76,60,0.1)',   cards: cards.filter(c=>classifyClient(c)==='recargo') },
+    cancelados: { label:'Cancelled',  desc:'66+ days without payment',    color:'#c0392b', bg:'rgba(192,57,43,0.1)',   cards: cards.filter(c=>classifyClient(c)==='cancelados') },
+  }
+  const defaultMessages = {
+    vip:        'Hi [name]! Thank you for being a VIP at [business]. Your loyalty means everything to us 🙌',
+    regulares:  'Hi [name]! You keep adding up at [business]. Every payment gets you closer to your next reward 💪',
+    activos:    'Hi [name]! You have stamps saved at [business]. Keep it up, you\'re doing great! ⭐',
+    nuevos:     'Hi [name]! Welcome to [business]. You started your loyalty card, let\'s get more! 🎉',
+    recargo:    'Hi [name], you have a pending balance at [business]. Getting current avoids suspension. Thank you!',
+    cancelados: 'Hi [name], your service at [business] is suspended due to non-payment. Contact us to reactivate. We\'re here to help!',
+  }
+  function selectGroup(key){setSelectedGroup(key);setMessage(defaultMessages[key]);setSent(false)}
+  const group=selectedGroup?groups[selectedGroup]:null
+  const recipients=group?group.cards.filter(c=>users.find(u=>u.id===c.user_id)?.phone):[]
+  const noPhone=group?group.cards.filter(c=>!users.find(u=>u.id===c.user_id)?.phone):[]
+  function sendViaWhatsApp(){recipients.forEach(card=>{const user=users.find(u=>u.id===card.user_id);if(!user?.phone)return;const phone=user.phone.replace(/[^0-9]/g,'');const fullPhone=phone.startsWith('1')?phone:'1'+phone;const msg=message.replace(/\[name\]/g,user.full_name||'').replace(/\[business\]/g,user.business_name||user.full_name||'');window.open(`https://wa.me/${fullPhone}?text=${encodeURIComponent(msg)}`,'_blank')});setSent(true)}
+  return (
+    <div>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1.5rem'}}>
+        <h2 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300}}>WhatsApp Campaigns</h2>
+        <div style={{fontSize:'0.62rem',color:gray}}>{cards.length} total clients</div>
+      </div>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(150px,1fr))',gap:'0.75rem',marginBottom:'1.5rem'}}>
+        {Object.entries(groups).map(([key,g])=>(<div key={key} onClick={()=>selectGroup(key)} style={{background:selectedGroup===key?g.color:white,borderRadius:10,padding:'1.1rem',border:'2px solid '+(selectedGroup===key?g.color:'rgba(14,14,12,0.07)'),cursor:'pointer'}}><div style={{fontSize:'0.78rem',fontWeight:600,color:selectedGroup===key?white:black,marginBottom:'0.2rem'}}>{g.label}</div><div style={{fontSize:'0.6rem',color:selectedGroup===key?'rgba(255,255,255,0.75)':gray,lineHeight:1.4,marginBottom:'0.5rem'}}>{g.desc}</div><div style={{fontSize:'0.72rem',fontWeight:600,color:selectedGroup===key?white:g.color}}>{g.cards.length} clients</div></div>))}
+      </div>
+      {selectedGroup&&group&&<>
+        <div style={{background:white,borderRadius:10,border:'1px solid rgba(14,14,12,0.07)',padding:'1.25rem',marginBottom:'1rem'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.85rem'}}>
+            <div style={{fontFamily:ffS,fontSize:'1rem',fontWeight:300}}>Recipients — {group.label}</div>
+            <div style={{display:'flex',gap:'0.75rem',fontSize:'0.65rem'}}><span style={{color:'#2d8a60'}}>{recipients.length} with phone</span>{noPhone.length>0&&<span style={{color:'#c0392b'}}>{noPhone.length} no phone</span>}</div>
+          </div>
+          <div style={{display:'flex',flexWrap:'wrap',gap:'0.4rem'}}>{group.cards.map(card=>{const user=users.find(u=>u.id===card.user_id);const hasPhone=!!user?.phone;return(<span key={card.id} style={{fontSize:'0.62rem',padding:'0.2rem 0.65rem',borderRadius:20,background:hasPhone?'rgba(45,138,96,0.1)':'rgba(192,57,43,0.06)',color:hasPhone?'#2d8a60':'#c0392b'}}>{user?.business_name||user?.full_name||'No name'}{!hasPhone?' (no phone)':''}</span>)})}{group.cards.length===0&&<span style={{fontSize:'0.78rem',color:gray}}>No clients in this group.</span>}</div>
+        </div>
+        <div style={{background:white,borderRadius:10,border:'1px solid rgba(14,14,12,0.07)',padding:'1.25rem',marginBottom:'1rem'}}>
+          <div style={{fontFamily:ffS,fontSize:'1rem',fontWeight:300,marginBottom:'0.5rem'}}>Message</div>
+          <div style={{fontSize:'0.6rem',color:gray,marginBottom:'0.5rem'}}>Use [name] and [business] to personalize</div>
+          <textarea value={message} onChange={e=>setMessage(e.target.value)} rows={5} style={{width:'100%',padding:'0.85rem',border:'1px solid '+gl,borderRadius:3,fontFamily:ff,fontSize:'0.82rem',color:black,outline:'none',resize:'vertical',boxSizing:'border-box',lineHeight:1.6}}/>
+        </div>
+        {sent&&<div style={{background:'rgba(45,138,96,0.08)',border:'1px solid rgba(45,138,96,0.2)',borderRadius:8,padding:'0.85rem 1.25rem',marginBottom:'0.85rem',fontSize:'0.78rem',color:'#2d8a60'}}>Opened {recipients.length} WhatsApp conversations.</div>}
+        {recipients.length>0
+          ?<button onClick={sendViaWhatsApp} style={{width:'100%',background:black,color:white,border:'none',padding:'1rem',fontFamily:ff,fontSize:'0.68rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Send via WhatsApp to {recipients.length} client{recipients.length!==1?'s':''}</button>
+          :<div style={{background:'rgba(192,57,43,0.05)',border:'1px solid rgba(192,57,43,0.15)',borderRadius:8,padding:'1rem',textAlign:'center',fontSize:'0.78rem',color:'#c0392b'}}>No clients in this group have a phone number registered.</div>
+        }
+        {noPhone.length>0&&<div style={{marginTop:'0.6rem',fontSize:'0.65rem',color:gray,textAlign:'center'}}>{noPhone.length} client{noPhone.length!==1?'s':''} without phone will not receive the message</div>}
+      </>}
+      {!selectedGroup&&<div style={{background:white,borderRadius:10,padding:'2rem',textAlign:'center',border:'1px solid rgba(14,14,12,0.07)',color:gray,fontSize:'0.82rem'}}>Select a group above to see recipients.</div>}
+    </div>
+  )
+}
+
+function CatalogPanel({ catalog, onSetCost, onSetSuppliers }) {
+  const [search, setSearch] = useState('')
+  const [expandMargin, setExpandMargin] = useState(false)
+
+  function getPrice(item) {
+    const p = item.catalog_prices?.find(p=>p.active)
+    if (!p) return null
+    return p.amount
+  }
+
+  function formatPrice(item) {
+    const prices = item.catalog_prices?.filter(p=>p.active)||[]
+    if (!prices.length) return '—'
+    return prices.map(p=>'$'+(p.amount||0).toFixed(2)+(p.interval?'/'+p.interval:'')).join(' · ')
+  }
+
+  function getCost(item) {
+    const c = item.catalog_costs?.cost
+    return c!=null ? parseFloat(c) : null
+  }
+
+  function getMargin(item) {
+    const price = getPrice(item)
+    const cost = getCost(item)
+    if (!price || cost === null) return null
+    return Math.round(((price - cost) / price) * 100)
+  }
+
+  function mc(m) {
+    return m >= 60 ? '#2d8a60' : m >= 40 ? gold : '#c0392b'
+  }
+
+  function categorize(name) {
+    const n = name.toLowerCase()
+    if (n.includes('mantenimiento') || n.includes('maintenance') || n.includes('mensual') || n.includes('planilla') || n.includes('scaling')) return 'maintenance'
+    if (n.includes('setup') || n.includes('bundle') || n.includes('pro')) return 'setup'
+    return 'extras'
+  }
+
+  const filtered = catalog.filter(i => i.name.toLowerCase().includes(search.toLowerCase()))
+  const setup = [...filtered.filter(i=>categorize(i.name)==='setup')].sort((a,b)=>(getPrice(b)||0)-(getPrice(a)||0))
+  const maintenance = [...filtered.filter(i=>categorize(i.name)==='maintenance')].sort((a,b)=>(getPrice(b)||0)-(getPrice(a)||0))
+  const extras = [...filtered.filter(i=>categorize(i.name)==='extras')].sort((a,b)=>(getPrice(b)||0)-(getPrice(a)||0))
+
+  const withMargin = catalog.map(i=>({...i,_margin:getMargin(i)})).filter(i=>i._margin!==null).sort((a,b)=>b._margin-a._margin)
+  const showList = expandMargin ? withMargin : withMargin.slice(0,5)
+
+  function Row({item}) {
+    const price = getPrice(item)
+    const cost = getCost(item)
+    const margin = getMargin(item)
+    const suppliers = item.catalog_costs?.suppliers
+    return (
+      <div style={{padding:'0.9rem 1.25rem',borderBottom:'1px solid rgba(14,14,12,0.05)'}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'0.6rem'}}>
+          <div style={{flex:1,minWidth:0,marginRight:'0.75rem'}}>
+            <div style={{fontSize:'0.78rem',fontWeight:600,color:black,lineHeight:1.3}}>{item.name}</div>
+            {item.description&&<div style={{fontSize:'0.6rem',color:gray,marginTop:'0.2rem',lineHeight:1.4}}>{item.description.substring(0,80)}{item.description.length>80?'...':''}</div>}
+          </div>
+          <span style={{fontSize:'0.52rem',padding:'0.15rem 0.55rem',borderRadius:20,background:item.active?'rgba(45,138,96,0.1)':'rgba(192,57,43,0.1)',color:item.active?'#2d8a60':'#c0392b',whiteSpace:'nowrap',flexShrink:0}}>{item.active?'Active':'Inactive'}</span>
+        </div>
+        {/* Price / Cost / Margin — inline pill row */}
+        <div style={{display:'flex',alignItems:'center',gap:'0.5rem',marginBottom:'0.65rem',flexWrap:'wrap'}}>
+          <div style={{display:'flex',alignItems:'center',gap:'0.25rem'}}>
+            <span style={{fontSize:'0.48rem',color:gray,letterSpacing:'0.08em',textTransform:'uppercase'}}>Price</span>
+            <span style={{fontSize:'0.78rem',fontWeight:700,color:black}}>{formatPrice(item)}</span>
+          </div>
+          <span style={{color:gray,fontSize:'0.7rem'}}>·</span>
+          <div style={{display:'flex',alignItems:'center',gap:'0.25rem'}}>
+            <span style={{fontSize:'0.48rem',color:gray,letterSpacing:'0.08em',textTransform:'uppercase'}}>Cost</span>
+            <span style={{fontSize:'0.78rem',fontWeight:600,color:cost!==null?black:'rgba(14,14,12,0.25)'}}>{cost!==null?'$'+cost.toFixed(2):'—'}</span>
+          </div>
+          <span style={{color:gray,fontSize:'0.7rem'}}>·</span>
+          <div style={{display:'flex',alignItems:'center',gap:'0.25rem'}}>
+            <span style={{fontSize:'0.48rem',color:gray,letterSpacing:'0.08em',textTransform:'uppercase'}}>Margin</span>
+            <span style={{fontSize:'0.78rem',fontWeight:700,color:margin!==null?mc(margin):'rgba(14,14,12,0.25)'}}>{margin!==null?margin+'%':'—'}</span>
+          </div>
+          {margin!==null&&<div style={{flex:1,height:3,background:'rgba(14,14,12,0.06)',borderRadius:2,minWidth:40}}>
+            <div style={{height:'100%',width:Math.min(margin,100)+'%',background:mc(margin),borderRadius:2}}/>
+          </div>}
+        </div>
+        {suppliers&&<div style={{fontSize:'0.62rem',color:gray,marginBottom:'0.6rem',fontStyle:'italic'}}>{suppliers.substring(0,80)}{suppliers.length>80?'...':''}</div>}
+        <div style={{display:'flex',gap:'0.4rem',flexWrap:'wrap'}}>
+          <button onClick={()=>onSetCost(item)} style={{padding:'0.4rem 0.85rem',background:'rgba(184,151,90,0.08)',color:gold,border:'1px solid rgba(184,151,90,0.25)',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.58rem',letterSpacing:'0.08em',textTransform:'uppercase'}}>{cost!==null?'Edit Cost':'Set Cost'}</button>
+          <button onClick={()=>onSetSuppliers(item)} style={{padding:'0.4rem 0.85rem',background:'rgba(52,152,219,0.08)',color:'#2980b9',border:'1px solid rgba(52,152,219,0.2)',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.58rem',letterSpacing:'0.08em',textTransform:'uppercase'}}>Suppliers</button>
+        </div>
+      </div>
+    )
+  }
+
+  function Section({title, items}) {
+    const [open, setOpen] = useState(true)
+    if (!items.length) return null
+    return (
+      <div style={{background:white,borderRadius:10,border:'1px solid rgba(14,14,12,0.07)',overflow:'hidden',marginBottom:'1rem'}}>
+        <div onClick={()=>setOpen(o=>!o)} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'0.9rem 1.25rem',cursor:'pointer',background:'rgba(14,14,12,0.02)'}}>
+          <div style={{fontFamily:ffS,fontSize:'1.05rem',fontWeight:300,color:black}}>{title}</div>
+          <div style={{display:'flex',alignItems:'center',gap:'0.6rem'}}>
+            <span style={{fontSize:'0.6rem',color:gray}}>{items.length} service{items.length!==1?'s':''}</span>
+            <span style={{fontSize:'0.6rem',color:gray,transform:open?'rotate(180deg)':'rotate(0)',display:'inline-block',transition:'transform 0.2s'}}>▾</span>
+          </div>
+        </div>
+        {open && items.map(item=><Row key={item.id} item={item}/>)}
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1.25rem'}}>
+        <h2 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300}}>Catalog</h2>
+        <div style={{fontSize:'0.62rem',color:gray}}>{catalog.length} services · Stripe synced</div>
+      </div>
+
+      {/* Best Margin Box */}
+      {withMargin.length>0&&(
+        <div style={{background:white,borderRadius:10,border:'1px solid rgba(184,151,90,0.25)',padding:'0.9rem 1.25rem',marginBottom:'1.25rem'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.65rem'}}>
+            <span style={{fontSize:'0.6rem',fontWeight:700,color:gold,letterSpacing:'0.1em',textTransform:'uppercase'}}>★ Best Margin</span>
+            <button onClick={()=>setExpandMargin(e=>!e)} style={{background:'none',border:'none',cursor:'pointer',fontSize:'0.6rem',color:gray,fontFamily:ff,letterSpacing:'0.08em',textTransform:'uppercase'}}>{expandMargin?'Collapse':'See all'}</button>
+          </div>
+          {showList.map((item,i)=>(
+            <div key={item.id} style={{display:'flex',alignItems:'center',gap:'0.6rem',marginBottom:'0.45rem'}}>
+              <div style={{width:16,height:16,borderRadius:'50%',background:i===0&&!expandMargin?gold:'rgba(14,14,12,0.06)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'0.5rem',fontWeight:700,color:i===0&&!expandMargin?black:gray,flexShrink:0}}>{i+1}</div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:'0.68rem',color:black,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{item.name}</div>
+                <div style={{height:3,background:'rgba(14,14,12,0.06)',borderRadius:2,marginTop:'0.2rem'}}>
+                  <div style={{height:'100%',width:Math.min(item._margin,100)+'%',background:mc(item._margin),borderRadius:2}}/>
+                </div>
+              </div>
+              <span style={{fontSize:'0.7rem',fontWeight:700,color:mc(item._margin),flexShrink:0,minWidth:36,textAlign:'right'}}>{item._margin}%</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Search */}
+      <input type="text" placeholder="Search services..." value={search} onChange={e=>setSearch(e.target.value)} style={{width:'100%',padding:'0.7rem 1rem',border:'1px solid '+gl,borderRadius:3,fontFamily:ff,fontSize:'0.82rem',outline:'none',marginBottom:'1.25rem',boxSizing:'border-box',background:white}}/>
+
+      {/* Sections */}
+      <Section title="Setup" items={setup}/>
+      <Section title="Maintenance" items={maintenance}/>
+      <Section title="Extras" items={extras}/>
+      {!filtered.length&&<div style={{background:white,borderRadius:10,padding:'2rem',textAlign:'center',color:gray,fontSize:'0.82rem',border:'1px solid rgba(14,14,12,0.07)'}}>No services found.</div>}
+    </div>
+  )
+}
+
+function CostHistory({ productId }) {
+  const [history, setHistory] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(()=>{
+    fetch('/api/admin/catalog/history?product_id='+productId)
+      .then(r=>r.json())
+      .then(d=>{ setHistory(d.history||[]); setLoading(false) })
+      .catch(()=>setLoading(false))
+  },[productId])
+
+  if(loading) return <div style={{fontSize:'0.68rem',color:'#6b6b67',padding:'0.5rem 0'}}>Loading history...</div>
+  if(!history.length) return <div style={{fontSize:'0.68rem',color:'#6b6b67',padding:'0.5rem 0'}}>No cost history yet.</div>
+
+  return(
+    <div style={{marginTop:'0.75rem'}}>
+      <div style={{fontSize:'0.52rem',letterSpacing:'0.12em',textTransform:'uppercase',color:'#6b6b67',marginBottom:'0.5rem'}}>Cost History</div>
+      <div style={{border:'1px solid rgba(14,14,12,0.07)',borderRadius:6,overflow:'hidden'}}>
+        {history.map((h,i)=>(
+          <div key={h.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'0.6rem 0.85rem',borderBottom:i<history.length-1?'1px solid rgba(14,14,12,0.05)':'none'}}>
+            <div>
+              <span style={{fontSize:'0.78rem',fontWeight:600,color:'#0e0e0c'}}>${parseFloat(h.cost).toFixed(2)}</span>
+              {h.notes&&<span style={{fontSize:'0.6rem',color:'#6b6b67',marginLeft:'0.5rem'}}>{h.notes.substring(0,40)}</span>}
+            </div>
+            <span style={{fontSize:'0.58rem',color:'#6b6b67'}}>{new Date(h.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function ExpenseHistory({ clientId, showToast }) {
+  const [expenses, setExpenses] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(()=>{ load() },[clientId])
+
+  async function load(){
+    setLoading(true)
+    const res = await fetch('/api/admin/expenses?client_id='+clientId)
+    const data = await res.json()
+    setExpenses(data.expenses||[])
+    setLoading(false)
+  }
+
+  async function del(id){
+    await fetch('/api/admin/expenses',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})})
+    showToast('Expense deleted')
+    load()
+  }
+
+  const total = expenses.reduce((a,e)=>a+parseFloat(e.amount||0),0)
+
+  if(loading) return <div style={{fontSize:'0.72rem',color:'#6b6b67',textAlign:'center',padding:'1rem'}}>Loading...</div>
+
+  return(
+    <div>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.75rem'}}>
+        <div style={{fontSize:'0.56rem',letterSpacing:'0.12em',textTransform:'uppercase',color:'#6b6b67'}}>Expense History</div>
+        {expenses.length>0&&<div style={{fontSize:'0.68rem',fontWeight:600,color:'#c0392b'}}>Total: ${total.toFixed(2)}</div>}
+      </div>
+      {expenses.length===0
+        ?<div style={{fontSize:'0.72rem',color:'#6b6b67',textAlign:'center',padding:'0.75rem 0'}}>No expenses logged yet.</div>
+        :<div style={{border:'1px solid rgba(14,14,12,0.07)',borderRadius:8,overflow:'hidden'}}>
+          {expenses.map((e,i)=>(
+            <div key={e.id} style={{display:'flex',alignItems:'center',gap:'0.75rem',padding:'0.75rem 1rem',borderBottom:i<expenses.length-1?'1px solid rgba(14,14,12,0.05)':'none'}}>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:'0.72rem',color:'#0e0e0c',fontWeight:500}}>{e.description||'—'}</div>
+                <div style={{display:'flex',gap:'0.5rem',marginTop:'0.15rem'}}>
+                  <span style={{fontSize:'0.58rem',color:'#6b6b67'}}>{e.expense_date}</span>
+                  {e.recurring&&<span style={{fontSize:'0.55rem',padding:'0.1rem 0.45rem',borderRadius:20,background:'rgba(52,152,219,0.1)',color:'#2980b9'}}>↻ {e.recurring_interval}</span>}
+                </div>
+              </div>
+              <div style={{fontSize:'0.78rem',fontWeight:600,color:'#c0392b',flexShrink:0}}>-${parseFloat(e.amount).toFixed(2)}</div>
+              <button onClick={()=>del(e.id)} style={{background:'none',border:'none',cursor:'pointer',color:'rgba(192,57,43,0.4)',fontSize:'0.75rem',padding:0,flexShrink:0}}>x</button>
+            </div>
+          ))}
+        </div>
+      }
+    </div>
+  )
+}
+
+function FinancialCard({ sales }) {
+  const [expanded, setExpanded] = useState(false)
+  const [activeChart, setActiveChart] = useState(null)
+  const [chartVisible, setChartVisible] = useState(false)
+  const [period, setPeriod] = useState('yearly')
+
+  function openChart(id) {
+    if (activeChart === id) {
+      // toggle off
+      setChartVisible(false)
+      setTimeout(() => setActiveChart(null), 220)
+    } else if (activeChart) {
+      // switch chart — fade out then in
+      setChartVisible(false)
+      setTimeout(() => { setActiveChart(id); setChartVisible(true) }, 220)
+    } else {
+      // first open
+      setActiveChart(id)
+      setTimeout(() => setChartVisible(true), 20)
+    }
+  }
+
+  const paid = (sales||[]).filter(s=>s.status==='paid')
+  const refunds = (sales||[]).filter(s=>s.status==='refunded')
+  const grossSales = paid.reduce((a,s)=>a+parseFloat(s.amount||0),0)
+  const refunded = refunds.reduce((a,s)=>a+Math.abs(parseFloat(s.amount||0)),0)
+  const netSales = grossSales - refunded
+  const avgOrder = paid.length>0?grossSales/paid.length:0
+
+  const now = new Date()
+  const ytdSales = paid.filter(s=>new Date(s.sale_date).getFullYear()===now.getFullYear()).reduce((a,s)=>a+parseFloat(s.amount||0),0)
+  const thisMonthSales = paid.filter(s=>{const d=new Date(s.sale_date);return d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth()}).reduce((a,s)=>a+parseFloat(s.amount||0),0)
+
+
+  // ── Period builders ──────────────────────────────────────────────
+  function buildData(items, valueKey, period) {
+    const map = {}
+    const filtered = items.filter(s => {
+      const d = new Date(s.sale_date)
+      if (period === 'weekly') { const wk = new Date(now); wk.setDate(now.getDate()-27); return d >= wk }
+      if (period === 'monthly') return d.getFullYear()===now.getFullYear() && d.getMonth()===now.getMonth()
+      if (period === 'ytd') return d.getFullYear()===now.getFullYear()
+      if (period === 'yearly') return true
+      return true
+    })
+
+    filtered.forEach(s => {
+      const d = new Date(s.sale_date)
+      let key
+      if (period === 'weekly')  key = d.toLocaleDateString('en-US',{month:'short',day:'numeric'})
+      else if (period === 'monthly') key = d.toLocaleDateString('en-US',{month:'short',day:'numeric'})
+      else if (period === 'ytd') key = d.toLocaleDateString('en-US',{month:'short'})
+      else key = d.toLocaleDateString('en-US',{month:'short',year:'2-digit'})
+      map[key] = (map[key]||0) + Math.abs(parseFloat(s[valueKey]||0))
+    })
+
+    if (period === 'weekly') {
+      const result = []
+      for (let i=27; i>=0; i--) {
+        const d = new Date(now); d.setDate(now.getDate()-i)
+        const key = d.toLocaleDateString('en-US',{month:'short',day:'numeric'})
+        if (!result.find(r=>r[0]===key)) result.push([key, map[key]||0])
+      }
+      // Group by week
+      const weeks = []
+      for (let i=0; i<4; i++) {
+        const slice = result.slice(i*7, i*7+7)
+        const label = slice[0]?.[0] + ' – ' + slice[slice.length-1]?.[0]
+        weeks.push([label, slice.reduce((a,b)=>a+b[1],0)])
+      }
+      return weeks
+    }
+    if (period === 'monthly') {
+      const result = []
+      const daysInMonth = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate()
+      for (let i=1; i<=daysInMonth; i++) {
+        const d = new Date(now.getFullYear(), now.getMonth(), i)
+        const key = d.toLocaleDateString('en-US',{month:'short',day:'numeric'})
+        result.push([key, map[key]||0])
+      }
+      return result
+    }
+    if (period === 'ytd') {
+      const result = []
+      for (let i=0; i<=now.getMonth(); i++) {
+        const d = new Date(now.getFullYear(), i, 1)
+        const key = d.toLocaleDateString('en-US',{month:'short'})
+        result.push([key, map[key]||0])
+      }
+      return result
+    }
+    // yearly — last 12 months
+    const result = []
+    for (let i=11; i>=0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth()-i, 1)
+      const key = d.toLocaleDateString('en-US',{month:'short',year:'2-digit'})
+      result.push([key, map[key]||0])
+    }
+    return result
+  }
+
+  function buildAOV(items, period) {
+    const filtered = items.filter(s => {
+      const d = new Date(s.sale_date)
+      if (period === 'weekly') { const wk = new Date(now); wk.setDate(now.getDate()-27); return d >= wk }
+      if (period === 'monthly') return d.getFullYear()===now.getFullYear() && d.getMonth()===now.getMonth()
+      if (period === 'ytd') return d.getFullYear()===now.getFullYear()
+      return true
+    })
+    const map = {}
+    filtered.forEach(s => {
+      const d = new Date(s.sale_date)
+      let key
+      if (period === 'monthly') key = d.toLocaleDateString('en-US',{month:'short',day:'numeric'})
+      else if (period === 'ytd') key = d.toLocaleDateString('en-US',{month:'short'})
+      else key = d.toLocaleDateString('en-US',{month:'short',year:'2-digit'})
+      if (!map[key]) map[key] = {sum:0,count:0}
+      map[key].sum += parseFloat(s.amount||0)
+      map[key].count += 1
+    })
+    const base = buildData(items, 'amount', period)
+    return base.map(([key]) => [key, map[key] ? map[key].sum/map[key].count : 0])
+  }
+
+  function buildServices(items, period) {
+    const filtered = items.filter(s => {
+      const d = new Date(s.sale_date)
+      if (period === 'weekly') { const wk = new Date(now); wk.setDate(now.getDate()-27); return d >= wk }
+      if (period === 'monthly') return d.getFullYear()===now.getFullYear() && d.getMonth()===now.getMonth()
+      if (period === 'ytd') return d.getFullYear()===now.getFullYear()
+      return true
+    })
+    const map = {}
+    filtered.forEach(s => {
+      const name = s.product_name||'Other'
+      map[name] = (map[name]||0) + parseFloat(s.amount||0)
+    })
+    return Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,5)
+  }
+
+  // Chart definitions — period-aware (period comes from modal state)
+  function getCharts(period) {
+    return [
+      { id:'revenue', label:'Revenue Over Time', getData: p=>buildData(paid,'amount',p),    color:'#2d8a60', prefix:'$', desc:'Gross revenue from paid transactions' },
+      { id:'mrr',     label:'MRR',               getData: p=>buildData(paid.filter(s=>s.type==='recurring'||s.type==='subscription'),'amount',p), color:gold, prefix:'$', desc:'Monthly Recurring Revenue' },
+      { id:'aov',     label:'Avg Order Value',    getData: p=>buildAOV(paid,p),              color:'#5b8dee', prefix:'$', desc:'Average transaction value' },
+      { id:'refunds', label:'Refunds',            getData: p=>buildData(refunds,'amount',p), color:'#c0392b', prefix:'$', desc:'Refund totals' },
+      { id:'services',label:'Revenue by Service', getData: p=>buildServices(paid,p),         color:gold,      prefix:'$', desc:'Revenue breakdown by product/service', isBar:true },
+    ]
+  }
+
+  const charts = getCharts('yearly')
+
+
+  // SVG area chart renderer — premium version
+  function AreaChart({ data, color, prefix='$' }) {
+    const [hovered, setHovered] = useState(null)
+    const w=520, h=160, padX=56, padY=20, padR=16
+    const vals = data.map(d=>d[1])
+    const maxVal = Math.max(...vals, 1)
+    const chartW = w - padX - padR
+    const chartH = h - padY*2
+
+    const pts = data.map(([,v],i)=>({
+      x: padX + (i/(data.length-1||1))*chartW,
+      y: padY + (1-(v/maxVal))*chartH
+    }))
+
+    // Smooth bezier curve
+    function smoothPath(points) {
+      if (points.length < 2) return ''
+      let d = `M ${points[0].x} ${points[0].y}`
+      for (let i = 1; i < points.length; i++) {
+        const prev = points[i-1], curr = points[i]
+        const cpx = (prev.x + curr.x) / 2
+        d += ` C ${cpx} ${prev.y} ${cpx} ${curr.y} ${curr.x} ${curr.y}`
+      }
+      return d
+    }
+
+    const linePath = smoothPath(pts)
+    const areaPath = pts.length > 1
+      ? `${linePath} L ${pts[pts.length-1].x} ${h-padY} L ${pts[0].x} ${h-padY} Z`
+      : ''
+
+    const gridLevels = [0, 0.25, 0.5, 0.75, 1]
+    const gradId = `grad-${color.replace('#','')}`
+
+    return (
+      <div style={{width:'100%',position:'relative',userSelect:'none'}}>
+        {/* Tooltip */}
+        {hovered!==null && (
+          <div style={{
+            position:'absolute',
+            left: pts[hovered]?.x / w * 100 + '%',
+            top: 0,
+            transform:'translateX(-50%)',
+            background:black,
+            color:white,
+            padding:'0.4rem 0.7rem',
+            borderRadius:6,
+            fontSize:'0.62rem',
+            fontFamily:ff,
+            pointerEvents:'none',
+            whiteSpace:'nowrap',
+            zIndex:10,
+            boxShadow:'0 4px 12px rgba(0,0,0,0.2)'
+          }}>
+            <div style={{fontWeight:600}}>{prefix}{data[hovered][1].toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+            <div style={{opacity:0.65,fontSize:'0.55rem',marginTop:'0.1rem'}}>{data[hovered][0]}</div>
+          </div>
+        )}
+        <svg viewBox={`0 0 ${w} ${h}`} style={{width:'100%',height:'auto',display:'block',overflow:'visible'}}
+          onMouseLeave={()=>setHovered(null)}>
+          <defs>
+            <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={color} stopOpacity="0.22"/>
+              <stop offset="100%" stopColor={color} stopOpacity="0"/>
+            </linearGradient>
+          </defs>
+
+          {/* Grid lines + Y labels */}
+          {gridLevels.map(pct=>{
+            const y = padY + (1-pct)*chartH
+            const val = maxVal*pct
+            const label = val>=1000 ? '$'+(val/1000).toFixed(1)+'k' : prefix+val.toFixed(0)
+            return <g key={pct}>
+              <line x1={padX} y1={y} x2={w-padR} y2={y}
+                stroke={pct===0?'rgba(14,14,12,0.12)':'rgba(14,14,12,0.06)'}
+                strokeWidth={pct===0?1.5:1} strokeDasharray={pct===0?'none':'4,4'}/>
+              {pct>0&&<text x={padX-6} y={y+4} fontSize={9} fill={gray} textAnchor="end">{label}</text>}
+            </g>
+          })}
+
+          {/* Area fill */}
+          {areaPath&&<path d={areaPath} fill={`url(#${gradId})`}/>}
+
+          {/* Smooth line */}
+          {linePath&&<path d={linePath} fill="none" stroke={color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"/>}
+
+          {/* Hover zones + dots */}
+          {pts.map((p,i)=>(
+            <g key={i} onMouseEnter={()=>setHovered(i)} style={{cursor:'crosshair'}}>
+              {/* invisible hover zone */}
+              <rect x={p.x-(chartW/(data.length*2))} y={padY} width={chartW/data.length} height={chartH} fill="transparent"/>
+              {/* dot — always show if hovered, else small */}
+              <circle cx={p.x} cy={p.y} r={hovered===i?5:3}
+                fill={hovered===i?color:'white'}
+                stroke={color} strokeWidth={2}
+                style={{transition:'r 0.1s'}}/>
+              {/* vertical line on hover */}
+              {hovered===i&&<line x1={p.x} y1={padY} x2={p.x} y2={h-padY} stroke={color} strokeWidth={1} strokeDasharray="3,3" opacity={0.4}/>}
+            </g>
+          ))}
+        </svg>
+
+        {/* X labels */}
+        <div style={{display:'flex',justifyContent:'space-between',paddingLeft:padX,paddingRight:padR,marginTop:'0.35rem'}}>
+          {data.map(([m],i)=>{
+            // Show every other label if > 7 points
+            if (data.length > 7 && i % 2 !== 0 && i !== data.length-1) return <span key={i}/>
+            return <span key={i} style={{fontSize:'0.52rem',color:hovered===i?black:gray,fontWeight:hovered===i?600:400,transition:'color 0.1s'}}>{m}</span>
+          })}
+        </div>
+      </div>
+    )
+  }
+
+  // Bar chart for services — premium version
+  function BarChart({ data, color, prefix='$' }) {
+    const [hovered, setHovered] = useState(null)
+    const maxVal = Math.max(...data.map(d=>d[1]),1)
+    const total = data.reduce((a,d)=>a+d[1],0)
+    return (
+      <div>
+        {data.map(([name,val],i)=>{
+          const pct = Math.round(val/total*100)
+          return (
+            <div key={name} style={{marginBottom:'1rem'}}
+              onMouseEnter={()=>setHovered(i)} onMouseLeave={()=>setHovered(null)}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:'0.35rem'}}>
+                <span style={{fontSize:'0.7rem',color:hovered===i?black:gray,fontWeight:hovered===i?600:400,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:'65%',transition:'color 0.15s'}}>{name}</span>
+                <div style={{display:'flex',alignItems:'baseline',gap:'0.5rem',flexShrink:0}}>
+                  <span style={{fontSize:'0.58rem',color:gray}}>{pct}%</span>
+                  <span style={{fontSize:'0.82rem',fontWeight:600,color:black,fontFamily:ffS}}>{prefix}{val.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
+                </div>
+              </div>
+              <div style={{height:8,background:'rgba(14,14,12,0.06)',borderRadius:4,overflow:'hidden'}}>
+                <div style={{height:'100%',width:(val/maxVal*100)+'%',background:hovered===i?color:color+'cc',borderRadius:4,transition:'width 0.4s, background 0.15s'}}/>
+              </div>
+            </div>
+          )
+        })}
+        <div style={{marginTop:'1.25rem',paddingTop:'1rem',borderTop:'1px solid rgba(14,14,12,0.06)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <span style={{fontSize:'0.58rem',color:gray,letterSpacing:'0.08em',textTransform:'uppercase'}}>Total Revenue</span>
+          <span style={{fontSize:'1.1rem',fontFamily:ffS,fontWeight:300,color:black}}>{prefix}{total.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
+        </div>
+      </div>
+    )
+  }
+
+  const activeChartDef = getCharts(period).find(c=>c.id===activeChart)
+
+  return(
+    <>
+      {/* Chart Modal */}
+      {activeChart && activeChartDef && (
+        <div style={{position:'fixed',inset:0,background:'rgba(14,14,12,0.55)',zIndex:300,display:'flex',alignItems:'center',justifyContent:'center',padding:'1rem'}} onClick={e=>e.target===e.currentTarget&&openChart(activeChart)}>
+          <div style={{background:white,borderRadius:14,width:'100%',maxWidth:640,maxHeight:'88vh',overflowY:'auto',boxShadow:'0 24px 60px rgba(0,0,0,0.18)',transition:'opacity 0.22s',opacity:chartVisible?1:0}}>
+            {/* Modal header */}
+            <div style={{padding:'1.25rem 1.5rem',borderBottom:'1px solid rgba(14,14,12,0.07)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+              <div>
+                <div style={{fontFamily:ffS,fontSize:'1.15rem',fontWeight:300,color:black}}>{activeChartDef.label}</div>
+                <div style={{fontSize:'0.58rem',color:gray,marginTop:'0.2rem'}}>{activeChartDef.desc}</div>
+              </div>
+              <button onClick={()=>openChart(activeChart)} style={{background:'none',border:'none',fontSize:'1.1rem',color:gray,cursor:'pointer',padding:'0.25rem 0.5rem'}}>✕</button>
+            </div>
+
+            {/* Period selector + chart switcher */}
+            <div style={{padding:'0.85rem 1.5rem',borderBottom:'1px solid rgba(14,14,12,0.05)',display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:'0.5rem'}}>
+              {/* Period pills */}
+              <div style={{display:'flex',gap:'0.3rem'}}>
+                {[['weekly','Weekly'],['monthly','Monthly'],['ytd','YTD'],['yearly','Yearly']].map(([p,label])=>(
+                  <button key={p} onClick={()=>setPeriod(p)} style={{
+                    padding:'0.3rem 0.75rem',borderRadius:20,fontFamily:ff,fontSize:'0.58rem',cursor:'pointer',
+                    border:'1px solid '+(period===p?black:'rgba(14,14,12,0.12)'),
+                    background:period===p?black:'transparent',
+                    color:period===p?white:gray,
+                    transition:'all 0.15s'
+                  }}>{label}</button>
+                ))}
+              </div>
+              {/* Chart switcher */}
+              <div style={{display:'flex',gap:'0.3rem',flexWrap:'wrap'}}>
+                {getCharts(period).map(c=>(
+                  <button key={c.id} onClick={()=>openChart(c.id)} style={{padding:'0.3rem 0.65rem',borderRadius:20,border:`1px solid ${activeChart===c.id?c.color:'rgba(14,14,12,0.1)'}`,background:activeChart===c.id?c.color+'18':'transparent',color:activeChart===c.id?c.color:gray,fontSize:'0.56rem',fontFamily:ff,cursor:'pointer',display:'flex',alignItems:'center',gap:'0.25rem',transition:'all 0.15s'}}>
+                    <span style={{width:5,height:5,borderRadius:'50%',background:c.color,display:'inline-block',flexShrink:0}}/>
+                    {c.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Chart content */}
+            <div style={{padding:'1.25rem 1.5rem',transition:'opacity 0.22s',opacity:chartVisible?1:0}}>
+              {(()=>{
+                const chartData = activeChartDef.getData(period)
+                const isEmpty = chartData.every(d=>d[1]===0)
+                return <>
+                  {!isEmpty && !activeChartDef.isBar && (()=>{
+                    const vals = chartData.map(d=>d[1]).filter(v=>v>0)
+                    const total = vals.reduce((a,b)=>a+b,0)
+                    const avg = vals.length>0?total/vals.length:0
+                    const peak = Math.max(...vals,0)
+                    const peakLabel = chartData.find(d=>d[1]===peak)?.[0]||'—'
+                    return (
+                      <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'0.75rem',marginBottom:'1.5rem'}}>
+                        {[['Total',activeChartDef.prefix+total.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}),'#2d8a60'],
+                          ['Avg',activeChartDef.prefix+avg.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}),gold],
+                          ['Peak',peakLabel,'#5b8dee']
+                        ].map(([label,val,color])=>(
+                          <div key={label} style={{textAlign:'center',background:'rgba(14,14,12,0.025)',borderRadius:8,padding:'0.75rem 0.5rem'}}>
+                            <div style={{fontSize:'0.95rem',fontFamily:ffS,fontWeight:300,color,lineHeight:1}}>{val}</div>
+                            <div style={{fontSize:'0.5rem',color:gray,letterSpacing:'0.07em',textTransform:'uppercase',marginTop:'0.25rem'}}>{label}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )
+                  })()}
+                  {activeChartDef.isBar
+                    ? <BarChart data={chartData} color={activeChartDef.color} prefix={activeChartDef.prefix}/>
+                    : <AreaChart data={chartData} color={activeChartDef.color} prefix={activeChartDef.prefix}/>
+                  }
+                  {isEmpty&&<div style={{textAlign:'center',color:gray,fontSize:'0.72rem',padding:'2rem 0'}}>No data for this period.</div>}
+                </>
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Financial Card */}
+      <div style={{background:white,borderRadius:10,border:'1px solid rgba(14,14,12,0.07)',overflow:'hidden',marginBottom:'1.5rem'}}>
+
+        {/* HEADER — always shows KPIs */}
+        <div style={{padding:'1rem 1.5rem 0'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.85rem'}}>
+            <div style={{fontFamily:ffS,fontSize:'1.1rem',fontWeight:300}}>Financial <span style={{fontSize:'0.52rem',color:gold,letterSpacing:'0.1em',textTransform:'uppercase',marginLeft:'0.5rem'}}>Stripe</span></div>
+            <div style={{display:'flex',alignItems:'center',gap:'0.75rem'}}>
+              <span style={{fontSize:'0.6rem',color:gray}}>{paid.length} payment{paid.length!==1?'s':''}</span>
+              <button onClick={()=>setExpanded(e=>!e)} style={{background:'none',border:'none',cursor:'pointer',color:gray,fontSize:'0.75rem',transform:expanded?'rotate(180deg)':'rotate(0)',transition:'transform 0.2s',padding:0,lineHeight:1}}>▾</button>
+            </div>
+          </div>
+
+          {/* KPIs — always visible */}
+          <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'0.5rem',marginBottom:'1rem'}}>
+            {[
+              ['YTD Revenue', '$'+ytdSales.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}), '#2d8a60'],
+              ['This Month',  '$'+thisMonthSales.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}), gold],
+              ['Avg Order',   '$'+avgOrder.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}), '#5b8dee'],
+            ].map(([label,val,color])=>(
+              <div key={label} style={{textAlign:'center',background:'rgba(14,14,12,0.025)',borderRadius:8,padding:'0.65rem 0.25rem'}}>
+                <div style={{fontSize:'0.95rem',fontFamily:ffS,fontWeight:300,color,lineHeight:1}}>{val}</div>
+                <div style={{fontSize:'0.5rem',color:gray,letterSpacing:'0.07em',textTransform:'uppercase',marginTop:'0.25rem'}}>{label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* EXPANDED — chart chips */}
+        {expanded&&(
+          <div style={{borderTop:'1px solid rgba(14,14,12,0.06)',padding:'0.85rem 1.5rem'}}>
+            <div style={{fontSize:'0.5rem',letterSpacing:'0.14em',textTransform:'uppercase',color:gray,marginBottom:'0.6rem'}}>Charts — tap to view</div>
+            <div style={{display:'flex',flexWrap:'wrap',gap:'0.4rem'}}>
+              {getCharts('yearly').map(c=>(
+                <button key={c.id} onClick={()=>openChart(c.id)} style={{
+                  padding:'0.4rem 0.85rem',
+                  borderRadius:20,
+                  border:`1px solid ${activeChart===c.id?c.color:'rgba(14,14,12,0.12)'}`,
+                  background: activeChart===c.id?c.color+'18':'transparent',
+                  color: c.color,
+                  fontSize:'0.6rem',
+                  fontFamily:ff,
+                  cursor:'pointer',
+                  display:'flex',
+                  alignItems:'center',
+                  gap:'0.3rem',
+                  transition:'all 0.15s'
+                }}>
+                  <span style={{width:6,height:6,borderRadius:'50%',background:c.color,display:'inline-block',flexShrink:0}}/>
+                  {c.label}
+                </button>
+              ))}
+            </div>
+            {paid.length===0&&<div style={{textAlign:'center',fontSize:'0.72rem',color:gray,padding:'0.75rem 0 0'}}>No Stripe payments recorded yet.</div>}
+          </div>
+        )}
+      </div>
+    </>
+  )
+}
+
+function AdminSystemPanel({ users, cards, allUsers, loadAll, showToast }) {
+  const [tab, setTab] = useState('users')
+  const [search, setSearch] = useState('')
+  const [roleChanging, setRoleChanging] = useState(null)
+  const [log, setLog] = useState([])
+  const [logLoading, setLogLoading] = useState(false)
+  const [sessions, setSessions] = useState([])
+  const [sessionsLoading, setSessionsLoading] = useState(false)
+
+  useEffect(() => {
+    if (tab === 'log') loadLog()
+    if (tab === 'sessions') loadSessions()
+  }, [tab])
+
+  async function loadLog() {
+    setLogLoading(true)
+    try {
+      const res = await fetch('/api/admin/activity-log')
+      const data = await res.json()
+      setLog(data.log || [])
+    } catch(e) { console.error(e) }
+    setLogLoading(false)
+  }
+
+  async function loadSessions() {
+    setSessionsLoading(true)
+    try {
+      const res = await fetch('/api/admin/users?all=1')
+      const data = await res.json()
+      setSessions(data.users || [])
+    } catch(e) { console.error(e) }
+    setSessionsLoading(false)
+  }
+
+  async function changeRole(u) {
+    const newRole = u.role === 'admin' ? 'client' : 'admin'
+    setRoleChanging(u.id)
+    await fetch('/api/admin/users', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: u.id, role: newRole })
+    })
+    await fetch('/api/admin/activity-log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: newRole==='admin'?'Promoted to Admin':'Revoked Admin', target: u.business_name||u.full_name, type: 'role' })
+    })
+    showToast(`Role updated → ${newRole}`)
+    setRoleChanging(null)
+    loadAll()
+  }
+
+  const typeColor = { punch:'#2d8a60', create:gold, edit:'#5b8dee', file:'#8e44ad', reward:gold, delete:'#c0392b', role:'#e67e22' }
+  const typeIcon  = { punch:'●', create:'+', edit:'✎', file:'↑', reward:'★', delete:'×', role:'⚑' }
+
+  const displayUsers = (allUsers||users).filter(u =>
+    (u.full_name||'').toLowerCase().includes(search.toLowerCase()) ||
+    (u.business_name||'').toLowerCase().includes(search.toLowerCase()) ||
+    (u.email||'').toLowerCase().includes(search.toLowerCase())
+  )
+
+  const filteredLog = log.filter(l =>
+    (l.user_name||'').toLowerCase().includes(search.toLowerCase()) ||
+    (l.action||'').toLowerCase().includes(search.toLowerCase()) ||
+    (l.target||'').toLowerCase().includes(search.toLowerCase())
+  )
+
+  const filteredSessions = sessions.filter(u =>
+    (u.full_name||'').toLowerCase().includes(search.toLowerCase()) ||
+    (u.email||'').toLowerCase().includes(search.toLowerCase())
+  )
+
+  function getCard(uid) { return cards.find(c=>c.user_id===uid) }
+
+  function timeAgo(ts) {
+    if (!ts) return '—'
+    const diff = (Date.now() - new Date(ts)) / 1000
+    if (diff < 60) return 'Just now'
+    if (diff < 3600) return Math.floor(diff/60) + ' min ago'
+    if (diff < 86400) return Math.floor(diff/3600) + ' hr ago'
+    if (diff < 172800) return 'Yesterday'
+    return Math.floor(diff/86400) + ' days ago'
+  }
+
+  const tabStyle = (t) => ({
+    padding:'0.5rem 1rem', borderRadius:20, border:'none', cursor:'pointer', fontFamily:ff,
+    fontSize:'0.62rem', letterSpacing:'0.08em', textTransform:'uppercase',
+    background: tab===t ? black : 'rgba(14,14,12,0.06)',
+    color: tab===t ? white : gray,
+    transition:'all 0.15s'
+  })
+
+  return (
+    <div>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1.5rem'}}>
+        <h2 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300}}>System Admin</h2>
+        <div style={{fontSize:'0.62rem',color:gray}}>{(allUsers||users).length} users total</div>
+      </div>
+
+      <input type="text" placeholder="Search users, actions, targets..." value={search} onChange={e=>setSearch(e.target.value)}
+        style={{width:'100%',padding:'0.7rem 1rem',border:'1px solid '+gl,borderRadius:3,fontFamily:ff,fontSize:'0.82rem',outline:'none',marginBottom:'1.25rem',boxSizing:'border-box',background:white}}/>
+
+      <div style={{display:'flex',gap:'0.5rem',marginBottom:'1.5rem'}}>
+        <button style={tabStyle('users')} onClick={()=>setTab('users')}>Users & Roles</button>
+        <button style={tabStyle('log')} onClick={()=>setTab('log')}>Activity Log</button>
+        <button style={tabStyle('sessions')} onClick={()=>setTab('sessions')}>Sessions</button>
+      </div>
+
+      {/* USERS & ROLES */}
+      {tab==='users'&&(
+        <div style={{background:white,borderRadius:10,border:'1px solid rgba(14,14,12,0.07)',overflow:'hidden'}}>
+          <div style={{display:'grid',gridTemplateColumns:'2fr 1fr 1fr 1fr',padding:'0.6rem 1.25rem',borderBottom:'1px solid rgba(14,14,12,0.06)',fontSize:'0.52rem',letterSpacing:'0.1em',textTransform:'uppercase',color:gray}}>
+            <span>User</span><span>Role</span><span>Card</span><span>Actions</span>
+          </div>
+          {displayUsers.map(u=>{
+            const card = getCard(u.id)
+            const isAdmin = u.role === 'admin'
+            return (
+              <div key={u.id} style={{display:'grid',gridTemplateColumns:'2fr 1fr 1fr 1fr',padding:'0.85rem 1.25rem',borderBottom:'1px solid rgba(14,14,12,0.04)',alignItems:'center',gap:'0.5rem'}}>
+                <div style={{minWidth:0}}>
+                  <div style={{fontSize:'0.75rem',color:black,fontWeight:500,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{u.business_name||u.full_name}</div>
+                  <div style={{fontSize:'0.6rem',color:gray,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{u.email||'—'}</div>
+                </div>
+                <span style={{fontSize:'0.58rem',padding:'0.18rem 0.55rem',borderRadius:20,
+                  background:isAdmin?'rgba(184,151,90,0.12)':'rgba(52,152,219,0.08)',
+                  color:isAdmin?gold:'#2980b9',width:'fit-content',whiteSpace:'nowrap'}}>
+                  {isAdmin?'Admin':'Client'}
+                </span>
+                <span style={{fontSize:'0.62rem',color:card?'#2d8a60':gray}}>
+                  {card?'#'+card.card_number:'No card'}
+                </span>
+                <div style={{display:'flex',gap:'0.35rem',flexWrap:'wrap'}}>
+                  <button onClick={()=>changeRole(u)} disabled={roleChanging===u.id}
+                    style={{padding:'0.3rem 0.6rem',background:isAdmin?'rgba(192,57,43,0.08)':'rgba(184,151,90,0.1)',
+                      color:isAdmin?'#c0392b':gold,border:isAdmin?'none':'1px solid rgba(184,151,90,0.25)',
+                      borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.54rem',letterSpacing:'0.06em',textTransform:'uppercase',opacity:roleChanging===u.id?0.5:1}}>
+                    {roleChanging===u.id?'Saving…':isAdmin?'Revoke Admin':'Make Admin'}
+                  </button>
+                  <button onClick={()=>window.open('/card','_blank')}
+                    style={{padding:'0.3rem 0.6rem',background:'rgba(91,141,238,0.08)',color:'#5b8dee',
+                      border:'1px solid rgba(91,141,238,0.2)',borderRadius:3,cursor:'pointer',
+                      fontFamily:ff,fontSize:'0.54rem',letterSpacing:'0.06em',textTransform:'uppercase'}}>
+                    View
+                  </button>
+                </div>
+              </div>
+            )
+          })}
+          {displayUsers.length===0&&<div style={{padding:'2rem',textAlign:'center',color:gray,fontSize:'0.82rem'}}>No users found.</div>}
+        </div>
+      )}
+
+      {/* ACTIVITY LOG */}
+      {tab==='log'&&(
+        <div style={{background:white,borderRadius:10,border:'1px solid rgba(14,14,12,0.07)',overflow:'hidden'}}>
+          <div style={{padding:'0.75rem 1.25rem',borderBottom:'1px solid rgba(14,14,12,0.06)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+            <span style={{fontSize:'0.6rem',color:gray,letterSpacing:'0.1em',textTransform:'uppercase'}}>Recent activity</span>
+            <button onClick={loadLog} style={{background:'none',border:'none',cursor:'pointer',fontSize:'0.6rem',color:gray,fontFamily:ff,letterSpacing:'0.08em',textTransform:'uppercase'}}>↺ Refresh</button>
+          </div>
+          {logLoading&&<div style={{padding:'2rem',textAlign:'center',color:gray,fontSize:'0.78rem'}}>Loading...</div>}
+          {!logLoading&&filteredLog.length===0&&<div style={{padding:'2rem',textAlign:'center',color:gray,fontSize:'0.82rem'}}>No activity yet.</div>}
+          {!logLoading&&filteredLog.map((l,i)=>(
+            <div key={l.id} style={{display:'flex',alignItems:'center',gap:'0.85rem',padding:'0.85rem 1.25rem',borderBottom:'1px solid rgba(14,14,12,0.04)'}}>
+              <div style={{width:28,height:28,borderRadius:'50%',background:(typeColor[l.type]||gray)+'18',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'0.7rem',color:typeColor[l.type]||gray,flexShrink:0,fontWeight:700}}>
+                {typeIcon[l.type]||'·'}
+              </div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:'0.72rem',color:black,fontWeight:500}}>{l.action}</div>
+                <div style={{fontSize:'0.62rem',color:gray,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',marginTop:'0.1rem'}}>{l.target||'—'}</div>
+              </div>
+              <div style={{textAlign:'right',flexShrink:0}}>
+                <div style={{fontSize:'0.6rem',color:gray}}>{l.created_at?new Date(l.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+' · '+new Date(l.created_at).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}):'—'}</div>
+                <div style={{fontSize:'0.56rem',color:'rgba(14,14,12,0.3)',marginTop:'0.1rem'}}>{l.user_name||'Admin'}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* SESSIONS */}
+      {tab==='sessions'&&(
+        <div style={{background:white,borderRadius:10,border:'1px solid rgba(14,14,12,0.07)',overflow:'hidden'}}>
+          <div style={{display:'grid',gridTemplateColumns:'2fr 1fr 1fr',padding:'0.6rem 1.25rem',borderBottom:'1px solid rgba(14,14,12,0.06)',fontSize:'0.52rem',letterSpacing:'0.1em',textTransform:'uppercase',color:gray}}>
+            <span>User</span><span>Role</span><span>Last Sign In</span>
+          </div>
+          {sessionsLoading&&<div style={{padding:'2rem',textAlign:'center',color:gray,fontSize:'0.78rem'}}>Loading...</div>}
+          {!sessionsLoading&&filteredSessions.map((u,i)=>(
+            <div key={u.id} style={{display:'grid',gridTemplateColumns:'2fr 1fr 1fr',padding:'0.85rem 1.25rem',borderBottom:'1px solid rgba(14,14,12,0.04)',alignItems:'center',gap:'0.5rem'}}>
+              <div style={{minWidth:0}}>
+                <div style={{fontSize:'0.75rem',color:black,fontWeight:500,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{u.business_name||u.full_name||'—'}</div>
+                <div style={{fontSize:'0.6rem',color:gray,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{u.email||'—'}</div>
+              </div>
+              <span style={{fontSize:'0.58rem',padding:'0.18rem 0.55rem',borderRadius:20,
+                background:u.role==='admin'?'rgba(184,151,90,0.12)':'rgba(52,152,219,0.08)',
+                color:u.role==='admin'?gold:'#2980b9',width:'fit-content'}}>
+                {u.role==='admin'?'Admin':'Client'}
+              </span>
+              <span style={{fontSize:'0.62rem',color:gray}}>{u.last_sign_in_at?new Date(u.last_sign_in_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+' · '+new Date(u.last_sign_in_at).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}):'Never'}</span>
+            </div>
+          ))}
+          {!sessionsLoading&&filteredSessions.length===0&&<div style={{padding:'2rem',textAlign:'center',color:gray,fontSize:'0.82rem'}}>No sessions found.</div>}
+        </div>
+      )}
+    </div>
+  )
+}
+
+export default function Admin({session}){
+  const [panel,setPanel]=useState('dashboard')
+  const [hamburgerOpen,setHamburgerOpen]=useState(false)
+  const [cards,setCards]=useState([])
+  const [users,setUsers]=useState([])
+  const [rewards,setRewards]=useState([])
+  const [catalog,setCatalog]=useState([])
+  const [loading,setLoading]=useState(true)
+  const [punchId,setPunchId]=useState('')
+  const [punchAmt,setPunchAmt]=useState('')
+  const [modal,setModal]=useState(null)
+  const [form,setForm]=useState({})
+  const [toast,setToast]=useState('')
+  const [qrCard,setQrCard]=useState(null)
+  const [search,setSearch]=useState('')
+  const [selectedClient,setSelectedClient]=useState(null)
+  const [loyaltyOpen,setLoyaltyOpen]=useState(true)
+  const [clientSearch,setClientSearch]=useState('')
+  const [editingClient,setEditingClient]=useState(null)
+  const [editForm,setEditForm]=useState({})
+  const [filesClient,setFilesClient]=useState(null)
+  const [editCost,setEditCost]=useState(null)
+  const [costForm,setCostForm]=useState({cost:'',notes:''})
+  const [suppliersItem,setSuppliersItem]=useState(null)
+  const [suppliersText,setSuppliersText]=useState('')
+  const [suppliersTitle,setSuppliersTitle]=useState('')
+  const [expenseClient,setExpenseClient]=useState(null)
+  const [historyClient,setHistoryClient]=useState(null)
+  const [sales,setSales]=useState([])
+  const [allUsers,setAllUsers]=useState([])
+  const [expenseForm,setExpenseForm]=useState({amount:'',description:'',date:new Date().toISOString().split('T')[0]})
+
+  useEffect(()=>{
+    if(!session){window.location.href='/login';return}
+    supabase.from('profiles').select('role').eq('id',session.user.id).single()
+      .then(({data})=>{if(!data||data.role!=='admin'){window.location.href='/card';return};loadAll()})
+  },[session])
+
+  async function loadAll(){
+    setLoading(true)
+    const [c,u,r,cat]=await Promise.all([
+      fetch('/api/admin/cards').then(r=>r.json()),
+      fetch('/api/admin/users').then(r=>r.json()),
+      fetch('/api/admin/rewards').then(r=>r.json()),
+      fetch('/api/admin/catalog').then(r=>r.json())
+    ])
+    setCards(c.cards||[]);setUsers(u.users||[]);setRewards(r.rewards||[]);setCatalog(cat.items||[])
+    // Load all users (including admins) for system panel
+    fetch('/api/admin/users?all=1').then(r=>r.json()).then(d=>setAllUsers(d.users||[])).catch(()=>{})
+    // Load sales for financial card
+    fetch('/api/admin/sales').then(r=>r.json()).then(d=>setSales(d.sales||[])).catch(e=>console.error('Sales fetch error:',e))
+    setLoading(false)
+  }
+
+  function showToast(msg){setToast(msg);setTimeout(()=>setToast(''),3200)}
+
+  async function doPunch(){
+    if(!punchId){showToast('Select a client');return}
+    const res=await fetch('/api/admin/punch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({card_id:punchId,payment_amount:punchAmt})})
+    const data=await res.json()
+    if(res.ok){
+      showToast(data.message)
+      const card=cards.find(c=>c.id===punchId)
+      await fetch('/api/admin/activity-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'Punch card',target:card?.profiles?.business_name||card?.profiles?.full_name||'Client',type:'punch'})})
+      setPunchId('');setPunchAmt('');loadAll()
+    }
+    else showToast('Error: '+data.error)
+  }
+
+  async function createClient(){
+    if(!form.new_email||!form.new_password){showToast('Email and password required');return}
+    const res=await fetch('/api/admin/users',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:form.new_email,password:form.new_password,full_name:form.new_name,business_name:form.new_business,phone:form.new_phone})})
+    const data=await res.json()
+    if(res.ok){
+      showToast('Client created')
+      await fetch('/api/admin/activity-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'Created client',target:form.new_business||form.new_name||form.new_email,type:'create'})})
+      setForm(f=>({...f,new_email:'',new_password:'',new_name:'',new_business:'',new_phone:'',user_id:data.user.id}));loadAll()
+    }
+    else showToast('Error: '+data.error)
+  }
+
+  async function createCard(){
+    if(!form.user_id){showToast('Select a client');return}
+    const res=await fetch('/api/admin/cards',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:form.user_id,notes:form.notes})})
+    const data=await res.json()
+    if(res.ok){showToast('Card created');setModal(null);setForm({});loadAll()}
+    else showToast('Error: '+data.error)
+  }
+
+  async function deleteCard(id){
+    if(!confirm('Delete this card?'))return
+    const card=cards.find(c=>c.id===id)
+    await fetch('/api/admin/cards',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})})
+    await fetch('/api/admin/activity-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'Deleted card',target:(card?.profiles?.business_name||card?.profiles?.full_name||'')+(card?' · #'+card.card_number:''),type:'delete'})})
+    showToast('Card deleted');loadAll()
+  }
+
+  async function saveReward(){
+    const card=cards.find(c=>c.user_id===form.reward_user_id)
+    if(!card){showToast('User has no active card');return}
+    const res=await fetch('/api/admin/rewards',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({card_id:card.id,user_id:form.reward_user_id,reward_type:form.reward_type||'1 Free Month',reward_cost:form.reward_cost,notes:form.reward_notes})})
+    if(res.ok){
+      showToast('Reward registered')
+      const u=users.find(u=>u.id===form.reward_user_id)
+      await fetch('/api/admin/activity-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'Registered reward',target:(form.reward_type||'1 Free Month')+' → '+(u?.business_name||u?.full_name||''),type:'reward'})})
+      setModal(null);setForm({});loadAll()
+    }
+  }
+
+  async function deleteReward(id){
+    await fetch('/api/admin/rewards',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})})
+    showToast('Reward deleted');loadAll()
+  }
+
+  const signOut=async()=>{await supabase.auth.signOut();window.location.href='/login'}
+  const upd=(k,v)=>setForm(f=>({...f,[k]:v}))
+  const cardUrl=(card)=>`https://app.accountingpluscrm.com/c/${card?.card_number}`
+  const inp={width:'100%',padding:'0.75rem 0.9rem',border:'1px solid '+gl,borderRadius:3,background:white,fontFamily:ff,fontSize:'0.88rem',outline:'none',color:black,marginBottom:'1rem',boxSizing:'border-box'}
+  const lbl={fontSize:'0.56rem',letterSpacing:'0.13em',textTransform:'uppercase',color:gray,display:'block',marginBottom:'0.35rem'}
+
+  if(loading)return<div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'#f2f0eb',fontFamily:ff,fontSize:'0.8rem',color:gray}}>Loading panel...</div>
+
+  return(
+    <>
+      <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,400&family=DM+Sans:wght@300;400&display=swap" rel="stylesheet"/>
+      <style>{`
+        html,body{background:#f2f0eb;overscroll-behavior:none;}
+        @media(max-width:700px){
+          .admin-sidebar{display:none!important;}
+          .admin-main{margin-left:0!important;padding:1rem!important;}
+          .donut-grid{grid-template-columns:1fr!important;}
+          .punch-row{grid-template-columns:1fr!important;}
+          .mobile-nav{display:flex!important;}
+        }
+        .mobile-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:${ink};z-index:200;border-top:1px solid rgba(184,151,90,0.15);}
+        .mobile-nav button{flex:1;padding:0.75rem 0.1rem;background:none;border:none;color:rgba(255,255,255,0.4);font-family:${ff};font-size:0.58rem;letter-spacing:0.04em;text-transform:uppercase;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:0.2rem;}
+        .mobile-nav button.active{color:${gold};}
+      `}</style>
+      <div style={{background:'#f2f0eb',minHeight:'100vh',fontFamily:ff,paddingBottom:70}}>
+        <div style={{background:black,position:'fixed',top:0,left:0,right:0,zIndex:100,height:52,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 1.25rem'}}>
+          <div style={{fontFamily:ffS,fontSize:'1.1rem',color:white}}>A<span style={{color:gold,fontStyle:'italic'}}>+</span> CRM <span style={{fontSize:'0.48rem',letterSpacing:'0.14em',textTransform:'uppercase',color:'rgba(255,255,255,0.26)',marginLeft:'0.4rem',fontFamily:ff}}>Admin</span></div>
+          <button onClick={signOut} style={{background:'none',border:'1px solid rgba(255,255,255,0.1)',color:'rgba(255,255,255,0.38)',padding:'0.25rem 0.75rem',fontSize:'0.52rem',letterSpacing:'0.1em',textTransform:'uppercase',cursor:'pointer',borderRadius:2,fontFamily:ff}}>Sign Out</button>
+        </div>
+        <div style={{display:'flex',paddingTop:52,minHeight:'100vh'}}>
+          {/* SIDEBAR */}
+          <div className="admin-sidebar" style={{width:205,background:ink,flexShrink:0,position:'fixed',top:52,left:0,bottom:0,padding:'1.5rem 0',overflowY:'auto'}}>
+            <button onClick={()=>setPanel('notifications')} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0.82rem 1.5rem',fontSize:'0.72rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel==='notifications'?gold:'rgba(255,255,255,0.32)',cursor:'pointer',background:'none',border:'none',borderLeft:panel==='notifications'?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>
+              <span>Alerts</span>
+              {getNotifications(cards).length>0&&<span style={{background:'#c0392b',color:'white',borderRadius:'50%',width:18,height:18,fontSize:'0.6rem',fontWeight:700,display:'inline-flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>{getNotifications(cards).length}</span>}
+            </button>
+            <div style={{height:'1px',background:'rgba(255,255,255,0.06)',margin:'0.25rem 1.5rem'}}/>
+            {[['dashboard','Dashboard'],['clients','Clients'],['campaigns','Campaigns']].map(([id,label])=>(<button key={id} onClick={()=>setPanel(id)} style={{display:'flex',alignItems:'center',padding:'0.82rem 1.5rem',fontSize:'0.72rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel===id?gold:'rgba(255,255,255,0.32)',cursor:'pointer',background:'none',border:'none',borderLeft:panel===id?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>{label}</button>))}
+            <div style={{height:'1px',background:'rgba(255,255,255,0.06)',margin:'0.25rem 1.5rem'}}/>
+            <button onClick={()=>setLoyaltyOpen(o=>!o)} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0.82rem 1.5rem',fontSize:'0.72rem',letterSpacing:'0.1em',textTransform:'uppercase',color:['cards','punch','rewards'].includes(panel)?gold:'rgba(255,255,255,0.45)',cursor:'pointer',background:'none',border:'none',width:'100%',textAlign:'left',fontFamily:ff}}>
+              <span>Loyalty Program</span>
+              <span style={{fontSize:'0.6rem',display:'inline-block',transform:loyaltyOpen?'rotate(180deg)':'rotate(0deg)',transition:'transform 0.2s'}}>▾</span>
+            </button>
+            {loyaltyOpen&&(<div style={{background:'rgba(0,0,0,0.15)'}}>
+              {[['cards','Cards'],['punch','Punch'],['rewards','Rewards']].map(([id,label])=>(<button key={id} onClick={()=>setPanel(id)} style={{display:'flex',alignItems:'center',padding:'0.68rem 1.5rem 0.68rem 2.25rem',fontSize:'0.68rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel===id?gold:'rgba(255,255,255,0.28)',cursor:'pointer',background:'none',border:'none',borderLeft:panel===id?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>{label}</button>))}
+            </div>)}
+            <div style={{height:'1px',background:'rgba(255,255,255,0.06)',margin:'0.25rem 1.5rem'}}/>
+            <button onClick={()=>setPanel('catalog')} style={{display:'flex',alignItems:'center',padding:'0.82rem 1.5rem',fontSize:'0.72rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel==='catalog'?gold:'rgba(255,255,255,0.32)',cursor:'pointer',background:'none',border:'none',borderLeft:panel==='catalog'?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>Catalog</button>
+            <div style={{height:'1px',background:'rgba(255,255,255,0.06)',margin:'0.25rem 1.5rem'}}/>
+            <button onClick={()=>setPanel('system')} style={{display:'flex',alignItems:'center',padding:'0.82rem 1.5rem',fontSize:'0.72rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel==='system'?gold:'rgba(255,255,255,0.32)',cursor:'pointer',background:'none',border:'none',borderLeft:panel==='system'?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>Admin Panel</button>
+          </div>
+
+          {/* MAIN */}
+          <div className="admin-main" style={{marginLeft:205,flex:1,padding:'1.75rem',maxWidth:980}}>
+            {panel==='dashboard'&&<DashboardPanel cards={cards} sales={sales} onSelectClient={(card)=>{setSelectedClient(card);setPanel('client')}}/>}
+            {panel==='client'&&selectedClient&&<ClientProfile card={selectedClient} onBack={()=>{setSelectedClient(null);setPanel('dashboard')}}/>}
+            {panel==='notifications'&&<NotificationsPanel cards={cards} users={users}/>}
+            {panel==='campaigns'&&<CampaignsPanel cards={cards} users={users}/>}
+            {panel==='catalog'&&<CatalogPanel catalog={catalog} onSetCost={(item)=>{setEditCost(item);setCostForm({cost:item.catalog_costs?.cost||'',notes:item.catalog_costs?.notes||''});setModal('cost')}} onSetSuppliers={(item)=>{setSuppliersItem(item);setSuppliersText(item.catalog_costs?.suppliers||'');setSuppliersTitle('');setModal('suppliers')}}/>}
+            {panel==='system'&&<AdminSystemPanel users={users} cards={cards} allUsers={allUsers} loadAll={loadAll} showToast={showToast}/>}
+            {panel==='loyalty'&&(<div><h2 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300,marginBottom:'1.5rem'}}>Loyalty Program</h2><div style={{display:'flex',flexDirection:'column',gap:'0.75rem'}}>{[['cards','Cards','Create and manage loyalty cards'],['punch','Punch','Register payments and stamps'],['rewards','Rewards','Register and view redeemed rewards']].map(([id,label,desc])=>(<div key={id} onClick={()=>setPanel(id)} style={{background:white,borderRadius:10,padding:'1.25rem 1.5rem',border:'1px solid rgba(14,14,12,0.07)',cursor:'pointer',display:'flex',justifyContent:'space-between',alignItems:'center'}}><div><div style={{fontFamily:ffS,fontSize:'1.1rem',fontWeight:300,color:black,marginBottom:'0.2rem'}}>{label}</div><div style={{fontSize:'0.68rem',color:gray}}>{desc}</div></div><div style={{color:gold,fontSize:'1rem'}}>›</div></div>))}</div></div>)}
+            {panel==='clients'&&<ClientsPanel users={users} cards={cards} search={clientSearch} setSearch={setClientSearch}
+              onEdit={(u)=>{setEditingClient(u);setEditForm({name:u.full_name||'',business:u.business_name||'',phone:u.phone||'',email:'',password:''});setModal('editclient')}}
+              onAddPayment={(card)=>{setPunchId(card.id);setPanel('punch')}}
+              onCreateCard={(uid)=>{setForm({user_id:uid});setModal('card')}}
+              onCreateNew={()=>{setForm({});setModal('card')}}
+              onDelete={async(uid)=>{if(!confirm('Delete this client?'))return;const u=users.find(u=>u.id===uid);await fetch('/api/admin/users',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:uid})});await fetch('/api/admin/activity-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'Deleted client',target:u?.business_name||u?.full_name||'',type:'delete'})});showToast('Client deleted');loadAll()}}
+              onFiles={(u)=>{setFilesClient(u);setModal('files')}}
+              onExpense={(u)=>{setExpenseClient(u);setExpenseForm({amount:'',description:'',date:new Date().toISOString().split('T')[0]});setModal('expense')}}
+              onHistory={(u)=>{setHistoryClient(u);setModal('history')}}
+            />}
+            {panel==='cards'&&<>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1rem'}}>
+                <h2 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300}}>Cards</h2>
+                <button onClick={()=>setModal('card')} style={{background:black,color:white,border:'none',padding:'0.6rem 1.1rem',fontFamily:ff,fontSize:'0.6rem',letterSpacing:'0.12em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>+ New</button>
+              </div>
+              <input type="text" placeholder="Search client..." value={search} onChange={e=>setSearch(e.target.value)} style={{width:'100%',padding:'0.7rem 1rem',border:'1px solid '+gl,borderRadius:3,fontFamily:ff,fontSize:'0.82rem',outline:'none',marginBottom:'1.25rem',boxSizing:'border-box',background:white}}/>
+              <div style={{display:'flex',flexDirection:'column',gap:'0.75rem'}}>
+                {cards.filter(c=>(c.profiles?.full_name||'').toLowerCase().includes(search.toLowerCase())||(c.profiles?.business_name||'').toLowerCase().includes(search.toLowerCase())).map(card=>{
+                  const cur=card.stamps%5===0&&card.stamps>0?5:card.stamps%5
+                  const cycle=Math.ceil((card.stamps||1)/5)||1
+                  const hasR=card.stamps>0&&card.stamps%5===0
+                  return(<div key={card.id} style={{background:white,borderRadius:10,border:'1px solid rgba(14,14,12,0.07)',overflow:'hidden'}}>
+                    <div style={{background:'linear-gradient(135deg,#1a1917,#252320)',padding:'1rem 1.25rem',color:white,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                      <div>
+                        <div style={{fontFamily:ffS,fontSize:'0.9rem',marginBottom:'0.15rem'}}>A<span style={{color:gold,fontStyle:'italic'}}>+</span> CRM</div>
+                        <div style={{fontSize:'0.72rem',color:'rgba(255,255,255,0.8)',marginBottom:'0.5rem'}}>{card.profiles?.business_name||card.profiles?.full_name}</div>
+                        <div style={{display:'flex',gap:3}}>{Array.from({length:5},(_,i)=><div key={i} style={{width:10,height:10,borderRadius:'50%',border:'1px solid rgba(184,151,90,0.22)',background:i<cur?gold:'transparent'}}/>)}</div>
+                      </div>
+                      <div style={{textAlign:'right'}}>
+                        <div style={{fontSize:'0.6rem',color:'rgba(255,255,255,0.4)',marginBottom:'0.2rem'}}>#{card.card_number}</div>
+                        <div style={{fontSize:'0.68rem',color:hasR?gold:'rgba(255,255,255,0.5)'}}>{cur}/5 · Cycle {cycle}</div>
+                      </div>
+                    </div>
+                    <div style={{padding:'0.75rem 1.25rem',display:'flex',gap:'0.4rem'}}>
+                      <button onClick={()=>{setPunchId(card.id);setPanel('punch')}} style={{flex:1,padding:'0.45rem',background:black,color:white,border:'none',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.56rem',letterSpacing:'0.07em',textTransform:'uppercase'}}>+ Stamp</button>
+                      <button onClick={()=>{setQrCard(card);setModal('qr')}} style={{flex:1,padding:'0.45rem',background:'rgba(184,151,90,0.1)',color:gold,border:'1px solid rgba(184,151,90,0.25)',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.56rem',letterSpacing:'0.07em',textTransform:'uppercase'}}>QR</button>
+                      <button onClick={()=>deleteCard(card.id)} style={{flex:1,padding:'0.45rem',background:'rgba(192,57,43,0.08)',color:'#a93226',border:'none',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.56rem',letterSpacing:'0.07em',textTransform:'uppercase'}}>Delete</button>
+                    </div>
+                  </div>)
+                })}
+                {cards.length===0&&<p style={{color:gray,fontSize:'0.85rem'}}>No cards yet.</p>}
+              </div>
+            </>}
+            {panel==='punch'&&<>
+              <h2 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300,marginBottom:'1.25rem'}}>Punch Card</h2>
+              <div style={{background:white,borderRadius:10,padding:'1.5rem',border:'1px solid rgba(14,14,12,0.07)'}}>
+                <div className="punch-row" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1rem',marginBottom:'1rem'}}>
+                  <div><label style={lbl}>Client</label><select value={punchId} onChange={e=>setPunchId(e.target.value)} style={{...inp,marginBottom:0}}><option value="">Select</option>{cards.map(c=><option key={c.id} value={c.id}>{c.profiles?.business_name||c.profiles?.full_name} · {c.stamps%5===0&&c.stamps>0?5:c.stamps%5}/5</option>)}</select></div>
+                  <div><label style={lbl}>Amount (optional)</label><input style={{...inp,marginBottom:0}} type="text" placeholder="$0.00" value={punchAmt} onChange={e=>setPunchAmt(e.target.value)}/></div>
+                </div>
+                {punchId&&(()=>{const card=cards.find(c=>c.id===punchId);const cur=card?(card.stamps%5===0&&card.stamps>0?5:card.stamps%5):0;return<div style={{background:'linear-gradient(135deg,#1a1917,#252320)',borderRadius:10,padding:'1.1rem',marginBottom:'1rem',border:'1px solid rgba(184,151,90,0.22)',color:white}}><div style={{fontFamily:ffS,fontSize:'1rem',marginBottom:'0.45rem'}}>A<span style={{color:gold,fontStyle:'italic'}}>+</span> CRM · {card?.profiles?.business_name||card?.profiles?.full_name}</div><div style={{display:'flex',gap:5}}>{Array.from({length:5},(_,i)=><div key={i} style={{width:15,height:15,borderRadius:'50%',border:'1.5px solid rgba(184,151,90,0.22)',background:i<cur?gold:i===cur?'rgba(184,151,90,0.35)':'transparent'}}/>)}</div></div>})()}
+                <button onClick={doPunch} style={{width:'100%',background:black,color:white,border:'none',padding:'0.85rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Give Stamp</button>
+              </div>
+            </>}
+            {panel==='rewards'&&<>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1.25rem'}}>
+                <h2 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300}}>Rewards</h2>
+                <button onClick={()=>setModal('reward')} style={{background:black,color:white,border:'none',padding:'0.6rem 1.1rem',fontFamily:ff,fontSize:'0.6rem',letterSpacing:'0.12em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>+ Register</button>
+              </div>
+              <div style={{display:'flex',flexDirection:'column',gap:'0.75rem'}}>
+                {rewards.length===0&&<div style={{background:white,borderRadius:10,padding:'2rem',textAlign:'center',color:gray,fontSize:'0.82rem',border:'1px solid rgba(14,14,12,0.07)'}}>No rewards registered.</div>}
+                {rewards.map((r,i)=>(<div key={r.id} style={{background:white,borderRadius:10,padding:'1.1rem 1.25rem',border:'1px solid rgba(14,14,12,0.07)',display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:'1rem'}}><div style={{flex:1,minWidth:0}}><div style={{fontSize:'0.78rem',fontWeight:500,color:black,marginBottom:'0.25rem'}}>{r.profiles?.business_name||r.profiles?.full_name}</div><div style={{fontSize:'0.72rem',color:gray,marginBottom:'0.25rem'}}>{r.reward_type}</div><div style={{display:'flex',gap:'0.75rem'}}><span style={{fontSize:'0.72rem',color:gold,fontWeight:500}}>{r.reward_cost||'—'}</span><span style={{fontSize:'0.65rem',color:gray}}>{r.redeemed_at?new Date(r.redeemed_at).toLocaleDateString('en-US'):'—'}</span></div></div><div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:'0.5rem',flexShrink:0}}><span style={{fontSize:'0.58rem',padding:'0.2rem 0.65rem',borderRadius:20,background:'rgba(45,150,100,0.1)',color:'#2d8a60',whiteSpace:'nowrap'}}>{r.status}</span><button onClick={()=>deleteReward(r.id)} style={{background:'none',border:'none',cursor:'pointer',color:'rgba(192,57,43,0.5)',fontSize:'0.75rem',padding:0}}>x</button></div></div>))}
+              </div>
+            </>}
+          </div>
+        </div>
+
+        {/* MOBILE NAV */}
+        <div className="mobile-nav">
+          {[['notifications','Alerts'],['dashboard','Dashboard'],['loyalty','Loyalty']].map(([id,label])=>(
+            <button key={id} onClick={()=>{setPanel(id);setHamburgerOpen(false)}}
+              className={panel===id||(['cards','punch','rewards'].includes(panel)&&id==='loyalty')?'active':''}>
+              <span style={{fontSize:'1rem',lineHeight:1}}>
+                {id==='notifications'?'🔔':id==='dashboard'?'◻':id==='loyalty'?'★':''}
+              </span>
+              {label}
+            </button>
+          ))}
+          <button onClick={()=>setHamburgerOpen(o=>!o)}
+            className={hamburgerOpen||['clients','campaigns','catalog','system'].includes(panel)?'active':''}>
+            <span style={{fontSize:'1.1rem',lineHeight:1}}>☰</span>
+            More
+          </button>
+        </div>
+
+        {/* HAMBURGER DRAWER */}
+        {hamburgerOpen&&(
+          <>
+            {/* backdrop */}
+            <div onClick={()=>setHamburgerOpen(false)}
+              style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.45)',zIndex:195}}/>
+            {/* drawer */}
+            <div style={{position:'fixed',bottom:56,left:0,right:0,background:ink,zIndex:196,
+              borderRadius:'16px 16px 0 0',borderTop:'1px solid rgba(184,151,90,0.15)',
+              padding:'0.5rem 0 0.25rem'}}>
+              <div style={{width:36,height:3,background:'rgba(255,255,255,0.15)',borderRadius:2,margin:'0 auto 0.75rem'}}/>
+              {[
+                ['clients','Clients','👥'],
+                ['campaigns','Campaigns','📣'],
+                ['catalog','Catalog','📋'],
+                ['system','Admin Panel','⚙️'],
+              ].map(([id,label,icon])=>(
+                <button key={id} onClick={()=>{setPanel(id);setHamburgerOpen(false)}}
+                  style={{display:'flex',alignItems:'center',gap:'0.85rem',width:'100%',padding:'0.9rem 1.5rem',
+                    background:panel===id?'rgba(184,151,90,0.1)':'none',border:'none',
+                    borderLeft:panel===id?'2px solid '+gold:'2px solid transparent',
+                    color:panel===id?gold:'rgba(255,255,255,0.7)',
+                    fontFamily:ff,fontSize:'0.82rem',letterSpacing:'0.04em',cursor:'pointer',textAlign:'left'}}>
+                  <span style={{fontSize:'1.1rem',width:24,textAlign:'center'}}>{icon}</span>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
 
         {/* MODAL: New Card */}
         {modal==='card'&&(<div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:500,display:'flex',alignItems:'flex-end',justifyContent:'center'}} onClick={e=>e.target===e.currentTarget&&setModal(null)}>
@@ -1624,3 +3505,4 @@ function FilesListForClient({ userId, showToast }) {
     </div>
   )
 }
+          
