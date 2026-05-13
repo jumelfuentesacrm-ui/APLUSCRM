@@ -7,11 +7,21 @@ const supabaseAdmin = createClient(
 
 export default async function handler(req, res) {
   if (req.method === 'GET') {
-    const { data: cards } = await supabaseAdmin
+    const { data: cards, error } = await supabaseAdmin
       .from('loyalty_cards')
       .select('*, profiles(full_name,business_name,phone), stamp_history(id,payment_amount,created_at), rewards(id,reward_type,reward_cost,status,redeemed_at,created_at)')
       .order('created_at', { ascending: false })
-    return res.status(200).json({ cards })
+
+    if (error) {
+      // Fallback — fetch without relations if join fails
+      const { data: cardsBasic } = await supabaseAdmin
+        .from('loyalty_cards')
+        .select('*, profiles(full_name,business_name,phone)')
+        .order('created_at', { ascending: false })
+      return res.status(200).json({ cards: cardsBasic || [] })
+    }
+
+    return res.status(200).json({ cards: cards || [] })
   }
 
   if (req.method === 'POST') {
