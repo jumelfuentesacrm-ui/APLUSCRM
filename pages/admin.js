@@ -773,6 +773,7 @@ export default function Admin({session}){
               onDelete={async(uid)=>{if(!confirm('Delete this client?'))return;await fetch('/api/admin/users',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:uid})});showToast('Client deleted');loadAll()}}
               onFiles={(u)=>{setFilesClient(u);setModal('files')}}
               onExpense={(u)=>{setExpenseClient(u);setExpenseForm({amount:'',description:'',date:new Date().toISOString().split('T')[0]});setModal('expense')}}
+              onHistory={(u)=>{setHistoryClient(u);setModal('history')}}
             />}
             {panel==='cards'&&<>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1rem'}}>
