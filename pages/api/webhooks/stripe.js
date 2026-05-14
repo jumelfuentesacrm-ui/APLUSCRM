@@ -200,6 +200,18 @@ export default async function handler(req, res) {
     }
     // Auto punch card
     await handlePayment(email, name, obj.amount, obj.currency, obj.customer, obj.description)
+    // Push notification
+    try {
+      const { data: subs } = await supabase.from('push_subscriptions').select('*')
+      if (subs?.length) {
+        const webpush = require('web-push')
+        webpush.setVapidDetails('mailto:jfuentes@accountingpluscrm.com', process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY, process.env.VAPID_PRIVATE_KEY)
+        const payload = JSON.stringify({ title: 'New Stripe Sale', body: `$${(obj.amount/100).toFixed(2)} — ${name||email||'Customer'}`, url: '/admin' })
+        for (const sub of subs) {
+          webpush.sendNotification({ endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } }, payload).catch(()=>{})
+        }
+      }
+    } catch(e) {}
   }
 
   // INVOICE — subscriptions
