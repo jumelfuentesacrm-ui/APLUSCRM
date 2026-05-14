@@ -1315,7 +1315,11 @@ function BookingsPanel() {
       const res = await fetch(url)
       if (!res.ok) throw new Error('failed')
       const data = await res.json()
-      setEvents(data.items||[])
+      const newItems = data.items||[]
+      if (newItems.length > events.length && events.length > 0) {
+        fetch('/api/admin/push?action=send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:'New Booking',body:newItems[0]?.summary||'Someone booked a consultation',url:'/admin'})}).catch(()=>{})
+      }
+      setEvents(newItems)
     } catch(e) { setError('Could not load calendar. Check API key settings.') }
     setLoading(false)
   }
@@ -1718,7 +1722,7 @@ export default function Admin({session}){
     if(res.ok){
       showToast(data.message)
       const card=cards.find(c=>c.id===punchId)
-      // Register sale
+      // Register sale + push notification
       await fetch('/api/admin/sales',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
         customer_id:card?.user_id,
         customer_name:card?.profiles?.business_name||card?.profiles?.full_name||'',
@@ -1731,7 +1735,7 @@ export default function Admin({session}){
         sale_date:new Date().toISOString().split('T')[0],
         notes:'Registered via punch'
       })})
-      await fetch('/api/admin/activity-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'Punch card',target:card?.profiles?.business_name||card?.profiles?.full_name||'Client',type:'punch'})})
+      sendPush('New Sale', `$${parseFloat(punchAmt).toFixed(2)} — ${card?.profiles?.business_name||card?.profiles?.full_name||'Client'}`, '/admin')
       setPunchId('');setPunchAmt('');loadAll()
     }
     else showToast('Error: '+data.error)
@@ -1783,6 +1787,34 @@ export default function Admin({session}){
   }
 
   const signOut=async()=>{await supabase.auth.signOut();window.location.href='/login'}
+
+  async function subscribeToPush() {
+    try {
+      const reg = await navigator.serviceWorker.ready
+      const existing = await reg.pushManager.getSubscription()
+      if (existing) { showToast('Notifications already enabled'); return }
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+      })
+      await fetch('/api/admin/push?action=subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(sub)
+      })
+      showToast('Notifications enabled!')
+    } catch(e) {
+      showToast('Could not enable notifications')
+    }
+  }
+
+  async function sendPush(title, body, url) {
+    await fetch('/api/admin/push?action=send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, body, url })
+    }).catch(()=>{})
+  }
   const upd=(k,v)=>setForm(f=>({...f,[k]:v}))
   const cardUrl=(card)=>`https://app.accountingpluscrm.com/c/${card?.card_number}`
   const inp={width:'100%',padding:'0.75rem 0.9rem',border:'1px solid '+gl,borderRadius:3,background:white,fontFamily:ff,fontSize:'0.88rem',outline:'none',color:black,marginBottom:'1rem',boxSizing:'border-box'}
@@ -1809,7 +1841,10 @@ export default function Admin({session}){
       <div style={{background:'#f2f0eb',minHeight:'100vh',fontFamily:ff,paddingBottom:70}}>
         <div style={{background:black,position:'fixed',top:0,left:0,right:0,zIndex:100,height:52,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 1.25rem'}}>
           <div style={{fontFamily:ffS,fontSize:'1.1rem',color:white}}>A<span style={{color:gold,fontStyle:'italic'}}>+</span> CRM <span style={{fontSize:'0.48rem',letterSpacing:'0.14em',textTransform:'uppercase',color:'rgba(255,255,255,0.26)',marginLeft:'0.4rem',fontFamily:ff}}>Admin</span></div>
-          <button onClick={signOut} style={{background:'none',border:'1px solid rgba(255,255,255,0.1)',color:'rgba(255,255,255,0.38)',padding:'0.25rem 0.75rem',fontSize:'0.52rem',letterSpacing:'0.1em',textTransform:'uppercase',cursor:'pointer',borderRadius:2,fontFamily:ff}}>Sign Out</button>
+          <div style={{display:'flex',alignItems:'center',gap:'0.5rem'}}>
+            <button onClick={subscribeToPush} title="Enable push notifications" style={{background:'none',border:'1px solid rgba(184,151,90,0.3)',color:gold,padding:'0.25rem 0.6rem',fontSize:'0.6rem',cursor:'pointer',borderRadius:20,fontFamily:ff,letterSpacing:'0.06em'}}>🔔</button>
+            <button onClick={signOut} style={{background:'none',border:'1px solid rgba(255,255,255,0.1)',color:'rgba(255,255,255,0.38)',padding:'0.25rem 0.75rem',fontSize:'0.52rem',letterSpacing:'0.1em',textTransform:'uppercase',cursor:'pointer',borderRadius:2,fontFamily:ff}}>Sign Out</button>
+          </div>
         </div>
         <div style={{display:'flex',paddingTop:52,minHeight:'100vh'}}>
           {/* SIDEBAR */}
@@ -1937,8 +1972,10 @@ export default function Admin({session}){
             </button>
           ))}
           <button onClick={()=>setHamburgerOpen(o=>!o)}
-            className={hamburgerOpen||['clients','campaigns','catalog','supplies','system','bookings'].includes(panel)?'active':''}>
-            <span style={{fontSize:'1rem',lineHeight:1}}>☰</span>
+            className={hamburgerOpen||['clients','campaigns','catalog','supplies','system','bookings'].includes(panel)?'active':''}
+            style={{border:'1px solid rgba(184,151,90,0.3)',borderRadius:6,margin:'0.4rem 0.2rem',padding:'0.1rem 0.5rem',background:hamburgerOpen?'rgba(184,151,90,0.1)':'transparent'}}>
+            <span style={{fontSize:'0.7rem',letterSpacing:'0.2em',lineHeight:1,display:'block'}}>···</span>
+            <span style={{fontSize:'0.58rem'}}>More</span>
           </button>
         </div>
 
@@ -2406,3 +2443,4 @@ function FilesListForClient({ userId, showToast }) {
     </div>
   )
 }
+  
