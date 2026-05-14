@@ -14,6 +14,12 @@ export default function App({ Component, pageProps }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
       setSession(session)
     })
+
+    // Register service worker
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(err => console.error('SW error:', err))
+    }
+
     return () => subscription.unsubscribe()
   }, [])
 
@@ -23,6 +29,11 @@ export default function App({ Component, pageProps }) {
     <>
       <Head>
         <link rel="icon" href="/favicon.png" type="image/png"/>
+        <link rel="manifest" href="/manifest.json"/>
+        <meta name="theme-color" content="#0e0e0c"/>
+        <meta name="apple-mobile-web-app-capable" content="yes"/>
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+        <meta name="apple-mobile-web-app-title" content="A+ CRM"/>
         <title>A+ CRM</title>
       </Head>
       <Component {...pageProps} session={session} />
