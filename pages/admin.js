@@ -1842,33 +1842,33 @@ export default function Admin({session}){
         <div style={{background:black,position:'fixed',top:0,left:0,right:0,zIndex:100,height:52,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 1.25rem'}}>
           <div style={{fontFamily:ffS,fontSize:'1.1rem',color:white}}>A<span style={{color:gold,fontStyle:'italic'}}>+</span> CRM <span style={{fontSize:'0.48rem',letterSpacing:'0.14em',textTransform:'uppercase',color:'rgba(255,255,255,0.26)',marginLeft:'0.4rem',fontFamily:ff}}>Admin</span></div>
           <div style={{display:'flex',alignItems:'center',gap:'0.5rem'}}>
-            <button onClick={subscribeToPush} title="Enable push notifications" style={{background:'none',border:'1px solid rgba(184,151,90,0.3)',color:gold,padding:'0.25rem 0.6rem',fontSize:'0.6rem',cursor:'pointer',borderRadius:20,fontFamily:ff,letterSpacing:'0.06em'}}>🔔</button>
+            <button onClick={subscribeToPush} title="Enable notifications" style={{background:'none',border:'1px solid rgba(184,151,90,0.3)',color:'rgba(255,255,255,0.5)',padding:'0.25rem 0.65rem',fontSize:'0.52rem',cursor:'pointer',borderRadius:2,fontFamily:ff,letterSpacing:'0.1em',textTransform:'uppercase'}}>Notis</button>
             <button onClick={signOut} style={{background:'none',border:'1px solid rgba(255,255,255,0.1)',color:'rgba(255,255,255,0.38)',padding:'0.25rem 0.75rem',fontSize:'0.52rem',letterSpacing:'0.1em',textTransform:'uppercase',cursor:'pointer',borderRadius:2,fontFamily:ff}}>Sign Out</button>
           </div>
         </div>
         <div style={{display:'flex',paddingTop:52,minHeight:'100vh'}}>
           {/* SIDEBAR */}
           <div className="admin-sidebar" style={{width:205,background:ink,flexShrink:0,position:'fixed',top:52,left:0,bottom:0,padding:'1.5rem 0',overflowY:'auto'}}>
-            <button onClick={()=>setPanel('notifications')} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0.82rem 1.5rem',fontSize:'0.72rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel==='notifications'?gold:'rgba(255,255,255,0.32)',cursor:'pointer',background:'none',border:'none',borderLeft:panel==='notifications'?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>
+            <button onClick={()=>setPanel('notifications')} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0.82rem 1.5rem',fontSize:'0.72rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel==='notifications'?gold:'rgba(255,255,255,0.95)',cursor:'pointer',background:'none',border:'none',borderLeft:panel==='notifications'?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>
               <span>Alerts</span>
               {getNotifications(cards).length>0&&<span style={{background:'#c0392b',color:'white',borderRadius:'50%',width:18,height:18,fontSize:'0.6rem',fontWeight:700,display:'inline-flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>{getNotifications(cards).length}</span>}
             </button>
-            <button onClick={()=>setPanel('bookings')} style={{display:'flex',alignItems:'center',padding:'0.82rem 1.5rem',fontSize:'0.72rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel==='bookings'?gold:'rgba(255,255,255,0.32)',cursor:'pointer',background:'none',border:'none',borderLeft:panel==='bookings'?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>Bookings</button>
+            <button onClick={()=>setPanel('bookings')} style={{display:'flex',alignItems:'center',padding:'0.82rem 1.5rem',fontSize:'0.72rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel==='bookings'?gold:'rgba(255,255,255,0.95)',cursor:'pointer',background:'none',border:'none',borderLeft:panel==='bookings'?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>Bookings</button>
             <div style={{height:'1px',background:'rgba(255,255,255,0.06)',margin:'0.25rem 1.5rem'}}/>
-            {[['dashboard','Dashboard'],['clients','Clients'],['campaigns','Campaigns']].map(([id,label])=>(<button key={id} onClick={()=>setPanel(id)} style={{display:'flex',alignItems:'center',padding:'0.82rem 1.5rem',fontSize:'0.72rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel===id?gold:'rgba(255,255,255,0.32)',cursor:'pointer',background:'none',border:'none',borderLeft:panel===id?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>{label}</button>))}
+            {[['dashboard','Dashboard'],['clients','Clients'],['campaigns','Campaigns']].map(([id,label])=>(<button key={id} onClick={()=>setPanel(id)} style={{display:'flex',alignItems:'center',padding:'0.82rem 1.5rem',fontSize:'0.72rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel===id?gold:'rgba(255,255,255,0.95)',cursor:'pointer',background:'none',border:'none',borderLeft:panel===id?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>{label}</button>))}
             <div style={{height:'1px',background:'rgba(255,255,255,0.06)',margin:'0.25rem 1.5rem'}}/>
-            <button onClick={()=>setLoyaltyOpen(o=>!o)} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0.82rem 1.5rem',fontSize:'0.72rem',letterSpacing:'0.1em',textTransform:'uppercase',color:['cards','punch'].includes(panel)?gold:'rgba(255,255,255,0.45)',cursor:'pointer',background:'none',border:'none',width:'100%',textAlign:'left',fontFamily:ff}}>
+            <button onClick={()=>setLoyaltyOpen(o=>!o)} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0.82rem 1.5rem',fontSize:'0.72rem',letterSpacing:'0.1em',textTransform:'uppercase',color:['cards','punch'].includes(panel)?gold:'rgba(255,255,255,0.95)',cursor:'pointer',background:'none',border:'none',width:'100%',textAlign:'left',fontFamily:ff}}>
               <span>Loyalty Program</span>
               <span style={{fontSize:'0.6rem',display:'inline-block',transform:loyaltyOpen?'rotate(180deg)':'rotate(0deg)',transition:'transform 0.2s'}}>▾</span>
             </button>
             {loyaltyOpen&&(<div style={{background:'rgba(0,0,0,0.15)'}}>
-              {[['cards','Cards'],['punch','Punch']].map(([id,label])=>(<button key={id} onClick={()=>setPanel(id)} style={{display:'flex',alignItems:'center',padding:'0.68rem 1.5rem 0.68rem 2.25rem',fontSize:'0.68rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel===id?gold:'rgba(255,255,255,0.28)',cursor:'pointer',background:'none',border:'none',borderLeft:panel===id?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>{label}</button>))}
+              {[['cards','Cards'],['punch','Punch']].map(([id,label])=>(<button key={id} onClick={()=>setPanel(id)} style={{display:'flex',alignItems:'center',padding:'0.68rem 1.5rem 0.68rem 2.25rem',fontSize:'0.68rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel===id?gold:'rgba(255,255,255,0.9)',cursor:'pointer',background:'none',border:'none',borderLeft:panel===id?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>{label}</button>))}
             </div>)}
             <div style={{height:'1px',background:'rgba(255,255,255,0.06)',margin:'0.25rem 1.5rem'}}/>
-            <button onClick={()=>setPanel('catalog')} style={{display:'flex',alignItems:'center',padding:'0.82rem 1.5rem',fontSize:'0.72rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel==='catalog'?gold:'rgba(255,255,255,0.32)',cursor:'pointer',background:'none',border:'none',borderLeft:panel==='catalog'?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>Catalog</button>
-            <button onClick={()=>setPanel('supplies')} style={{display:'flex',alignItems:'center',padding:'0.82rem 1.5rem',fontSize:'0.72rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel==='supplies'?gold:'rgba(255,255,255,0.32)',cursor:'pointer',background:'none',border:'none',borderLeft:panel==='supplies'?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>Supplies</button>
+            <button onClick={()=>setPanel('catalog')} style={{display:'flex',alignItems:'center',padding:'0.82rem 1.5rem',fontSize:'0.72rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel==='catalog'?gold:'rgba(255,255,255,0.95)',cursor:'pointer',background:'none',border:'none',borderLeft:panel==='catalog'?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>Catalog</button>
+            <button onClick={()=>setPanel('supplies')} style={{display:'flex',alignItems:'center',padding:'0.82rem 1.5rem',fontSize:'0.72rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel==='supplies'?gold:'rgba(255,255,255,0.95)',cursor:'pointer',background:'none',border:'none',borderLeft:panel==='supplies'?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>Supplies</button>
             <div style={{height:'1px',background:'rgba(255,255,255,0.06)',margin:'0.25rem 1.5rem'}}/>
-            <button onClick={()=>setPanel('system')} style={{display:'flex',alignItems:'center',padding:'0.82rem 1.5rem',fontSize:'0.72rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel==='system'?gold:'rgba(255,255,255,0.32)',cursor:'pointer',background:'none',border:'none',borderLeft:panel==='system'?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>Admin Panel</button>
+            <button onClick={()=>setPanel('system')} style={{display:'flex',alignItems:'center',padding:'0.82rem 1.5rem',fontSize:'0.72rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel==='system'?gold:'rgba(255,255,255,0.95)',cursor:'pointer',background:'none',border:'none',borderLeft:panel==='system'?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>Admin Panel</button>
           </div>
 
           {/* MAIN */}
@@ -1973,9 +1973,8 @@ export default function Admin({session}){
           ))}
           <button onClick={()=>setHamburgerOpen(o=>!o)}
             className={hamburgerOpen||['clients','campaigns','catalog','supplies','system','bookings'].includes(panel)?'active':''}
-            style={{border:'1px solid rgba(184,151,90,0.3)',borderRadius:6,margin:'0.4rem 0.2rem',padding:'0.1rem 0.5rem',background:hamburgerOpen?'rgba(184,151,90,0.1)':'transparent'}}>
-            <span style={{fontSize:'0.7rem',letterSpacing:'0.2em',lineHeight:1,display:'block'}}>···</span>
-            <span style={{fontSize:'0.58rem'}}>More</span>
+            style={{border:'1px solid rgba(184,151,90,0.35)',borderRadius:4,margin:'0.35rem 0.15rem',padding:'0.2rem 0.6rem',background:hamburgerOpen?'rgba(184,151,90,0.12)':'transparent'}}>
+            <span style={{fontSize:'1.15rem',lineHeight:1,display:'block'}}>☰</span>
           </button>
         </div>
 
@@ -2443,4 +2442,4 @@ function FilesListForClient({ userId, showToast }) {
     </div>
   )
 }
-  
+                                                                            
