@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { requireAdmin } from '../../../lib/requireAdmin'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -6,8 +7,10 @@ const supabaseAdmin = createClient(
 )
 
 export default async function handler(req, res) {
+  const user = await requireAdmin(req, res)
+  if (!user) return
+
   if (req.method === 'GET') {
-    // If history param, return cost history for a supply
     if (req.query.history) {
       const { data, error } = await supabaseAdmin
         .from('supply_cost_history')
@@ -30,11 +33,10 @@ export default async function handler(req, res) {
     const { name, category, cost, unit, provider, renewal_date, notes } = req.body
     if (!name || cost === undefined) return res.status(400).json({ error: 'name and cost required' })
     const { data, error } = await supabaseAdmin.from('supplies').insert({
-      name, category: category||null, cost: parseFloat(cost), unit: unit||'month',
-      provider: provider||null, renewal_date: renewal_date||null, notes: notes||null, active: true
+      name, category: category || null, cost: parseFloat(cost), unit: unit || 'month',
+      provider: provider || null, renewal_date: renewal_date || null, notes: notes || null, active: true
     }).select().single()
     if (error) return res.status(500).json({ error: error.message })
-    // Save initial cost history
     await supabaseAdmin.from('supply_cost_history').insert({ supply_id: data.id, cost: parseFloat(cost) })
     return res.status(200).json({ supply: data })
   }
@@ -45,11 +47,9 @@ export default async function handler(req, res) {
     const updateData = { ...fields }
     if (cost !== undefined) updateData.cost = parseFloat(cost)
 
-    // Get current cost to compare
     if (cost !== undefined) {
       const { data: current } = await supabaseAdmin.from('supplies').select('cost').eq('id', id).single()
       if (current && parseFloat(current.cost) !== parseFloat(cost)) {
-        // Save to history only if cost changed
         await supabaseAdmin.from('supply_cost_history').insert({ supply_id: id, cost: parseFloat(cost) })
       }
     }

@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { requireAdmin } from '../../../lib/requireAdmin'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -6,6 +7,9 @@ const supabaseAdmin = createClient(
 )
 
 export default async function handler(req, res) {
+  const user = await requireAdmin(req, res)
+  if (!user) return
+
   if (req.method === 'GET') {
     const { data, error } = await supabaseAdmin
       .from('activity_log')
@@ -20,8 +24,15 @@ export default async function handler(req, res) {
     const { action, target, type, metadata } = req.body
     if (!action) return res.status(400).json({ error: 'action required' })
 
+    // Get admin name from the verified session
+    const { data: profile } = await supabaseAdmin
+      .from('profiles')
+      .select('full_name, business_name')
+      .eq('id', user.id)
+      .single()
+
     const { error } = await supabaseAdmin.from('activity_log').insert({
-      user_name: 'Jumel Fuentes',
+      user_name: profile?.full_name || profile?.business_name || 'Admin',
       action,
       target: target || null,
       type: type || 'edit',

@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { requireAdmin } from '../../../lib/requireAdmin'
 import formidable from 'formidable'
 import fs from 'fs'
 
@@ -10,11 +11,14 @@ const supabaseAdmin = createClient(
 )
 
 export default async function handler(req, res) {
+  // Auth check before body is consumed (reads cookies only, not body)
+  const user = await requireAdmin(req, res)
+  if (!user) return
+
   if (req.method === 'GET') {
     const { user_id, file } = req.query
     if (!user_id) return res.status(400).json({ error: 'user_id requerido' })
 
-    // Get signed URL for a specific file
     if (file) {
       const path = `clients/${user_id}/${file}`
       const { data, error } = await supabaseAdmin.storage.from('client-files').createSignedUrl(path, 300)
@@ -22,8 +26,9 @@ export default async function handler(req, res) {
       return res.redirect(data.signedUrl)
     }
 
-    // List all files for user
-    const { data, error } = await supabaseAdmin.storage.from('client-files').list(`clients/${user_id}`, { sortBy: { column: 'created_at', order: 'desc' } })
+    const { data, error } = await supabaseAdmin.storage
+      .from('client-files')
+      .list(`clients/${user_id}`, { sortBy: { column: 'created_at', order: 'desc' } })
     if (error) return res.status(500).json({ error: error.message })
     return res.status(200).json({ files: data || [] })
   }
@@ -49,6 +54,7 @@ export default async function handler(req, res) {
     for await (const chunk of req) buffers.push(chunk)
     const body = JSON.parse(Buffer.concat(buffers).toString())
     const { path } = body
+    if (!path) return res.status(400).json({ error: 'path requerido' })
     await supabaseAdmin.storage.from('client-files').remove([path])
     return res.status(200).json({ success: true })
   }

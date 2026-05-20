@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { requireAdmin } from '../../../lib/requireAdmin'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -6,6 +7,9 @@ const supabaseAdmin = createClient(
 )
 
 export default async function handler(req, res) {
+  const user = await requireAdmin(req, res)
+  if (!user) return
+
   if (req.method === 'GET') {
     const all = req.query.all === '1'
 
@@ -14,13 +18,11 @@ export default async function handler(req, res) {
       .select('id, full_name, business_name, phone, role, created_at')
       .order('created_at', { ascending: false })
 
-    // If not fetching all, only return clients
     if (!all) query = query.eq('role', 'client')
 
     const { data: profiles, error } = await query
     if (error) return res.status(500).json({ error: error.message })
 
-    // Get emails + last_sign_in_at from auth.users
     const { data: authList } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 })
     const authMap = {}
     authList?.users?.forEach(u => {
@@ -55,7 +57,6 @@ export default async function handler(req, res) {
   if (req.method === 'PATCH') {
     const { id, full_name, business_name, phone, email, password, role } = req.body
 
-    // Build profile update object
     const profileUpdate = {}
     if (full_name !== undefined) profileUpdate.full_name = full_name
     if (business_name !== undefined) profileUpdate.business_name = business_name
@@ -66,10 +67,7 @@ export default async function handler(req, res) {
       await supabaseAdmin.from('profiles').update(profileUpdate).eq('id', id)
     }
 
-    if (email) {
-      await supabaseAdmin.auth.admin.updateUserById(id, { email })
-    }
-
+    if (email) await supabaseAdmin.auth.admin.updateUserById(id, { email })
     if (password && password.length >= 6) {
       await supabaseAdmin.auth.admin.updateUserById(id, { password })
     }

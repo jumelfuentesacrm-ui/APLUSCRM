@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/router'
 import { supabase } from '../lib/supabase'
 
 const gold='#b8975a',black='#0e0e0c',white='#f8f6f1',gray='#6b6b67',gl='#e8e5de',ink='#1c1c1a'
@@ -73,14 +74,6 @@ function DashboardPanel({ cards, sales, onSelectClient }) {
           </div>
         </div>
         <FinancialCard sales={sales}/>
-        <div style={{background:white,borderRadius:10,padding:'1.5rem',border:'1px solid rgba(14,14,12,0.07)',position:'relative',display:'none'}}>
-          <div style={{fontFamily:ffS,fontSize:'1.1rem',fontWeight:300,marginBottom:'1.25rem'}}>Financial Legacy</div>
-          <div style={{display:'flex',alignItems:'center',gap:'1rem'}}>
-            <svg viewBox="0 0 100 100" style={{width:100,height:100,flexShrink:0}}><path d="M 50 15 A 35 35 0 1 1 49.99 15 Z" fill="rgba(14,14,12,0.06)" opacity="0.85"/><circle cx="50" cy="50" r="22" fill={white}/><text x="50" y="54" textAnchor="middle" style={{fontSize:8,fontFamily:ff,fill:gray}}>Clover</text></svg>
-            <div style={{flex:1}}>{[['Gross Sales','#2d8a60'],['Gross Exp.','#c0392b'],['Net Profit',gold]].map(([label,color])=>(<div key={label} style={{display:'flex',alignItems:'center',gap:'0.4rem',marginBottom:'0.4rem'}}><div style={{width:7,height:7,borderRadius:'50%',background:color,flexShrink:0}}/><span style={{fontSize:'0.62rem',color:gray,flex:1}}>{label}</span><span style={{fontSize:'0.62rem',color:'rgba(14,14,12,0.25)'}}>—</span></div>))}</div>
-          </div>
-          <div style={{position:'absolute',bottom:'1rem',left:0,right:0,textAlign:'center',fontSize:'0.54rem',color:'rgba(14,14,12,0.3)',letterSpacing:'0.1em',textTransform:'uppercase'}}>Pending Clover data</div>
-        </div>
       </div>
       <div style={{background:white,borderRadius:10,padding:'1.5rem',border:'1px solid rgba(14,14,12,0.07)',marginBottom:'1.5rem'}}>
         <div style={{fontFamily:ffS,fontSize:'1.1rem',fontWeight:300,marginBottom:'1.25rem'}}>Top Clients</div>
@@ -907,7 +900,7 @@ function FinancialCard({ sales }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id: saleId, status: 'voided' })
     })
-    window.location.reload()
+    loadAll()
   }
 
   return(
@@ -1655,6 +1648,7 @@ function AdminSystemPanel({ users, cards, allUsers, loadAll, showToast }) {
 }
 
 export default function Admin({session}){
+  const router=useRouter()
   const [panel,setPanel]=useState('dashboard')
   const [hamburgerOpen,setHamburgerOpen]=useState(false)
   const [cards,setCards]=useState([])
@@ -1691,9 +1685,9 @@ export default function Admin({session}){
   const [expenseForm,setExpenseForm]=useState({amount:'',description:'',date:new Date().toISOString().split('T')[0]})
 
   useEffect(()=>{
-    if(!session){window.location.href='/login';return}
+    if(!session){router.push('/login');return}
     supabase.from('profiles').select('role').eq('id',session.user.id).single()
-      .then(({data})=>{if(!data||data.role!=='admin'){window.location.href='/card';return};loadAll()})
+      .then(({data})=>{if(!data||data.role!=='admin'){router.push('/card');return};loadAll()})
   },[session])
 
   async function loadAll(){
@@ -1786,7 +1780,7 @@ export default function Admin({session}){
     showToast('Reward deleted');loadAll()
   }
 
-  const signOut=async()=>{await supabase.auth.signOut();window.location.href='/login'}
+  const signOut=async()=>{await supabase.auth.signOut();router.push('/login')}
 
   async function subscribeToPush() {
     try {
@@ -1820,12 +1814,17 @@ export default function Admin({session}){
   const inp={width:'100%',padding:'0.75rem 0.9rem',border:'1px solid '+gl,borderRadius:3,background:white,fontFamily:ff,fontSize:'0.88rem',outline:'none',color:black,marginBottom:'1rem',boxSizing:'border-box'}
   const lbl={fontSize:'0.56rem',letterSpacing:'0.13em',textTransform:'uppercase',color:gray,display:'block',marginBottom:'0.35rem'}
 
-  if(loading)return<div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'#f2f0eb',fontFamily:ff,fontSize:'0.8rem',color:gray}}>Loading panel...</div>
+  if(loading)return(
+    <div style={{minHeight:'100vh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',background:'#f2f0eb',fontFamily:ff}}>
+      <div style={{fontFamily:ffS,fontSize:'1.4rem',fontWeight:300,color:black,marginBottom:'0.5rem'}}>A<span style={{color:gold,fontStyle:'italic'}}>+</span> CRM</div>
+      <div style={{fontSize:'0.62rem',letterSpacing:'0.14em',textTransform:'uppercase',color:gray}}>Cargando panel...</div>
+    </div>
+  )
 
   return(
     <>
-      <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,400&family=DM+Sans:wght@300;400&display=swap" rel="stylesheet"/>
       <style>{`
+        *,*::before,*::after{box-sizing:border-box;}
         html,body{background:#f2f0eb;overscroll-behavior:none;}
         @media(max-width:700px){
           .admin-sidebar{display:none!important;}
@@ -1834,9 +1833,17 @@ export default function Admin({session}){
           .punch-row{grid-template-columns:1fr!important;}
           .mobile-nav{display:flex!important;}
         }
-        .mobile-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:${ink};z-index:200;border-top:1px solid rgba(184,151,90,0.15);}
-        .mobile-nav button{flex:1;padding:0.75rem 0.1rem;background:none;border:none;color:rgba(255,255,255,0.4);font-family:${ff};font-size:0.65rem;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:0.2rem;}
+        .mobile-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:${ink};z-index:200;border-top:1px solid rgba(184,151,90,0.15);backdrop-filter:blur(8px);}
+        .mobile-nav button{flex:1;padding:0.75rem 0.1rem;background:none;border:none;color:rgba(255,255,255,0.38);font-family:${ff};font-size:0.62rem;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:0.2rem;transition:color 0.15s;}
         .mobile-nav button.active{color:${gold};}
+        .sidebar-btn{transition:background 0.15s,color 0.15s,border-color 0.15s;}
+        .sidebar-btn:hover{background:rgba(255,255,255,0.04)!important;}
+        .client-row:hover{background:rgba(14,14,12,0.025);}
+        .client-row{transition:background 0.12s;}
+        .action-btn{transition:opacity 0.15s,transform 0.1s;}
+        .action-btn:hover{opacity:0.85;transform:translateY(-1px);}
+        .action-btn:active{transform:translateY(0);}
+        input:focus,select:focus,textarea:focus{border-color:${gold}!important;box-shadow:0 0 0 3px rgba(184,151,90,0.1)!important;outline:none!important;}
       `}</style>
       <div style={{background:'#f2f0eb',minHeight:'100vh',fontFamily:ff,paddingBottom:70}}>
         <div style={{background:black,position:'fixed',top:0,left:0,right:0,zIndex:100,height:52,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 1.25rem'}}>
@@ -2356,7 +2363,22 @@ export default function Admin({session}){
           </div>
         )}
 
-        {toast&&<div style={{position:'fixed',bottom:'5rem',right:'1rem',background:black,color:white,padding:'0.85rem 1.25rem',borderRadius:8,fontSize:'0.74rem',borderLeft:'3px solid '+gold,zIndex:9999,maxWidth:280}}>{toast}</div>}
+        {toast&&(
+          <div style={{
+            position:'fixed',bottom:'5.5rem',right:'1.25rem',
+            background:ink,color:white,
+            padding:'0.85rem 1.25rem',borderRadius:10,
+            fontSize:'0.74rem',fontFamily:ff,lineHeight:1.5,
+            borderLeft:'3px solid '+gold,
+            zIndex:9999,maxWidth:300,
+            boxShadow:'0 8px 32px rgba(0,0,0,0.22)',
+            backdropFilter:'blur(8px)',
+            animation:'slideIn 0.2s ease'
+          }}>
+            <style>{`@keyframes slideIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}`}</style>
+            {toast}
+          </div>
+        )}
       </div>
     </>
   )

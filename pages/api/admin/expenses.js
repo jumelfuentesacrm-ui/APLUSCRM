@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { requireAdmin } from '../../../lib/requireAdmin'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -6,6 +7,9 @@ const supabase = createClient(
 )
 
 export default async function handler(req, res) {
+  const user = await requireAdmin(req, res)
+  if (!user) return
+
   if (req.method === 'GET') {
     const { client_id } = req.query
     if (!client_id) return res.status(400).json({ error: 'client_id required' })
@@ -22,7 +26,9 @@ export default async function handler(req, res) {
     const { client_id, amount, description, recurring, recurring_interval, expense_date } = req.body
     if (!client_id || !amount) return res.status(400).json({ error: 'client_id and amount required' })
     const { error } = await supabase.from('expenses').insert({
-      client_id, amount: parseFloat(amount), description,
+      client_id,
+      amount: parseFloat(amount),
+      description,
       recurring: recurring || false,
       recurring_interval: recurring ? recurring_interval : null,
       expense_date: expense_date || new Date().toISOString().split('T')[0]
@@ -33,6 +39,7 @@ export default async function handler(req, res) {
 
   if (req.method === 'DELETE') {
     const { id } = req.body
+    if (!id) return res.status(400).json({ error: 'id requerido' })
     await supabase.from('expenses').delete().eq('id', id)
     return res.status(200).json({ success: true })
   }

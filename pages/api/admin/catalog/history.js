@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { requireAdmin } from '../../../../lib/requireAdmin'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -6,6 +7,9 @@ const supabase = createClient(
 )
 
 export default async function handler(req, res) {
+  const user = await requireAdmin(req, res)
+  if (!user) return
+
   if (req.method === 'GET') {
     const { product_id } = req.query
     if (!product_id) return res.status(400).json({ error: 'product_id required' })
@@ -17,5 +21,6 @@ export default async function handler(req, res) {
     if (error) return res.status(500).json({ error: error.message })
     return res.status(200).json({ history: data || [] })
   }
+
   res.status(405).end()
 }

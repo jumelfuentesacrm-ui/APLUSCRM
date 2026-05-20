@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { requireAdmin } from '../../../lib/requireAdmin'
 import webpush from 'web-push'
 
 const supabaseAdmin = createClient(
@@ -13,19 +14,18 @@ webpush.setVapidDetails(
 )
 
 export default async function handler(req, res) {
-  // Save subscription
+  const user = await requireAdmin(req, res)
+  if (!user) return
+
   if (req.method === 'POST' && req.query.action === 'subscribe') {
     const { endpoint, keys } = req.body
     if (!endpoint || !keys) return res.status(400).json({ error: 'Invalid subscription' })
     await supabaseAdmin.from('push_subscriptions').upsert({
-      endpoint,
-      p256dh: keys.p256dh,
-      auth: keys.auth
+      endpoint, p256dh: keys.p256dh, auth: keys.auth
     }, { onConflict: 'endpoint' })
     return res.status(200).json({ success: true })
   }
 
-  // Send notification to all subscribers
   if (req.method === 'POST' && req.query.action === 'send') {
     const { title, body, url } = req.body
     const { data: subs } = await supabaseAdmin.from('push_subscriptions').select('*')
@@ -39,8 +39,7 @@ export default async function handler(req, res) {
           JSON.stringify({ title, body, url: url || '/admin' })
         )
         sent++
-      } catch(e) {
-        // Remove invalid subscriptions
+      } catch (e) {
         if (e.statusCode === 410 || e.statusCode === 404) {
           await supabaseAdmin.from('push_subscriptions').delete().eq('endpoint', sub.endpoint)
         }
@@ -49,7 +48,6 @@ export default async function handler(req, res) {
     return res.status(200).json({ sent })
   }
 
-  // Unsubscribe
   if (req.method === 'DELETE') {
     const { endpoint } = req.body
     await supabaseAdmin.from('push_subscriptions').delete().eq('endpoint', endpoint)

@@ -15,7 +15,6 @@ export default function App({ Component, pageProps }) {
       setSession(session)
     })
 
-    // Register service worker
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js').catch(err => console.error('SW error:', err))
     }
@@ -23,17 +22,28 @@ export default function App({ Component, pageProps }) {
     return () => subscription.unsubscribe()
   }, [])
 
-  if (loading) return <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'#0e0e0c',color:'#f8f6f1',fontFamily:'sans-serif',fontSize:'0.8rem',letterSpacing:'0.1em'}}>A+ CRM</div>
+  if (loading) return (
+    <div style={{
+      minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: '#0e0e0c', color: '#f8f6f1', fontFamily: 'DM Sans, sans-serif',
+      fontSize: '0.8rem', letterSpacing: '0.1em'
+    }}>
+      A+ CRM
+    </div>
+  )
 
   return (
     <>
       <Head>
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+        <meta name="description" content="A+ CRM — Accounting Plus Client Return Management"/>
         <link rel="icon" href="/favicon.png" type="image/png"/>
         <link rel="manifest" href="/manifest.json"/>
         <meta name="mobile-web-app-capable" content="yes"/>
         <meta name="apple-mobile-web-app-capable" content="yes"/>
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
         <meta name="apple-mobile-web-app-title" content="A+ CRM"/>
+        <meta name="theme-color" content="#0e0e0c"/>
         <title>A+ CRM</title>
       </Head>
       <Component {...pageProps} session={session} />

@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { requireAdmin } from '../../../lib/requireAdmin'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -6,6 +7,9 @@ const supabaseAdmin = createClient(
 )
 
 export default async function handler(req, res) {
+  const user = await requireAdmin(req, res)
+  if (!user) return
+
   if (req.method === 'GET') {
     const { data: cards, error } = await supabaseAdmin
       .from('loyalty_cards')
@@ -13,7 +17,6 @@ export default async function handler(req, res) {
       .order('created_at', { ascending: false })
 
     if (error) {
-      // Fallback — fetch without relations if join fails
       const { data: cardsBasic } = await supabaseAdmin
         .from('loyalty_cards')
         .select('*, profiles(full_name,business_name,phone)')

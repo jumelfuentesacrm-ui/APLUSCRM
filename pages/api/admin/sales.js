@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { requireAdmin } from '../../../lib/requireAdmin'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -6,6 +7,9 @@ const supabase = createClient(
 )
 
 export default async function handler(req, res) {
+  const user = await requireAdmin(req, res)
+  if (!user) return
+
   if (req.method === 'GET') {
     const { email } = req.query
     let query = supabase.from('sales').select('*').order('sale_date', { ascending: false })
@@ -17,8 +21,9 @@ export default async function handler(req, res) {
 
   if (req.method === 'POST') {
     const { customer_id, customer_name, customer_email, product_name, amount, type, status, notes, sale_date } = req.body
+    if (!amount) return res.status(400).json({ error: 'amount requerido' })
     const { error } = await supabase.from('sales').insert({
-      id: (type==='manual'?'manual_':'cash_')+Date.now(),
+      id: (type === 'manual' ? 'manual_' : 'cash_') + Date.now(),
       customer_id: customer_id || null,
       customer_name, customer_email,
       product_name: product_name || 'Manual Payment',

@@ -1,5 +1,6 @@
 import Stripe from 'stripe'
 import { createClient } from '@supabase/supabase-js'
+import { randomBytes } from 'crypto'
 
 export const config = { api: { bodyParser: false } }
 
@@ -19,7 +20,7 @@ async function getRawBody(req) {
 }
 
 function generateCardNumber() {
-  return 'AC-' + Math.random().toString(36).substring(2, 8).toUpperCase()
+  return 'AC-' + randomBytes(3).toString('hex').toUpperCase()
 }
 
 async function handlePayment(email, name, amount, currency, stripeCustomerId, description) {

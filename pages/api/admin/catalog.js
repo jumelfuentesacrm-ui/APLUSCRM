@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { requireAdmin } from '../../../lib/requireAdmin'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -6,6 +7,9 @@ const supabase = createClient(
 )
 
 export default async function handler(req, res) {
+  const user = await requireAdmin(req, res)
+  if (!user) return
+
   if (req.method === 'GET') {
     const { data: items, error } = await supabase
       .from('catalog_items')
@@ -40,7 +44,6 @@ export default async function handler(req, res) {
       await supabase.from('catalog_costs').insert({ product_id, ...updateData })
     }
 
-    // Save cost to history only when cost changes
     if (cost !== undefined) {
       await supabase.from('catalog_cost_history').insert({
         product_id,
