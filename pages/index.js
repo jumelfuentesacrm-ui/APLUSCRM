@@ -77,11 +77,40 @@ export default function LandingPage() {
   return (
     <>
       <Head>
-        <title>A+ CRM — Sistemas, Booking y Recepcionista IA para tu negocio</title>
-        <meta name="description" content="Construimos sistemas a la medida: booking, CRM, agendas y recepcionista IA por llamadas y mensajes. Puerto Rico." />
-        <meta property="og:title" content="A+ CRM — Sistemas, Booking y Recepcionista IA para tu negocio" />
-        <meta property="og:description" content="Construimos sistemas a la medida: booking, CRM, agendas y recepcionista IA por llamadas y mensajes. Puerto Rico." />
+        <title>A+ CRM — Booking, CRM y Recepcionista IA para Negocios en Puerto Rico</title>
+        <meta name="description" content="Consigue más clientes con A+ CRM: sistema de booking online, recepcionista IA que contesta llamadas y WhatsApp 24/7, CRM, tarjeta de lealtad digital y página web. Hecho para negocios en Puerto Rico." />
+        <meta name="keywords" content="sistema de booking Puerto Rico, recepcionista IA Puerto Rico, CRM para pequeños negocios, agenda online negocio, booking online barbería, booking salón de belleza, tarjeta de lealtad digital, sistema para restaurantes Puerto Rico, consigue clientes, automatizar negocio Puerto Rico, WhatsApp bot negocio, A+ CRM" />
+        <meta name="author" content="Accounting Plus CRM" />
+        <meta name="robots" content="index, follow" />
+        <link rel="canonical" href="https://www.accountingpluscrm.com" />
+
         <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://www.accountingpluscrm.com" />
+        <meta property="og:title" content="A+ CRM — Booking, CRM y Recepcionista IA para Negocios en Puerto Rico" />
+        <meta property="og:description" content="Consigue más clientes con booking online, recepcionista IA 24/7, CRM y tarjeta de lealtad digital. Hecho para negocios en Puerto Rico." />
+        <meta property="og:image" content="https://www.accountingpluscrm.com/og-image.jpg" />
+        <meta property="og:locale" content="es_PR" />
+        <meta property="og:site_name" content="A+ CRM" />
+
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="A+ CRM — Booking, CRM y Recepcionista IA · Puerto Rico" />
+        <meta name="twitter:description" content="Consigue más clientes con booking online, recepcionista IA 24/7 y CRM. Hecho para negocios en Puerto Rico." />
+        <meta name="twitter:image" content="https://www.accountingpluscrm.com/og-image.jpg" />
+
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "LocalBusiness",
+          "name": "A+ CRM — Accounting Plus",
+          "description": "Sistemas de booking, CRM, recepcionista IA y tarjeta de lealtad digital para negocios en Puerto Rico.",
+          "url": "https://www.accountingpluscrm.com",
+          "telephone": "+1-787-000-0000",
+          "address": { "@type": "PostalAddress", "addressRegion": "PR", "addressCountry": "US" },
+          "areaServed": "Puerto Rico",
+          "serviceType": ["Sistema de Booking", "CRM", "Recepcionista IA", "Tarjeta de Lealtad Digital", "Página Web"],
+          "priceRange": "$$",
+          "sameAs": []
+        })}} />
+
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -564,6 +593,11 @@ function Booking() {
   const [step, setStep] = useState('form')
   const [date, setDate] = useState('')
   const [time, setTime] = useState('')
+  const [name, setName] = useState('')
+  const [phone, setPhone] = useState('')
+  const [business, setBusiness] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
 
   const dates = useMemo(() => {
     const arr = []
@@ -584,6 +618,25 @@ function Booking() {
 
   const slots = ['9:00 AM', '10:30 AM', '12:00 PM', '2:00 PM', '3:30 PM', '5:00 PM']
 
+  async function handleSubmit(e) {
+    e.preventDefault()
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/admin/bookings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, phone, business, date, time }),
+      })
+      if (!res.ok) throw new Error('Error al guardar la reserva')
+      setStep('done')
+    } catch (err) {
+      setError('Hubo un error. Inténtalo de nuevo o escríbenos al WhatsApp.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <section id="booking" className="relative px-4 py-14">
       <div className="absolute inset-x-0 rounded-full blur-3xl" style={{ top: '33%', zIndex: -10, margin: '0 auto', height: 320, maxWidth: '28rem', background: 'oklch(0.74 0.115 75 / 0.25)' }} />
@@ -597,7 +650,7 @@ function Booking() {
         </p>
 
         {step === 'form' ? (
-          <form className="glass mt-7 rounded-3xl p-4" onSubmit={(e) => { e.preventDefault(); setStep('done') }}>
+          <form className="glass mt-7 rounded-3xl p-4" onSubmit={handleSubmit}>
             <p className="text-muted-foreground" style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Elige un día</p>
             <div className="mt-2 -mx-1 flex gap-2 overflow-x-auto pb-1 px-1">
               {dates.map((d) => {
@@ -634,18 +687,19 @@ function Booking() {
               })}
             </div>
             <div className="mt-5 space-y-2.5">
-              <input required placeholder="Tu nombre" className="h-12 w-full rounded-xl border border-border px-4 text-ink outline-none placeholder:text-muted-foreground focus:border-gold" style={{ fontSize: 14, background: 'oklch(0.985 0.008 85 / 0.6)' }} />
-              <input required type="tel" placeholder="WhatsApp o teléfono" className="h-12 w-full rounded-xl border border-border px-4 text-ink outline-none placeholder:text-muted-foreground focus:border-gold" style={{ fontSize: 14, background: 'oklch(0.985 0.008 85 / 0.6)' }} />
-              <input required placeholder="Nombre del negocio" className="h-12 w-full rounded-xl border border-border px-4 text-ink outline-none placeholder:text-muted-foreground focus:border-gold" style={{ fontSize: 14, background: 'oklch(0.985 0.008 85 / 0.6)' }} />
+              <input required value={name} onChange={e => setName(e.target.value)} placeholder="Tu nombre" className="h-12 w-full rounded-xl border border-border px-4 text-ink outline-none placeholder:text-muted-foreground focus:border-gold" style={{ fontSize: 14, background: 'oklch(0.985 0.008 85 / 0.6)' }} />
+              <input required type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="WhatsApp o teléfono" className="h-12 w-full rounded-xl border border-border px-4 text-ink outline-none placeholder:text-muted-foreground focus:border-gold" style={{ fontSize: 14, background: 'oklch(0.985 0.008 85 / 0.6)' }} />
+              <input required value={business} onChange={e => setBusiness(e.target.value)} placeholder="Nombre del negocio" className="h-12 w-full rounded-xl border border-border px-4 text-ink outline-none placeholder:text-muted-foreground focus:border-gold" style={{ fontSize: 14, background: 'oklch(0.985 0.008 85 / 0.6)' }} />
             </div>
+            {error && <p className="mt-3 text-center" style={{ fontSize: 12, color: '#c0392b' }}>{error}</p>}
             <button
               type="submit"
-              disabled={!date || !time}
+              disabled={!date || !time || loading}
               className="mt-5 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-ink text-cream font-semibold transition-transform active:scale-[0.98] disabled:opacity-40"
               style={{ fontSize: 15 }}
             >
-              Confirmar reserva
-              <ArrowRight className="h-4 w-4" />
+              {loading ? 'Enviando…' : 'Confirmar reserva'}
+              {!loading && <ArrowRight className="h-4 w-4" />}
             </button>
             <p className="mt-3 text-center text-muted-foreground" style={{ fontSize: 11 }}>
               Te confirmamos por WhatsApp en menos de 1 hora.
@@ -658,7 +712,7 @@ function Booking() {
             </div>
             <h3 className="mt-3 font-serif text-ink text-2xl">¡Reserva confirmada!</h3>
             <p className="mt-1 text-ink/70" style={{ fontSize: 13 }}>Te escribimos al WhatsApp con los detalles.</p>
-            <button onClick={() => setStep('form')} className="mt-4 text-ink underline underline-offset-2" style={{ fontSize: 12, fontWeight: 600 }}>
+            <button onClick={() => { setStep('form'); setName(''); setPhone(''); setBusiness(''); setDate(''); setTime('') }} className="mt-4 text-ink underline underline-offset-2" style={{ fontSize: 12, fontWeight: 600 }}>
               Reservar otra
             </button>
           </div>

@@ -1286,48 +1286,66 @@ function AgendaEvent({ ev, todayFlag }) {
   )
 }
 
+const STATUS_COLORS = {
+  pending:   { label:'Pending',   color:'#e67e22', bg:'rgba(230,126,34,0.1)' },
+  confirmed: { label:'Confirmed', color:'#2d8a60', bg:'rgba(45,138,96,0.1)' },
+  cancelled: { label:'Cancelled', color:'#c0392b', bg:'rgba(192,57,43,0.1)' },
+  completed: { label:'Completed', color:'#b8975a', bg:'rgba(184,151,90,0.12)' },
+}
+
 function BookingsPanel() {
-  const CALENDAR_ID = 'jfuentes@accountingpluscrm.com'
-  const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_CALENDAR_API_KEY
-  const [events, setEvents] = useState([])
+  const [bookings, setBookings] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [view, setView] = useState('agenda')
   const [currentDate, setCurrentDate] = useState(new Date())
+  const [selected, setSelected] = useState(null)
+  const [notesDraft, setNotesDraft] = useState('')
+  const [saving, setSaving] = useState(false)
 
-  useEffect(() => { fetchEvents() }, [currentDate, view])
+  useEffect(() => { fetchBookings() }, [currentDate, view])
 
-  async function fetchEvents() {
+  async function fetchBookings() {
     setLoading(true); setError(null)
     try {
       const start = new Date(currentDate), end = new Date(currentDate)
-      if (view==='week') { const day=start.getDay(); start.setDate(start.getDate()-day); end.setDate(start.getDate()+7) }
+      if (view==='week') { start.setDate(start.getDate()-start.getDay()); end.setDate(start.getDate()+7) }
       else if (view==='month') { start.setDate(1); end.setMonth(end.getMonth()+1); end.setDate(0) }
-      else { end.setDate(end.getDate()+30) }
-      const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/events?key=${API_KEY}&timeMin=${start.toISOString()}&timeMax=${end.toISOString()}&singleEvents=true&orderBy=startTime&maxResults=50`
-      const res = await fetch(url)
+      else { end.setDate(end.getDate()+60) }
+      const from = start.toISOString().slice(0,10)
+      const to = end.toISOString().slice(0,10)
+      const res = await fetch(`/api/admin/bookings?from=${from}&to=${to}`)
       if (!res.ok) throw new Error('failed')
       const data = await res.json()
-      const newItems = data.items||[]
-      if (newItems.length > events.length && events.length > 0) {
-        fetch('/api/admin/push?action=send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:'New Booking',body:newItems[0]?.summary||'Someone booked a consultation',url:'/admin'})}).catch(()=>{})
+      const prev = bookings
+      if (data.length > prev.length && prev.length > 0) {
+        fetch('/api/admin/push?action=send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:'Nueva Reserva',body:`${data[0]?.name} — ${data[0]?.business}`,url:'/admin'})}).catch(()=>{})
       }
-      setEvents(newItems)
-    } catch(e) { setError('Could not load calendar. Check API key settings.') }
+      setBookings(data)
+    } catch(e) { setError('No se pudieron cargar las reservas.') }
     setLoading(false)
   }
 
-  function formatTime(ev) {
-    if (!ev.start?.dateTime) return 'All day'
-    return new Date(ev.start.dateTime).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})
+  async function updateStatus(id, status) {
+    await fetch('/api/admin/bookings', { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id, status}) })
+    setBookings(prev => prev.map(b => b.id===id ? {...b, status} : b))
+    if (selected?.id===id) setSelected(s => ({...s, status}))
   }
-  function isToday(ev) {
-    return new Date(ev.start?.dateTime||ev.start?.date).toDateString()===new Date().toDateString()
+
+  async function saveNotes(id) {
+    setSaving(true)
+    await fetch('/api/admin/bookings', { method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id, notes: notesDraft}) })
+    setBookings(prev => prev.map(b => b.id===id ? {...b, notes: notesDraft} : b))
+    setSelected(s => ({...s, notes: notesDraft}))
+    setSaving(false)
   }
-  function getEventsForDay(date) {
+
+  function getBookingsForDay(date) {
     if (!date) return []
-    return events.filter(ev=>new Date(ev.start?.dateTime||ev.start?.date).toDateString()===date.toDateString())
+    const iso = date.toISOString().slice(0,10)
+    return bookings.filter(b => b.date === iso)
   }
+
   function navPrev() {
     const d=new Date(currentDate)
     if(view==='month') d.setMonth(d.getMonth()-1)
@@ -1346,7 +1364,7 @@ function BookingsPanel() {
   const navLabel = view==='month'
     ? currentDate.toLocaleDateString('en-US',{month:'long',year:'numeric'})
     : view==='week' ? 'Week of '+currentDate.toLocaleDateString('en-US',{month:'short',day:'numeric'})
-    : 'Next 30 days'
+    : 'Upcoming 60 days'
 
   const weekDayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
 
@@ -1358,6 +1376,41 @@ function BookingsPanel() {
     for(let i=0;i<firstDay;i++) days.push(null)
     for(let i=1;i<=daysInMonth;i++) days.push(new Date(y,m,i))
     return days
+  }
+
+  if (selected) {
+    const st = STATUS_COLORS[selected.status] || STATUS_COLORS.pending
+    return (
+      <div>
+        <button onClick={()=>setSelected(null)} style={{display:'flex',alignItems:'center',gap:'0.5rem',background:'none',border:'none',cursor:'pointer',color:gray,fontFamily:ff,fontSize:'0.65rem',letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:'1.5rem',padding:0}}>← Back to Bookings</button>
+        <div style={{background:black,borderRadius:12,padding:'1.75rem',marginBottom:'1.25rem',position:'relative',overflow:'hidden'}}>
+          <div style={{position:'absolute',inset:0,background:'radial-gradient(ellipse 60% 50% at 0% 50%,rgba(184,151,90,0.08) 0%,transparent 70%)'}}/>
+          <div style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300,color:white,marginBottom:'0.2rem'}}>{selected.name}</div>
+          <div style={{fontSize:'0.7rem',color:'rgba(255,255,255,0.4)',marginBottom:'0.5rem'}}>{selected.business}</div>
+          <div style={{display:'flex',gap:'0.5rem',flexWrap:'wrap'}}>
+            {[[selected.date,'Date'],[selected.time,'Time'],[selected.phone,'Phone']].map(([v,l])=>(
+              <div key={l} style={{textAlign:'center',background:'rgba(255,255,255,0.05)',borderRadius:8,padding:'0.6rem 0.85rem',border:'1px solid rgba(184,151,90,0.1)'}}>
+                <div style={{fontFamily:ffS,fontSize:'1rem',fontWeight:300,color:gold,lineHeight:1}}>{v}</div>
+                <div style={{fontSize:'0.5rem',letterSpacing:'0.1em',textTransform:'uppercase',color:'rgba(255,255,255,0.3)',marginTop:'0.2rem'}}>{l}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div style={{background:white,borderRadius:10,border:'1px solid rgba(14,14,12,0.07)',padding:'1.25rem',marginBottom:'1rem'}}>
+          <div style={{fontSize:'0.62rem',letterSpacing:'0.1em',textTransform:'uppercase',color:gray,marginBottom:'0.75rem'}}>Status</div>
+          <div style={{display:'flex',gap:'0.5rem',flexWrap:'wrap'}}>
+            {Object.entries(STATUS_COLORS).map(([key,val])=>(
+              <button key={key} onClick={()=>updateStatus(selected.id,key)} style={{padding:'0.35rem 0.85rem',borderRadius:20,border:'none',cursor:'pointer',fontFamily:ff,fontSize:'0.6rem',letterSpacing:'0.08em',textTransform:'uppercase',background:selected.status===key?val.bg:'rgba(14,14,12,0.05)',color:selected.status===key?val.color:gray,fontWeight:selected.status===key?700:400}}>{val.label}</button>
+            ))}
+          </div>
+        </div>
+        <div style={{background:white,borderRadius:10,border:'1px solid rgba(14,14,12,0.07)',padding:'1.25rem'}}>
+          <div style={{fontSize:'0.62rem',letterSpacing:'0.1em',textTransform:'uppercase',color:gray,marginBottom:'0.5rem'}}>Notes</div>
+          <textarea value={notesDraft} onChange={e=>setNotesDraft(e.target.value)} placeholder="Add notes about this booking..." rows={3} style={{width:'100%',border:'1px solid rgba(14,14,12,0.1)',borderRadius:6,padding:'0.6rem',fontFamily:ff,fontSize:'0.78rem',outline:'none',resize:'vertical',boxSizing:'border-box'}}/>
+          <button onClick={()=>saveNotes(selected.id)} disabled={saving} style={{marginTop:'0.5rem',background:black,color:white,border:'none',padding:'0.5rem 1.1rem',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.6rem',letterSpacing:'0.1em',textTransform:'uppercase',opacity:saving?0.6:1}}>{saving?'Saving…':'Save Notes'}</button>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -1373,13 +1426,13 @@ function BookingsPanel() {
               <button key={v} onClick={()=>setView(v)} style={{padding:'0.35rem 0.75rem',borderRadius:20,border:'none',cursor:'pointer',fontFamily:ff,fontSize:'0.6rem',letterSpacing:'0.08em',textTransform:'uppercase',background:view===v?black:'rgba(14,14,12,0.06)',color:view===v?white:gray,transition:'all 0.15s'}}>{l}</button>
             ))}
           </div>
-          <button onClick={fetchEvents} style={{background:'none',border:'1px solid rgba(14,14,12,0.08)',borderRadius:20,padding:'0.3rem 0.65rem',cursor:'pointer',fontFamily:ff,fontSize:'0.6rem',color:gray}}>↺</button>
+          <button onClick={fetchBookings} style={{background:'none',border:'1px solid rgba(14,14,12,0.08)',borderRadius:20,padding:'0.3rem 0.65rem',cursor:'pointer',fontFamily:ff,fontSize:'0.6rem',color:gray}}>↺</button>
         </div>
       </div>
 
       <div style={{background:white,borderRadius:10,border:'1px solid rgba(14,14,12,0.07)',overflow:'hidden'}}>
         {loading&&<div style={{padding:'3rem',textAlign:'center',color:gray,fontSize:'0.78rem'}}>Loading...</div>}
-        {error&&<div style={{padding:'3rem',textAlign:'center',color:'#c0392b',fontSize:'0.78rem'}}>{error}<br/><button onClick={fetchEvents} style={{marginTop:'0.75rem',background:black,color:white,border:'none',padding:'0.5rem 1rem',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.62rem'}}>Retry</button></div>}
+        {error&&<div style={{padding:'3rem',textAlign:'center',color:'#c0392b',fontSize:'0.78rem'}}>{error}<br/><button onClick={fetchBookings} style={{marginTop:'0.75rem',background:black,color:white,border:'none',padding:'0.5rem 1rem',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.62rem'}}>Retry</button></div>}
 
         {/* MONTH */}
         {!loading&&!error&&view==='month'&&(
@@ -1389,13 +1442,13 @@ function BookingsPanel() {
             </div>
             <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)'}}>
               {getMonthDays().map((date,i)=>{
-                const dayEvs=getEventsForDay(date)
+                const dayBs=getBookingsForDay(date)
                 const today=date&&date.toDateString()===new Date().toDateString()
                 return(
                   <div key={i} style={{minHeight:80,padding:'0.4rem',borderRight:'1px solid rgba(14,14,12,0.04)',borderBottom:'1px solid rgba(14,14,12,0.04)',background:today?'rgba(184,151,90,0.04)':'transparent'}}>
                     {date&&<div style={{fontSize:'0.65rem',fontWeight:today?700:400,color:today?gold:black,width:22,height:22,borderRadius:'50%',background:today?'rgba(184,151,90,0.15)':'transparent',display:'flex',alignItems:'center',justifyContent:'center',marginBottom:'0.25rem'}}>{date.getDate()}</div>}
-                    {dayEvs.slice(0,2).map((ev,j)=><div key={j} title={ev.summary} style={{fontSize:'0.52rem',background:'rgba(184,151,90,0.12)',color:gold,borderRadius:3,padding:'0.15rem 0.35rem',marginBottom:'0.15rem',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{ev.summary||'Booking'}</div>)}
-                    {dayEvs.length>2&&<div style={{fontSize:'0.5rem',color:gray}}>+{dayEvs.length-2}</div>}
+                    {dayBs.slice(0,2).map((b,j)=><div key={j} onClick={()=>{setSelected(b);setNotesDraft(b.notes||'')}} title={b.name} style={{fontSize:'0.52rem',background:'rgba(184,151,90,0.12)',color:gold,borderRadius:3,padding:'0.15rem 0.35rem',marginBottom:'0.15rem',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',cursor:'pointer'}}>{b.name}</div>)}
+                    {dayBs.length>2&&<div style={{fontSize:'0.5rem',color:gray}}>+{dayBs.length-2}</div>}
                   </div>
                 )
               })}
@@ -1411,12 +1464,12 @@ function BookingsPanel() {
             <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)'}}>
               {wDates.map((d,i)=>{
                 const today=d.toDateString()===new Date().toDateString()
-                const dayEvs=getEventsForDay(d)
+                const dayBs=getBookingsForDay(d)
                 return(
                   <div key={i} style={{padding:'0.75rem 0.5rem',borderRight:'1px solid rgba(14,14,12,0.04)',background:today?'rgba(184,151,90,0.04)':'transparent',minHeight:150}}>
                     <div style={{fontSize:'0.52rem',color:gray,textTransform:'uppercase',letterSpacing:'0.08em'}}>{weekDayNames[i]}</div>
                     <div style={{fontSize:'0.88rem',fontWeight:today?700:400,color:today?gold:black,marginBottom:'0.4rem'}}>{d.getDate()}</div>
-                    {dayEvs.map((ev,j)=><div key={j} style={{fontSize:'0.54rem',background:'rgba(184,151,90,0.1)',color:gold,borderRadius:3,padding:'0.2rem 0.4rem',marginBottom:'0.2rem',lineHeight:1.3}}><div style={{fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{ev.summary||'Booking'}</div><div style={{opacity:0.7}}>{formatTime(ev)}</div></div>)}
+                    {dayBs.map((b,j)=><div key={j} onClick={()=>{setSelected(b);setNotesDraft(b.notes||'')}} style={{fontSize:'0.54rem',background:'rgba(184,151,90,0.1)',color:gold,borderRadius:3,padding:'0.2rem 0.4rem',marginBottom:'0.2rem',lineHeight:1.3,cursor:'pointer'}}><div style={{fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{b.name}</div><div style={{opacity:0.7}}>{b.time}</div></div>)}
                   </div>
                 )
               })}
@@ -1427,13 +1480,30 @@ function BookingsPanel() {
         {/* AGENDA */}
         {!loading&&!error&&view==='agenda'&&(
           <div>
-            {events.length===0&&<div style={{padding:'2rem',textAlign:'center',color:gray,fontSize:'0.78rem'}}>No upcoming events.</div>}
-            {events.map((ev,i)=><AgendaEvent key={ev.id||i} ev={ev} todayFlag={new Date(ev.start?.dateTime||ev.start?.date).toDateString()===new Date().toDateString()}/>)}
+            {bookings.length===0&&<div style={{padding:'2rem',textAlign:'center',color:gray,fontSize:'0.78rem'}}>No upcoming bookings.</div>}
+            {bookings.map((b,i)=>{
+              const st=STATUS_COLORS[b.status]||STATUS_COLORS.pending
+              const isToday=b.date===new Date().toISOString().slice(0,10)
+              return(
+                <div key={b.id||i} onClick={()=>{setSelected(b);setNotesDraft(b.notes||'')}} style={{display:'flex',alignItems:'center',gap:'1rem',padding:'0.85rem 1.25rem',borderBottom:'1px solid rgba(14,14,12,0.04)',cursor:'pointer',background:isToday?'rgba(184,151,90,0.03)':'transparent'}}>
+                  <div style={{textAlign:'center',minWidth:42}}>
+                    <div style={{fontSize:'0.6rem',color:gray,textTransform:'uppercase',letterSpacing:'0.08em'}}>{new Date(b.date+'T00:00:00').toLocaleDateString('en-US',{month:'short'})}</div>
+                    <div style={{fontFamily:ffS,fontSize:'1.4rem',fontWeight:300,color:isToday?gold:black,lineHeight:1}}>{new Date(b.date+'T00:00:00').getDate()}</div>
+                  </div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{display:'flex',alignItems:'center',gap:'0.5rem',marginBottom:'0.1rem'}}>
+                      <span style={{fontSize:'0.82rem',fontWeight:500,color:black,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{b.name}</span>
+                      <span style={{fontSize:'0.56rem',padding:'0.15rem 0.55rem',borderRadius:20,background:st.bg,color:st.color,whiteSpace:'nowrap',flexShrink:0}}>{st.label}</span>
+                    </div>
+                    <div style={{fontSize:'0.65rem',color:gray}}>{b.business} · {b.time}</div>
+                    {b.notes&&<div style={{fontSize:'0.62rem',color:gray,marginTop:'0.15rem',fontStyle:'italic',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{b.notes}</div>}
+                  </div>
+                  <div style={{color:gray,fontSize:'0.75rem',flexShrink:0}}>›</div>
+                </div>
+              )
+            })}
           </div>
         )}
-      </div>
-      <div style={{marginTop:'0.75rem',fontSize:'0.6rem',color:gray,textAlign:'center'}}>
-        <a href="https://calendar.app.google/WsjR7tCs3VGwnJYB6" target="_blank" rel="noreferrer" style={{color:gold}}>Open booking page ↗</a>
       </div>
     </div>
   )
