@@ -1,5 +1,5 @@
 import Head from 'next/head'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   CalendarCheck,
   PhoneCall,
@@ -119,16 +119,33 @@ export default function LandingPage() {
         <AmbientBackground />
         <TopNav />
         <Hero />
-        <Trust />
-        <Services />
-        <AdminPreview />
-        <Showcase />
-        <Reviews />
-        <Booking />
-        <Footer />
+        <FadeIn><Trust /></FadeIn>
+        <FadeIn><Services /></FadeIn>
+        <FadeIn><AdminPreview /></FadeIn>
+        <FadeIn><Showcase /></FadeIn>
+        <FadeIn><Reviews /></FadeIn>
+        <FadeIn><Booking /></FadeIn>
+        <FadeIn><Footer /></FadeIn>
         <StickyCTA />
       </main>
     </>
+  )
+}
+
+function FadeIn({ children, delay = 0, className = '' }) {
+  const ref = useRef(null)
+  const [visible, setVisible] = useState(false)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const obs = new IntersectionObserver(([entry]) => { if (entry.isIntersecting) { setVisible(true); obs.disconnect() } }, { threshold: 0.12 })
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [])
+  return (
+    <div ref={ref} className={className} style={{ opacity: visible ? 1 : 0, transform: visible ? 'translateY(0)' : 'translateY(28px)', transition: `opacity 0.6s ease ${delay}ms, transform 0.6s ease ${delay}ms` }}>
+      {children}
+    </div>
   )
 }
 
@@ -143,20 +160,37 @@ function AmbientBackground() {
 }
 
 function TopNav() {
+  const [scrolled, setScrolled] = useState(false)
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 10)
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
   return (
-    <header className="sticky top-0 z-40 px-4 pt-3">
-      <div className="glass mx-auto flex h-12 max-w-md items-center justify-between rounded-full px-3">
-        <a href="#top" className="flex items-center gap-2 pl-2">
-          <span className="font-serif text-lg font-semibold leading-none text-ink">A+</span>
-          <span className="text-muted-foreground" style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.18em' }}>
-            CRM
-          </span>
+    <header
+      className="sticky top-0 z-40 w-full transition-all duration-300"
+      style={{
+        background: scrolled ? 'rgba(248,246,241,0.72)' : 'rgba(248,246,241,0.55)',
+        backdropFilter: 'blur(24px) saturate(180%)',
+        borderBottom: scrolled ? '1px solid rgba(184,151,90,0.18)' : '1px solid rgba(255,255,255,0.5)',
+        boxShadow: scrolled ? '0 4px 24px -6px rgba(28,28,26,0.1)' : 'none',
+      }}
+    >
+      <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-6">
+        <a href="#top" className="flex items-center gap-2.5">
+          <span className="font-serif text-xl font-semibold leading-none text-ink" style={{ letterSpacing: '-0.01em' }}>A+</span>
+          <span className="text-muted-foreground" style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.2em' }}>CRM</span>
         </a>
+        <nav className="hidden items-center gap-6 sm:flex">
+          {[['#sistemas','Sistemas'],['#showcase','Trabajos'],['#resenas','Reseñas']].map(([href,label]) => (
+            <a key={href} href={href} className="text-ink/60 hover:text-ink transition-colors" style={{ fontSize: 13, fontWeight: 500 }}>{label}</a>
+          ))}
+        </nav>
         <a
           href="#booking"
-          className="bg-ink text-cream inline-flex h-8 items-center gap-1.5 rounded-full px-3.5 text-xs font-semibold transition-transform active:scale-95"
+          className="bg-ink text-cream inline-flex h-9 items-center gap-1.5 rounded-full px-4 text-xs font-semibold transition-all hover:bg-ink/80 active:scale-95"
         >
-          Agendar
+          Agendar demo
           <ArrowRight className="h-3 w-3" />
         </a>
       </div>
@@ -731,11 +765,13 @@ function Footer() {
           Accounting Plus · Puerto Rico
         </p>
         <div className="mt-4 flex items-center justify-center gap-4 text-ink/70" style={{ fontSize: 12, fontWeight: 600 }}>
-          <a href="#sistemas">Sistemas</a>
+          <a href="#sistemas" className="hover:text-ink transition-colors">Sistemas</a>
           <span className="text-border">·</span>
-          <a href="#showcase">Trabajos</a>
+          <a href="#showcase" className="hover:text-ink transition-colors">Trabajos</a>
           <span className="text-border">·</span>
-          <a href="#resenas">Reseñas</a>
+          <a href="#resenas" className="hover:text-ink transition-colors">Reseñas</a>
+          <span className="text-border">·</span>
+          <a href="/login" className="text-gold hover:text-ink transition-colors font-semibold">Login</a>
         </div>
         <p className="mt-5 text-muted-foreground" style={{ fontSize: 10 }}>© 2026 A+ CRM. Hecho con cariño en PR.</p>
       </div>

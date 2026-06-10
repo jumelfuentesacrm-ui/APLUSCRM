@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/router'
 import { supabase } from '../lib/supabase'
 
@@ -1919,6 +1919,8 @@ export default function Admin({session}){
         .action-btn:hover{opacity:0.85;transform:translateY(-1px);}
         .action-btn:active{transform:translateY(0);}
         input:focus,select:focus,textarea:focus{border-color:${gold}!important;box-shadow:0 0 0 3px rgba(184,151,90,0.12)!important;outline:none!important;}
+        @keyframes panel-in{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+        .panel-animate{animation:panel-in 0.35s cubic-bezier(0.22,1,0.36,1) both;}
         .glass-card{background:rgba(248,246,241,0.6);backdrop-filter:blur(20px) saturate(160%);border:1px solid rgba(255,255,255,0.7);box-shadow:inset 0 1px 0 rgba(255,255,255,0.8),0 8px 32px -8px rgba(28,28,26,0.12);border-radius:14px;}
         .glass-dark-nav{background:rgba(28,28,26,0.75);backdrop-filter:blur(24px) saturate(180%);border-bottom:1px solid rgba(184,151,90,0.15);}
         .glass-sidebar{background:rgba(20,20,18,0.82);backdrop-filter:blur(24px) saturate(160%);border-right:1px solid rgba(184,151,90,0.1);}
@@ -1965,6 +1967,7 @@ export default function Admin({session}){
 
           {/* MAIN */}
           <div className="admin-main" style={{marginLeft:210,flex:1,padding:'1.75rem',maxWidth:980}}>
+            <div key={panel} className="panel-animate">
             {panel==='dashboard'&&<DashboardPanel cards={cards} sales={sales} onSelectClient={(card)=>{setSelectedClient(card);setPanel('client')}}/>}
             {panel==='client'&&selectedClient&&<ClientProfile card={selectedClient} onBack={()=>{setSelectedClient(null);setPanel('dashboard')}}/>}
             {panel==='notifications'&&<NotificationsPanel cards={cards} users={users}/>}
@@ -2048,6 +2051,7 @@ export default function Admin({session}){
                 <button onClick={doPunch} style={{width:'100%',background:black,color:white,border:'none',padding:'0.85rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Give Stamp</button>
               </div>
             </>}
+            </div>
           </div>
         </div>
 
