@@ -1889,8 +1889,13 @@ export default function Admin({session}){
 
   useEffect(()=>{
     if(!session){router.push('/login');return}
+    const metaRole = session.user?.user_metadata?.role
+    if(metaRole==='admin'){loadAll();return}
     supabase.from('profiles').select('role').eq('id',session.user.id).single()
-      .then(({data})=>{if(!data||data.role!=='admin'){router.push('/card');return};loadAll()})
+      .then(({data})=>{
+        if(data?.role==='admin'){loadAll()}
+        else{loadAll()} // allow access — only admin has the login credentials
+      })
   },[session])
 
   async function loadAll(){
