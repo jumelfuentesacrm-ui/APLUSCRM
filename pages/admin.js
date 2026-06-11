@@ -1866,12 +1866,12 @@ function bookingLinkMsg(name){
 }
 function getCurrentWeekRange(){
   const now=new Date(); const day=now.getDay()
-  const mon=new Date(now); mon.setDate(now.getDate()-(day===0?6:day-1))
-  const fri=new Date(mon); fri.setDate(mon.getDate()+4)
-  return {start:mon, end:fri}
+  const mon=new Date(now); mon.setDate(now.getDate()-(day===0?6:day-1)); mon.setHours(0,0,0,0)
+  const sun=new Date(mon); sun.setDate(mon.getDate()+6)
+  return {start:mon, end:sun}
 }
 function getWeekDays(weekStart){
-  const names=['Lunes','Martes','Miércoles','Jueves','Viernes']
+  const names=['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo']
   return names.map((name,i)=>{
     const d=new Date(weekStart); d.setDate(weekStart.getDate()+i)
     return {name, date:d.toISOString().split('T')[0], dateObj:d}
@@ -1881,6 +1881,19 @@ function getMonthWeekNum(d){
   const first=new Date(d.getFullYear(),d.getMonth(),1)
   return Math.ceil((d.getDate()+first.getDay())/7)
 }
+function getMonthWeekStart(weekNum,now){
+  const year=now.getFullYear(),month=now.getMonth()
+  for(let d=1;d<=31;d++){
+    const date=new Date(year,month,d)
+    if(date.getMonth()!==month) break
+    if(getMonthWeekNum(date)===weekNum){
+      const dow=date.getDay()
+      const mon=new Date(date); mon.setDate(date.getDate()-(dow===0?6:dow-1)); mon.setHours(0,0,0,0)
+      return mon
+    }
+  }
+  return null
+}
 function scheduleLocalNotif(title,body,dateObj){
   const delay=dateObj.getTime()-Date.now()
   if(delay<=0) return
@@ -1889,9 +1902,10 @@ function scheduleLocalNotif(title,body,dateObj){
 
 // ─── ADMIN DASHBOARD ─────────────────────────────────────────────────────────
 function AdminDashboard({sales,bookings,session,users,onSaleAdded}){
-  const [addIncome,setAddIncome]=React.useState(null) // {date:'YYYY-MM-DD'}
+  const [addIncome,setAddIncome]=React.useState(null)
   const [incomeForm,setIncomeForm]=React.useState({client_id:'',service:'',amount:'',notes:''})
   const [incomeSaving,setIncomeSaving]=React.useState(false)
+  const [activeSem,setActiveSem]=React.useState(null)
   const now=new Date()
   const monthStr=now.toISOString().slice(0,7)
   const monthSales=sales.filter(s=>s.sale_date?.startsWith(monthStr)&&s.status==='paid')
@@ -1951,7 +1965,7 @@ function AdminDashboard({sales,bookings,session,users,onSaleAdded}){
         </div>
         <p style={{fontSize:11,opacity:0.4,marginTop:7}}>{Math.round(pct)}% completado · ${Math.max(0,MONTHLY_GOAL-monthTotal).toLocaleString()} restante</p>
       </div>
-      {/* Esta semana — tappable days */}
+      {/* Esta semana — 4-week grid + expandable days */}
       <div style={{...glCard,padding:16,marginBottom:14}}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
           <p style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.1em',color:gold}}>Esta Semana</p>
@@ -1960,22 +1974,51 @@ function AdminDashboard({sales,bookings,session,users,onSaleAdded}){
         <div style={{background:'rgba(14,14,12,0.07)',borderRadius:99,height:4,marginBottom:14,overflow:'hidden'}}>
           <div style={{height:'100%',borderRadius:99,background:gold,width:Math.min((weekTotal/weekGoal)*100,100)+'%',transition:'width 0.5s'}}/>
         </div>
-        {weekDays.map(day=>{
-          const dayTotal=weekSales.filter(s=>s.sale_date===day.date).reduce((a,x)=>a+(parseFloat(x.amount)||0),0)
-          const isToday=day.date===today
+        <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:8,marginBottom:activeSem?12:0}}>
+          {[1,2,3,4].map(w=>{
+            const wStart=getMonthWeekStart(w,now)
+            const wSales=wStart?monthSales.filter(s=>{
+              const d=new Date(s.sale_date+'T12:00:00')
+              return getMonthWeekNum(d)===w
+            }):[]
+            const wTotal=wSales.reduce((a,x)=>a+(parseFloat(x.amount)||0),0)
+            const isActive=w===weekNum
+            const isSel=activeSem===w
+            return(
+              <button key={w} onClick={()=>setActiveSem(isSel?null:w)} style={{background:isSel?gold:isActive?ink:'rgba(14,14,12,0.04)',border:'1px solid',borderColor:isSel?gold:isActive?ink:'rgba(14,14,12,0.08)',borderRadius:12,padding:'10px 6px',textAlign:'center',cursor:'pointer',touchAction:'manipulation',transition:'all 0.15s'}}>
+                <p style={{fontSize:9,textTransform:'uppercase',letterSpacing:'0.07em',color:isSel?ink:isActive?gold:gray}}>Sem {w}</p>
+                <p style={{fontSize:13,fontWeight:700,fontFamily:ff,color:isSel?ink:isActive?cream:ink,marginTop:3}}>{wTotal>0?'$'+Math.round(wTotal):'$0'}</p>
+              </button>
+            )
+          })}
+        </div>
+        {activeSem&&(()=>{
+          const semStart=getMonthWeekStart(activeSem,now)
+          if(!semStart) return null
+          const semDays=getWeekDays(semStart)
           return(
-            <button key={day.date} onClick={()=>setAddIncome({date:day.date})} style={{width:'100%',display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 12px',marginBottom:6,background:isToday?'rgba(184,151,90,0.1)':'rgba(14,14,12,0.03)',border:'1px solid',borderColor:isToday?'rgba(184,151,90,0.3)':'rgba(14,14,12,0.06)',borderRadius:12,cursor:'pointer',fontFamily:ff,touchAction:'manipulation'}}>
-              <div style={{display:'flex',alignItems:'center',gap:8}}>
-                <span style={{fontSize:13,fontWeight:isToday?700:500,color:isToday?gold:ink}}>{day.name}</span>
-                {isToday&&<span style={{fontSize:9,background:gold,color:ink,borderRadius:99,padding:'1px 6px',fontWeight:700}}>HOY</span>}
-              </div>
-              <div style={{display:'flex',alignItems:'center',gap:8}}>
-                <span style={{fontSize:13,fontWeight:600,color:dayTotal>0?'#2d8a60':gray,fontFamily:ff}}>{dayTotal>0?'$'+Math.round(dayTotal):'—'}</span>
-                <span style={{fontSize:16,color:gold,fontWeight:300}}>+</span>
-              </div>
-            </button>
+            <div style={{borderTop:'1px solid rgba(14,14,12,0.07)',paddingTop:12}}>
+              {semDays.map(day=>{
+                const dayTotal=monthSales.filter(s=>s.sale_date===day.date).reduce((a,x)=>a+(parseFloat(x.amount)||0),0)
+                const isToday=day.date===today
+                const isWeekend=day.name==='Sábado'||day.name==='Domingo'
+                return(
+                  <button key={day.date} onClick={()=>setAddIncome({date:day.date})} style={{width:'100%',display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 12px',marginBottom:6,background:isToday?'rgba(184,151,90,0.1)':isWeekend?'rgba(14,14,12,0.02)':'rgba(14,14,12,0.03)',border:'1px solid',borderColor:isToday?'rgba(184,151,90,0.3)':'rgba(14,14,12,0.06)',borderRadius:12,cursor:'pointer',fontFamily:ff,touchAction:'manipulation'}}>
+                    <div style={{display:'flex',alignItems:'center',gap:8}}>
+                      <span style={{fontSize:13,fontWeight:isToday?700:500,color:isToday?gold:isWeekend?gray:ink}}>{day.name}</span>
+                      {isToday&&<span style={{fontSize:9,background:gold,color:ink,borderRadius:99,padding:'1px 6px',fontWeight:700}}>HOY</span>}
+                      <span style={{fontSize:10,color:gray}}>{day.dateObj.toLocaleDateString('es-PR',{day:'numeric',month:'short'})}</span>
+                    </div>
+                    <div style={{display:'flex',alignItems:'center',gap:8}}>
+                      <span style={{fontSize:13,fontWeight:600,color:dayTotal>0?'#2d8a60':gray}}>{dayTotal>0?'$'+Math.round(dayTotal):'—'}</span>
+                      <span style={{fontSize:18,color:gold,lineHeight:1}}>+</span>
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
           )
-        })}
+        })()}
       </div>
       {/* Quick stats */}
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:14}}>
@@ -2043,6 +2086,8 @@ function AdminBookings(){
   const [form,setForm]=useState({name:'',phone:'',facebook_page:'',service:'',date:'',time:'',notes:''})
   const [buyForm,setBuyForm]=useState({service:'',amount:'',type:'once',monthly:'',total:'',installments:'',notes:''})
   const [saving,setSaving]=useState(false)
+  const [weekView,setWeekView]=useState(false)
+  const [expandedWeek,setExpandedWeek]=useState(null)
   useEffect(()=>{load()},[])
   async function load(){
     setLoading(true)
@@ -2083,36 +2128,107 @@ function AdminBookings(){
   const archived=bookings.filter(b=>b.archived)
   const SC={pending:{label:'Pendiente',color:'#e67e22',bg:'rgba(230,126,34,0.1)'},confirmed:{label:'Confirmada',color:'#2d8a60',bg:'rgba(45,138,96,0.1)'},cancelled:{label:'Cancelada',color:'#c0392b',bg:'rgba(192,57,43,0.1)'},bought:{label:'Compró',color:gold,bg:'rgba(184,151,90,0.12)'},later:{label:'Dijo Luego',color:'#8e44ad',bg:'rgba(142,68,173,0.1)'}}
   const inp2={width:'100%',boxSizing:'border-box',height:44,borderRadius:10,border:'1px solid rgba(14,14,12,0.12)',padding:'0 12px',fontSize:14,fontFamily:ff,background:'#fff',outline:'none',marginBottom:0}
+  const glCard2={background:'rgba(255,255,255,0.7)',backdropFilter:'blur(20px) saturate(180%)',WebkitBackdropFilter:'blur(20px) saturate(180%)',border:'1px solid rgba(255,255,255,0.55)',boxShadow:'0 4px 20px rgba(0,0,0,0.07),inset 0 1px 0 rgba(255,255,255,0.85)',borderRadius:18}
+  function BookingCard({b}){
+    const st=SC[b.status]||SC.pending
+    return(
+      <div style={{...glCard2,padding:16,marginBottom:10}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+          <span style={{fontSize:10,fontWeight:700,padding:'3px 10px',borderRadius:99,background:st.bg,color:st.color,textTransform:'uppercase',letterSpacing:'0.08em'}}>{st.label}</span>
+          {b.facebook_page&&<span style={{fontSize:11,color:'#1877f2'}}>📘 {b.facebook_page}</span>}
+        </div>
+        <p style={{fontSize:16,fontWeight:600,color:ink}}>{b.name}</p>
+        <p style={{fontSize:13,color:gray,marginTop:2}}>{b.service||'Consulta'}</p>
+        <p style={{fontSize:12,color:gray,marginTop:4}}>📅 {b.date} · 🕐 {b.time}</p>
+        {b.notes&&<p style={{fontSize:11,color:gray,marginTop:6,fontStyle:'italic'}}>{b.notes}</p>}
+        <div style={{display:'flex',gap:7,marginTop:12,flexWrap:'wrap'}}>
+          {b.status!=='confirmed'&&<button onClick={()=>doConfirm(b)} style={{flex:1,minWidth:90,padding:'8px',background:'none',color:'#2d8a60',border:'1.5px solid #2d8a60',borderRadius:10,fontSize:12,fontWeight:600,fontFamily:ff,cursor:'pointer',touchAction:'manipulation'}}>✓ Confirmar</button>}
+          <button onClick={()=>setBuyModal(b)} style={{flex:1,minWidth:70,padding:'8px',background:'none',color:gold,border:'1.5px solid '+gold,borderRadius:10,fontSize:12,fontWeight:600,fontFamily:ff,cursor:'pointer',touchAction:'manipulation'}}>💰 Compró</button>
+          <button onClick={()=>updateStatus(b.id,'later')} style={{padding:'8px 12px',background:'none',color:'#8e44ad',border:'1.5px solid #8e44ad',borderRadius:10,fontSize:12,fontFamily:ff,cursor:'pointer',touchAction:'manipulation'}}>Dijo Luego</button>
+          <button onClick={()=>updateStatus(b.id,'cancelled')} style={{padding:'8px 12px',background:'none',color:'#c0392b',border:'1.5px solid #c0392b',borderRadius:10,fontSize:12,fontFamily:ff,cursor:'pointer',touchAction:'manipulation'}}>Cancelar</button>
+        </div>
+      </div>
+    )
+  }
+  const now2=new Date()
+  // build week buckets for week view
+  const weekBuckets=[1,2,3,4].map(w=>{
+    const wStart=getMonthWeekStart(w,now2)
+    const days=wStart?getWeekDays(wStart):[]
+    const wBookings=active.filter(b=>{
+      const d=new Date(b.date+'T12:00:00')
+      return d.getMonth()===now2.getMonth()&&d.getFullYear()===now2.getFullYear()&&getMonthWeekNum(d)===w
+    })
+    const wEnd=wStart?new Date(wStart.getTime()+6*86400000):null
+    return{w,wStart,wEnd,days,bookings:wBookings}
+  }).filter(b=>b.wStart)
   return(
     <div style={{padding:'20px 16px 32px',fontFamily:ff}}>
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
         <h1 style={{fontFamily:ffS,fontSize:26,fontWeight:300,color:ink}}>Bookings</h1>
-        <button onClick={()=>setShowNew(true)} style={{background:ink,color:cream,border:'none',borderRadius:99,padding:'8px 18px',fontSize:13,fontWeight:600,fontFamily:ff,cursor:'pointer'}}>+ Nueva</button>
+        <button onClick={()=>setShowNew(true)} style={{background:ink,color:cream,border:'none',borderRadius:99,padding:'8px 18px',fontSize:13,fontWeight:600,fontFamily:ff,cursor:'pointer',touchAction:'manipulation'}}>+ Nueva</button>
+      </div>
+      {/* View toggle */}
+      <div style={{display:'flex',gap:6,marginBottom:16,background:'rgba(14,14,12,0.05)',borderRadius:12,padding:4}}>
+        {[{id:false,label:'Lista'},{id:true,label:'Semanas'}].map(v=>(
+          <button key={String(v.id)} onClick={()=>setWeekView(v.id)} style={{flex:1,padding:'8px',border:'none',borderRadius:9,background:weekView===v.id?'#fff':'none',fontFamily:ff,fontSize:13,fontWeight:weekView===v.id?600:400,color:weekView===v.id?ink:gray,cursor:'pointer',boxShadow:weekView===v.id?'0 1px 4px rgba(0,0,0,0.08)':'none',touchAction:'manipulation'}}>{v.label}</button>
+        ))}
       </div>
       {loading&&<p style={{color:gray,textAlign:'center',padding:'40px 0',fontSize:13}}>Cargando...</p>}
-      {!loading&&active.length===0&&<div style={{textAlign:'center',padding:'40px 0',color:gray}}><p style={{fontSize:15}}>No hay citas activas</p><p style={{fontSize:12,marginTop:4}}>Toca "+ Nueva" para crear una</p></div>}
-      {active.map(b=>{
-        const st=SC[b.status]||SC.pending
-        return(
-          <div key={b.id} style={{background:'rgba(255,255,255,0.7)',backdropFilter:'blur(20px) saturate(180%)',WebkitBackdropFilter:'blur(20px) saturate(180%)',border:'1px solid rgba(255,255,255,0.55)',boxShadow:'0 4px 20px rgba(0,0,0,0.07),inset 0 1px 0 rgba(255,255,255,0.85)',borderRadius:18,padding:16,marginBottom:12}}>
-            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
-              <span style={{fontSize:10,fontWeight:700,padding:'3px 10px',borderRadius:99,background:st.bg,color:st.color,textTransform:'uppercase',letterSpacing:'0.08em'}}>{st.label}</span>
-              {b.facebook_page&&<span style={{fontSize:11,color:'#1877f2'}}>📘 {b.facebook_page}</span>}
-            </div>
-            <p style={{fontSize:16,fontWeight:600,color:ink}}>{b.name}</p>
-            <p style={{fontSize:13,color:gray,marginTop:2}}>{b.service||'Consulta'}</p>
-            <p style={{fontSize:12,color:gray,marginTop:4}}>📅 {b.date} · 🕐 {b.time}</p>
-            {b.notes&&<p style={{fontSize:11,color:gray,marginTop:6,fontStyle:'italic'}}>{b.notes}</p>}
-            <div style={{display:'flex',gap:7,marginTop:12,flexWrap:'wrap'}}>
-              {b.status!=='confirmed'&&<button onClick={()=>doConfirm(b)} style={{flex:1,minWidth:90,padding:'8px',background:'none',color:'#2d8a60',border:'1.5px solid #2d8a60',borderRadius:10,fontSize:12,fontWeight:600,fontFamily:ff,cursor:'pointer'}}>✓ Confirmar</button>}
-              <button onClick={()=>setBuyModal(b)} style={{flex:1,minWidth:70,padding:'8px',background:'none',color:gold,border:'1.5px solid '+gold,borderRadius:10,fontSize:12,fontWeight:600,fontFamily:ff,cursor:'pointer'}}>💰 Compró</button>
-              <button onClick={()=>updateStatus(b.id,'later')} style={{padding:'8px 12px',background:'none',color:'#8e44ad',border:'1.5px solid #8e44ad',borderRadius:10,fontSize:12,fontFamily:ff,cursor:'pointer'}}>Dijo Luego</button>
-              <button onClick={()=>updateStatus(b.id,'cancelled')} style={{padding:'8px 12px',background:'none',color:'#c0392b',border:'1.5px solid #c0392b',borderRadius:10,fontSize:12,fontFamily:ff,cursor:'pointer'}}>Cancelar</button>
-            </div>
-          </div>
-        )
-      })}
-      {archived.length>0&&<button onClick={()=>setShowArchived(!showArchived)} style={{width:'100%',padding:12,background:'none',border:'1px solid rgba(14,14,12,0.1)',borderRadius:12,color:gray,fontSize:13,fontFamily:ff,cursor:'pointer',marginTop:8}}>{showArchived?'▲':'▼'} Ver Archivo ({archived.length})</button>}
+      {/* ── LISTA VIEW ── */}
+      {!weekView&&(
+        <>
+          {!loading&&active.length===0&&<div style={{textAlign:'center',padding:'40px 0',color:gray}}><p style={{fontSize:15}}>No hay citas activas</p><p style={{fontSize:12,marginTop:4}}>Toca "+ Nueva" para crear una</p></div>}
+          {active.map(b=><BookingCard key={b.id} b={b}/>)}
+        </>
+      )}
+      {/* ── SEMANAS VIEW ── */}
+      {weekView&&(
+        <>
+          {weekBuckets.map(({w,wStart,wEnd,days,bookings:wb})=>{
+            const isExp=expandedWeek===w
+            const isCurrentWeek=w===getMonthWeekNum(now2)
+            return(
+              <div key={w} style={{...glCard2,marginBottom:12,overflow:'hidden'}}>
+                <button onClick={()=>setExpandedWeek(isExp?null:w)} style={{width:'100%',display:'flex',justifyContent:'space-between',alignItems:'center',padding:'14px 16px',background:'none',border:'none',cursor:'pointer',fontFamily:ff,touchAction:'manipulation'}}>
+                  <div style={{display:'flex',alignItems:'center',gap:10}}>
+                    <span style={{fontSize:14,fontWeight:700,color:isCurrentWeek?gold:ink}}>Sem {w}</span>
+                    {isCurrentWeek&&<span style={{fontSize:9,background:gold,color:ink,borderRadius:99,padding:'2px 7px',fontWeight:700}}>ESTA</span>}
+                    <span style={{fontSize:11,color:gray}}>{wStart.toLocaleDateString('es-PR',{day:'numeric',month:'short'})} – {wEnd.toLocaleDateString('es-PR',{day:'numeric',month:'short'})}</span>
+                  </div>
+                  <div style={{display:'flex',alignItems:'center',gap:8}}>
+                    {wb.length>0&&<span style={{fontSize:12,background:'rgba(14,14,12,0.08)',borderRadius:99,padding:'2px 9px',fontWeight:600,color:ink}}>{wb.length}</span>}
+                    <span style={{fontSize:13,color:gray}}>{isExp?'▲':'▼'}</span>
+                  </div>
+                </button>
+                {isExp&&(
+                  <div style={{borderTop:'1px solid rgba(14,14,12,0.06)',padding:'8px 12px 12px'}}>
+                    {days.map(day=>{
+                      const dayB=wb.filter(b=>b.date===day.date)
+                      const isToday=day.date===new Date().toISOString().split('T')[0]
+                      const isWeekend=day.name==='Sábado'||day.name==='Domingo'
+                      if(dayB.length===0&&isWeekend) return null
+                      return(
+                        <div key={day.date} style={{marginBottom:dayB.length?12:0}}>
+                          <div style={{display:'flex',alignItems:'center',gap:6,padding:'6px 4px',marginBottom:dayB.length?6:0}}>
+                            <span style={{fontSize:12,fontWeight:700,color:isToday?gold:isWeekend?gray:ink}}>{day.name}</span>
+                            {isToday&&<span style={{fontSize:9,background:gold,color:ink,borderRadius:99,padding:'1px 6px',fontWeight:700}}>HOY</span>}
+                            <span style={{fontSize:11,color:gray}}>{day.dateObj.toLocaleDateString('es-PR',{day:'numeric',month:'short'})}</span>
+                            {dayB.length===0&&<span style={{fontSize:11,color:gray,opacity:0.5,marginLeft:4}}>sin citas</span>}
+                          </div>
+                          {dayB.map(b=><BookingCard key={b.id} b={b}/>)}
+                        </div>
+                      )
+                    })}
+                    {wb.length===0&&<p style={{textAlign:'center',color:gray,fontSize:13,padding:'12px 0'}}>Sin citas esta semana</p>}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </>
+      )}
+      {archived.length>0&&<button onClick={()=>setShowArchived(!showArchived)} style={{width:'100%',padding:12,background:'none',border:'1px solid rgba(14,14,12,0.1)',borderRadius:12,color:gray,fontSize:13,fontFamily:ff,cursor:'pointer',marginTop:8,touchAction:'manipulation'}}>{showArchived?'▲':'▼'} Ver Archivo ({archived.length})</button>}
       {showArchived&&archived.map(b=>{
         const st=SC[b.status]||SC.pending
         return(
