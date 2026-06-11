@@ -18,7 +18,7 @@ const SERVICES = [
 const WORKS = [
   { name: 'Road Pizza', tag: 'Website · Editable por el dueño', city: 'Canóvanas, PR', screenshotUrl: 'https://www.facebook.com/roadpizzas/', displayUrl: 'facebook.com/roadpizzas', accent: '#c0392b', services: ['Website', 'Lealtad'] },
   { name: 'La Chiva Chinchorreos', tag: 'Web + Recepcionista IA', city: 'Puerto Rico', screenshotUrl: 'https://www.lachivachinchorreospr.com', displayUrl: 'lachivachinchorreospr.com', accent: '#2d8a60', services: ['Web', 'IA'] },
-  { name: 'IM Hair Studio', tag: 'Hair · Nails · Skin', city: 'Carolina, PR', screenshotUrl: 'https://www.instagram.com/im.hairstudio/', displayUrl: 'instagram.com/im.hairstudio', accent: '#b8975a', services: ['Booking', 'CRM', 'Lealtad'] },
+  { name: 'IM Hair Studio', tag: 'Hair · Nails · Skin', city: 'Carolina, PR', screenshotUrl: 'https://imhairstudio.netlify.app/', displayUrl: 'imhairstudio.netlify.app', accent: '#b8975a', services: ['Booking', 'CRM', 'Lealtad'] },
   { name: 'Pon tu negocio aquí', tag: 'El próximo eres tú', city: 'Puerto Rico', cta: true },
 ]
 
@@ -254,11 +254,11 @@ function PhoneMockup({ variant = 'hoy' }) {
             {variant === 'panel' ? 'Lunes, 10 jun' : 'Tienes 4 citas hoy'}
           </p>
         </div>
-        <div className="mx-3 mt-2 grid grid-cols-3 gap-1.5">
-          {[{ k: 'Citas', v: '12' }, { k: 'Ingresos', v: '$840' }, { k: 'Nuevos', v: '3' }].map((m) => (
+        <div className="mx-3 mt-2 grid grid-cols-2 gap-1.5">
+          {[{ k: 'Citas hoy', v: '4' }, { k: 'Clientes', v: '38' }].map((m) => (
             <div key={m.k} className="rounded-lg p-1.5 text-center" style={{ background: 'oklch(0.18 0.012 60 / 0.05)' }}>
               <p className="text-ink/50" style={{ fontSize: 7, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>{m.k}</p>
-              <p className="font-serif text-ink leading-none" style={{ fontSize: 12 }}>{m.v}</p>
+              <p className="text-ink font-semibold leading-none" style={{ fontSize: 13, fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif' }}>{m.v}</p>
             </div>
           ))}
         </div>
