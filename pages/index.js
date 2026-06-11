@@ -16,7 +16,7 @@ const SERVICES = [
 ]
 
 const WORKS = [
-  { name: 'Road Pizza', tag: 'Website · Editable por el dueño', city: 'Canóvanas, PR', screenshotUrl: 'https://www.facebook.com/roadpizzas/', displayUrl: 'facebook.com/roadpizzas', accent: '#c0392b', services: ['Website', 'Lealtad'] },
+  { name: 'Road Pizza', tag: 'Website · Editable por el dueño', city: 'Canóvanas, PR', screenshotUrl: 'https://www.roadpizzapr.com/', displayUrl: 'roadpizzapr.com', accent: '#c0392b', services: ['Website', 'Lealtad'] },
   { name: 'La Chiva Chinchorreos', tag: 'Web + Recepcionista IA', city: 'Puerto Rico', screenshotUrl: 'https://www.lachivachinchorreospr.com', displayUrl: 'lachivachinchorreospr.com', accent: '#2d8a60', services: ['Web', 'IA'] },
   { name: 'IM Hair Studio', tag: 'Hair · Nails · Skin', city: 'Carolina, PR', screenshotUrl: 'https://imhairstudio.netlify.app/', displayUrl: 'imhairstudio.netlify.app', accent: '#b8975a', services: ['Booking', 'CRM', 'Lealtad'] },
   { name: 'Pon tu negocio aquí', tag: 'El próximo eres tú', city: 'Puerto Rico', cta: true },
@@ -316,7 +316,7 @@ function Trust() {
         <div className="glass grid grid-cols-2 gap-px overflow-hidden rounded-2xl md:grid-cols-4">
           {items.map((it) => (
             <div key={it.v} className="p-5 text-center" style={{ background: 'oklch(0.985 0.008 85 / 0.4)' }}>
-              <p className="font-serif text-ink text-2xl md:text-3xl">{it.k}</p>
+              <p className="font-serif text-ink text-2xl md:text-3xl" style={{ fontVariantNumeric: 'lining-nums', fontFeatureSettings: '"lnum" 1' }}>{it.k}</p>
               <p className="mt-1 text-muted-foreground" style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>{it.v}</p>
             </div>
           ))}
@@ -442,7 +442,7 @@ function Booking() {
                       <button type="button" key={d.iso} onClick={() => setDate(d.iso)}
                         className={`flex h-16 w-14 shrink-0 flex-col items-center justify-center rounded-2xl border transition-all ${active ? 'bg-ink text-cream border-ink glow-gold' : 'border-border text-ink'}`}
                         style={!active ? { background: 'oklch(0.985 0.008 85 / 0.6)' } : {}}>
-                        <span className="font-serif text-xl leading-none">{d.label}</span>
+                        <span className="font-serif text-xl leading-none" style={{ fontVariantNumeric: 'lining-nums', fontFeatureSettings: '"lnum" 1' }}>{d.label}</span>
                         <span className={`mt-1 ${active ? 'text-cream/70' : 'text-muted-foreground'}`} style={{ fontSize: 9, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>{d.sub}</span>
                       </button>
                     )
