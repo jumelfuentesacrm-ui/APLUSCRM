@@ -2586,22 +2586,6 @@ export default function Admin({session}){
               <button onClick={()=>setModal('card')} style={{background:black,color:white,border:'none',padding:'0.6rem 1.1rem',fontFamily:ff,fontSize:'0.6rem',letterSpacing:'0.12em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>+ New</button>
             </div>
             <div style={{padding:'0 16px'}}>
-            <input type="text" placeholder="Search client..." value={search} onChange={e=>setSearch(e.target.value)} style={{width:'100%',padding:'0.7rem 1rem',border:'1px solid '+gl,borderRadius:3,fontFamily:ff,fontSize:'0.82rem',outline:'none',marginBottom:'1.25rem',boxSizing:'border-box',background:white}}/>
-            <div style={{display:'flex',flexDirection:'column',gap:'0.75rem'}}>
-                {cards.filter(c=>(c.profiles?.full_name||'').toLowerCase().includes(search.toLowerCase())||(c.profiles?.business_name||'').toLowerCase().includes(search.toLowerCase())).map(card=>{
-                  const cur=card.stamps%5===0&&card.stamps>0?5:card.stamps%5
-                  const cycle=Math.ceil((card.stamps||1)/5)||1
-                  const hasR=card.stamps>0&&card.stamps%5===0
-                  return(<div key={card.id} style={{background:'rgba(248,246,241,0.6)',backdropFilter:'blur(20px) saturate(160%)',borderRadius:14,border:'1px solid rgba(255,255,255,0.7)',boxShadow:'inset 0 1px 0 rgba(255,255,255,0.8),0 8px 32px -8px rgba(28,28,26,0.1)',overflow:'hidden'}}>
-                    <div style={{background:'linear-gradient(135deg,#1a1917,#252320)',padding:'1rem 1.25rem',color:white,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                      <div>
-                        <div style={{fontFamily:ffS,fontSize:'0.9rem',marginBottom:'0.15rem'}}>A<span style={{color:gold,fontStyle:'italic'}}>+</span> CRM</div>
-          {burger&&panel==='cards'&&<>
-            <div style={{padding:'20px 16px 8px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-              <h2 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300}}>Cards</h2>
-              <button onClick={()=>setModal('card')} style={{background:black,color:white,border:'none',padding:'0.6rem 1.1rem',fontFamily:ff,fontSize:'0.6rem',letterSpacing:'0.12em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>+ New</button>
-            </div>
-            <div style={{padding:'0 16px'}}>
               <input type="text" placeholder="Search client..." value={search} onChange={e=>setSearch(e.target.value)} style={{width:'100%',padding:'0.7rem 1rem',border:'1px solid '+gl,borderRadius:3,fontFamily:ff,fontSize:'0.82rem',outline:'none',marginBottom:'1.25rem',boxSizing:'border-box',background:white}}/>
               <div style={{display:'flex',flexDirection:'column',gap:'0.75rem'}}>
                 {cards.filter(c=>(c.profiles?.full_name||'').toLowerCase().includes(search.toLowerCase())||(c.profiles?.business_name||'').toLowerCase().includes(search.toLowerCase())).map(card=>{
