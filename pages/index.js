@@ -16,9 +16,9 @@ const SERVICES = [
 ]
 
 const WORKS = [
-  { name: 'Road Pizza', tag: 'Food Truck · Booking + Lealtad', city: 'Canóvanas, PR', url: 'roadpizzapr.com', accent: '#c0392b', services: ['Booking', 'Lealtad'], letter: 'R' },
-  { name: 'La Chiva Chinchorreos', tag: 'Web + Recepcionista IA', city: 'Puerto Rico', url: 'lachivachinchorreos.com', accent: '#2d8a60', services: ['Web', 'IA'], letter: 'C' },
-  { name: 'IM Hair Studio', tag: 'Hair · Nails · Skin', city: 'Carolina, PR', url: 'imhairstudio.com', accent: '#b8975a', services: ['Booking', 'CRM', 'Lealtad'], letter: 'I' },
+  { name: 'Road Pizza', tag: 'Website · Editable por el dueño', city: 'Canóvanas, PR', screenshotUrl: 'https://www.facebook.com/roadpizzas/', displayUrl: 'facebook.com/roadpizzas', accent: '#c0392b', services: ['Website', 'Lealtad'] },
+  { name: 'La Chiva Chinchorreos', tag: 'Web + Recepcionista IA', city: 'Puerto Rico', screenshotUrl: 'https://www.lachivachinchorreospr.com', displayUrl: 'lachivachinchorreospr.com', accent: '#2d8a60', services: ['Web', 'IA'] },
+  { name: 'IM Hair Studio', tag: 'Hair · Nails · Skin', city: 'Carolina, PR', screenshotUrl: 'https://www.instagram.com/im.hairstudio/', displayUrl: 'instagram.com/im.hairstudio', accent: '#b8975a', services: ['Booking', 'CRM', 'Lealtad'] },
   { name: 'Pon tu negocio aquí', tag: 'El próximo eres tú', city: 'Puerto Rico', cta: true },
 ]
 
@@ -582,36 +582,49 @@ function Showcase() {
 }
 
 function ShowcaseCard({ work: w }) {
+  const [imgErr, setImgErr] = useState(false)
+  const thumb = `https://image.thum.io/get/width/600/crop/450/noanimate/${w.screenshotUrl}`
   return (
     <article className="glass group overflow-hidden rounded-2xl">
       {/* Browser chrome */}
       <div style={{ background: '#1c1c1a', padding: '7px 10px', display: 'flex', alignItems: 'center', gap: 7 }}>
-        <div style={{ display: 'flex', gap: 4 }}>
+        <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
           <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#ff5f57', display: 'block' }} />
           <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#febc2e', display: 'block' }} />
           <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#28c840', display: 'block' }} />
         </div>
         <div style={{ flex: 1, background: 'rgba(255,255,255,0.08)', borderRadius: 5, padding: '3px 8px', fontSize: 9, color: 'rgba(255,255,255,0.45)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {w.url}
+          {w.displayUrl}
         </div>
       </div>
-      {/* Preview */}
-      <div style={{ aspectRatio: '4/3', background: `linear-gradient(135deg, ${w.accent}18, ${w.accent}06)`, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 16, position: 'relative', overflow: 'hidden' }}>
-        {/* Decorative background circles */}
-        <div style={{ position: 'absolute', top: -20, right: -20, width: 80, height: 80, borderRadius: '50%', background: w.accent + '14' }} />
-        <div style={{ position: 'absolute', bottom: -10, left: -10, width: 60, height: 60, borderRadius: '50%', background: w.accent + '10' }} />
-        {/* Logo circle */}
-        <div style={{ width: 52, height: 52, borderRadius: 16, background: w.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 8px 24px ${w.accent}40` }}>
-          <span style={{ fontSize: 22, fontWeight: 700, color: '#fff', fontFamily: 'Georgia, serif' }}>{w.letter}</span>
-        </div>
-        <div style={{ textAlign: 'center' }}>
-          <p style={{ fontSize: 11, fontWeight: 700, color: '#0e0e0c', lineHeight: 1.2 }}>{w.name}</p>
-          <p style={{ fontSize: 9, color: '#6b6b67', marginTop: 2 }}>{w.tag}</p>
-        </div>
-        {/* Services pills */}
-        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: 'center' }}>
+      {/* Screenshot preview */}
+      <div style={{ aspectRatio: '4/3', overflow: 'hidden', position: 'relative', background: `linear-gradient(135deg, ${w.accent}18, ${w.accent}06)` }}>
+        {!imgErr ? (
+          <img
+            src={thumb}
+            alt={w.name}
+            onError={() => setImgErr(true)}
+            style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top', display: 'block', transition: 'transform 0.4s ease' }}
+            className="group-hover:scale-105"
+            loading="lazy"
+          />
+        ) : (
+          /* Fallback if screenshot fails */
+          <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+            <div style={{ width: 48, height: 48, borderRadius: 14, background: w.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 8px 24px ${w.accent}40` }}>
+              <span style={{ fontSize: 20, fontWeight: 700, color: '#fff', fontFamily: 'Georgia, serif' }}>{w.name[0]}</span>
+            </div>
+            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: 'center', padding: '0 12px' }}>
+              {w.services.map(s => (
+                <span key={s} style={{ fontSize: 7, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', background: w.accent + '20', color: w.accent, padding: '2px 6px', borderRadius: 20, border: `1px solid ${w.accent}30` }}>{s}</span>
+              ))}
+            </div>
+          </div>
+        )}
+        {/* Services overlay bottom-left */}
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'linear-gradient(to top, rgba(14,14,12,0.75), transparent)', padding: '20px 10px 8px', display: 'flex', gap: 4, flexWrap: 'wrap' }}>
           {w.services.map(s => (
-            <span key={s} style={{ fontSize: 7, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', background: w.accent + '18', color: w.accent, padding: '2px 6px', borderRadius: 20, border: `1px solid ${w.accent}30` }}>{s}</span>
+            <span key={s} style={{ fontSize: 7, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(8px)', color: '#fff', padding: '2px 7px', borderRadius: 20, border: '1px solid rgba(255,255,255,0.2)' }}>{s}</span>
           ))}
         </div>
       </div>
