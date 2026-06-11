@@ -583,54 +583,48 @@ function Showcase() {
 
 function ShowcaseCard({ work: w }) {
   const [imgErr, setImgErr] = useState(false)
-  const thumb = `https://image.thum.io/get/width/600/crop/450/noanimate/${w.screenshotUrl}`
+  const thumb = `https://image.thum.io/get/width/400/crop/700/noanimate/${w.screenshotUrl}`
   return (
-    <article className="glass group overflow-hidden rounded-2xl">
-      {/* Browser chrome */}
-      <div style={{ background: '#1c1c1a', padding: '7px 10px', display: 'flex', alignItems: 'center', gap: 7 }}>
-        <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-          <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#ff5f57', display: 'block' }} />
-          <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#febc2e', display: 'block' }} />
-          <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#28c840', display: 'block' }} />
-        </div>
-        <div style={{ flex: 1, background: 'rgba(255,255,255,0.08)', borderRadius: 5, padding: '3px 8px', fontSize: 9, color: 'rgba(255,255,255,0.45)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {w.displayUrl}
-        </div>
-      </div>
-      {/* Screenshot preview */}
-      <div style={{ aspectRatio: '4/3', overflow: 'hidden', position: 'relative', background: `linear-gradient(135deg, ${w.accent}18, ${w.accent}06)` }}>
+    <article className="glass group overflow-hidden rounded-2xl" style={{ display: 'flex', flexDirection: 'column' }}>
+      {/* Tall portrait screenshot — phone-like */}
+      <div style={{ aspectRatio: '9/16', overflow: 'hidden', position: 'relative', background: `linear-gradient(135deg, ${w.accent}18, ${w.accent}06)`, borderRadius: '14px 14px 0 0' }}>
         {!imgErr ? (
           <img
             src={thumb}
             alt={w.name}
             onError={() => setImgErr(true)}
-            style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top', display: 'block', transition: 'transform 0.4s ease' }}
+            style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center', display: 'block', transition: 'transform 0.5s ease' }}
             className="group-hover:scale-105"
             loading="lazy"
           />
         ) : (
-          /* Fallback if screenshot fails */
-          <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
-            <div style={{ width: 48, height: 48, borderRadius: 14, background: w.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 8px 24px ${w.accent}40` }}>
-              <span style={{ fontSize: 20, fontWeight: 700, color: '#fff', fontFamily: 'Georgia, serif' }}>{w.name[0]}</span>
+          <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+            <div style={{ width: 52, height: 52, borderRadius: 16, background: w.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 8px 24px ${w.accent}40` }}>
+              <span style={{ fontSize: 22, fontWeight: 700, color: '#fff', fontFamily: 'Georgia, serif' }}>{w.name[0]}</span>
             </div>
-            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: 'center', padding: '0 12px' }}>
+            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: 'center', padding: '0 16px' }}>
               {w.services.map(s => (
                 <span key={s} style={{ fontSize: 7, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', background: w.accent + '20', color: w.accent, padding: '2px 6px', borderRadius: 20, border: `1px solid ${w.accent}30` }}>{s}</span>
               ))}
             </div>
           </div>
         )}
-        {/* Services overlay bottom-left */}
-        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'linear-gradient(to top, rgba(14,14,12,0.75), transparent)', padding: '20px 10px 8px', display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+        {/* Services pills overlay */}
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'linear-gradient(to top, rgba(14,14,12,0.7) 0%, transparent 100%)', padding: '24px 10px 10px', display: 'flex', gap: 4, flexWrap: 'wrap' }}>
           {w.services.map(s => (
-            <span key={s} style={{ fontSize: 7, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(8px)', color: '#fff', padding: '2px 7px', borderRadius: 20, border: '1px solid rgba(255,255,255,0.2)' }}>{s}</span>
+            <span key={s} style={{ fontSize: 7, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', background: 'rgba(255,255,255,0.18)', backdropFilter: 'blur(8px)', color: '#fff', padding: '2px 7px', borderRadius: 20, border: '1px solid rgba(255,255,255,0.25)' }}>{s}</span>
           ))}
         </div>
       </div>
-      <div className="px-3 pb-3 pt-2.5">
-        <p className="text-ink font-semibold leading-tight" style={{ fontSize: 13 }}>{w.name}</p>
-        <p className="mt-0.5 flex items-center gap-1 text-muted-foreground" style={{ fontSize: 10 }}>
+      {/* Info — name is a link to the website */}
+      <div style={{ padding: '10px 12px 12px' }}>
+        <a href={w.screenshotUrl} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
+          <p style={{ fontSize: 13, fontWeight: 600, color: '#0e0e0c', lineHeight: 1.2, display: 'flex', alignItems: 'center', gap: 4 }}>
+            {w.name}
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#b8975a" strokeWidth="2.5"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          </p>
+        </a>
+        <p style={{ marginTop: 3, fontSize: 10, color: '#6b6b67', display: 'flex', alignItems: 'center', gap: 3 }}>
           <MapPin className="h-2.5 w-2.5" /> {w.city}
         </p>
       </div>
