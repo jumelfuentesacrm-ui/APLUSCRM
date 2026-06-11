@@ -5,6 +5,13 @@ import { supabase } from '../lib/supabase'
 const gold='#b8975a',black='#0e0e0c',white='#f8f6f1',gray='#6b6b67',gl='#e8e5de',ink='#1c1c1a'
 const ff='Inter,ui-sans-serif,system-ui,sans-serif',ffS='Cormorant Garamond,serif'
 
+const STATUS_COLORS_BOOKINGS = {
+  pending:   { label:'Pending',   color:'#e67e22', bg:'rgba(230,126,34,0.1)' },
+  confirmed: { label:'Confirmed', color:'#2d8a60', bg:'rgba(45,138,96,0.1)' },
+  cancelled: { label:'Cancelled', color:'#c0392b', bg:'rgba(192,57,43,0.1)' },
+  completed: { label:'Completed', color:'#b8975a', bg:'rgba(184,151,90,0.12)' },
+}
+
 function getStatus(card) {
   if (!card) return { label:'New', color:'#8e44ad', bg:'rgba(142,68,173,0.1)' }
   const stamps = card.stamps || 0
@@ -44,46 +51,96 @@ function getNotifications(cards) {
   return alerts.sort((a,b) => b.days - a.days)
 }
 
-function DashboardPanel({ cards, sales, onSelectClient }) {
-  const totalClients=cards.length
-  const sorted=[...cards].sort((a,b)=>(b.stamps||0)-(a.stamps||0))
-  const top5=sorted.slice(0,5)
-  const maxStamps=top5[0]?.stamps||1
-  const clientDonut=[
-    {label:'VIP',value:cards.filter(c=>getStatus(c).label==='VIP').length,color:'#b8975a'},
-    {label:'Regular',value:cards.filter(c=>getStatus(c).label==='Regular').length,color:'#2d8a60'},
-    {label:'Active',value:cards.filter(c=>getStatus(c).label==='Active').length,color:'#3498db'},
-    {label:'New',value:cards.filter(c=>getStatus(c).label==='New').length,color:'#8e44ad'},
-    {label:'Grace',value:cards.filter(c=>getStatus(c).label==='Grace').length,color:'#e67e22'},
-    {label:'Late Fee',value:cards.filter(c=>getStatus(c).label==='Late Fee').length,color:'#e74c3c'},
-    {label:'Cancelled',value:cards.filter(c=>getStatus(c).label==='Cancelled').length,color:'#c0392b'},
-  ].filter(d=>d.value>0)
-  function makeSegs(data){const total=data.reduce((a,d)=>a+d.value,0)||1;let cum=0;return data.map(d=>{const s=cum;cum+=d.value/total;return{...d,start:s,pct:d.value/total}})}
-  function polar(pct){const a=pct*2*Math.PI-Math.PI/2;return{x:50+35*Math.cos(a),y:50+35*Math.sin(a)}}
-  function arc(start,pct){if(pct>=1)return'M 50 15 A 35 35 0 1 1 49.99 15 Z';const s=polar(start),e=polar(start+pct),lg=pct>0.5?1:0;return`M 50 50 L ${s.x} ${s.y} A 35 35 0 ${lg} 1 ${e.x} ${e.y} Z`}
-  function Donut({segs,center}){return(<svg viewBox="0 0 100 100" style={{width:100,height:100,flexShrink:0}}>{segs.map((d,i)=><path key={i} d={arc(d.start,d.pct)} fill={d.color} opacity={0.85}/>)}<circle cx="50" cy="50" r="22" fill={white}/>{center}</svg>)}
-  const clientSegs=makeSegs(clientDonut)
-  return(
-    <div>
-      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1rem',marginBottom:'1.5rem'}} className="donut-grid">
-        <div style={{background:white,borderRadius:10,padding:'1.5rem',border:'1px solid rgba(14,14,12,0.07)'}}>
-          <div style={{fontFamily:ffS,fontSize:'1.1rem',fontWeight:300,marginBottom:'1.25rem'}}>Clients</div>
-          <div style={{display:'flex',alignItems:'center',gap:'1rem'}}>
-            <Donut segs={clientSegs} center={<text x="50" y="54" textAnchor="middle" style={{fontSize:14,fontFamily:ffS,fill:black}}>{totalClients}</text>}/>
-            <div style={{flex:1}}>{clientDonut.map(d=>(<div key={d.label} style={{display:'flex',alignItems:'center',gap:'0.4rem',marginBottom:'0.4rem'}}><div style={{width:7,height:7,borderRadius:'50%',background:d.color,flexShrink:0}}/><span style={{fontSize:'0.62rem',color:gray,flex:1}}>{d.label}</span><span style={{fontSize:'0.62rem',fontWeight:500,color:black}}>{d.value}</span></div>))}</div>
-          </div>
+function DashboardPanel({ cards, sales, users, session, onSelectClient, onPunch, onGoCards }) {
+  const [bookings, setBookings] = useState([])
+  useEffect(() => {
+    const today = new Date().toISOString().slice(0,10)
+    const next30 = new Date(); next30.setDate(next30.getDate()+30)
+    fetch(`/api/admin/bookings?from=${today}&to=${next30.toISOString().slice(0,10)}`)
+      .then(r=>r.json()).then(d=>setBookings(Array.isArray(d)?d:[])).catch(()=>{})
+  },[])
+
+  const adminName = session?.user?.email?.split('@')[0] || 'Admin'
+  const firstName = adminName.charAt(0).toUpperCase() + adminName.slice(1)
+
+  const today = new Date().toISOString().slice(0,10)
+  const todayBookings = bookings.filter(b=>b.date===today)
+
+  const now = new Date()
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
+  const monthRevenue = sales.filter(s=>s.sale_date>=monthStart).reduce((sum,s)=>sum+(parseFloat(s.amount)||0),0)
+  const newClientsMonth = users.filter(u=>u.created_at&&u.created_at>=monthStart).length
+
+  const upcoming = bookings.filter(b=>b.status!=='cancelled').slice(0,5)
+
+  const hour = new Date().getHours()
+  const greeting = hour < 12 ? 'Buenos días' : hour < 18 ? 'Buenas tardes' : 'Buenas noches'
+
+  const glassCard = {background:'rgba(248,246,241,0.65)',backdropFilter:'blur(20px) saturate(160%)',borderRadius:16,border:'1px solid rgba(255,255,255,0.75)',boxShadow:'inset 0 1px 0 rgba(255,255,255,0.85),0 4px 20px -4px rgba(28,28,26,0.08)'}
+
+  return (
+    <div style={{maxWidth:520}}>
+      {/* Greeting */}
+      <div style={{marginBottom:'1.25rem'}}>
+        <div style={{fontSize:'0.62rem',fontWeight:700,letterSpacing:'0.15em',textTransform:'uppercase',color:gold,marginBottom:'0.2rem'}}>{greeting.toUpperCase()}, {firstName.toUpperCase()}</div>
+        <div style={{fontFamily:ffS,fontSize:'1.75rem',fontWeight:500,color:black,lineHeight:1.1}}>
+          Tienes {todayBookings.length} cita{todayBookings.length!==1?'s':''} hoy
         </div>
-        <FinancialCard sales={sales}/>
       </div>
-      <div style={{background:white,borderRadius:10,padding:'1.5rem',border:'1px solid rgba(14,14,12,0.07)',marginBottom:'1.5rem'}}>
-        <div style={{fontFamily:ffS,fontSize:'1.1rem',fontWeight:300,marginBottom:'1.25rem'}}>Top Clients</div>
-        {top5.map((card,i)=>(<div key={card.id} onClick={()=>onSelectClient(card)} style={{display:'flex',alignItems:'center',gap:'0.6rem',marginBottom:'0.75rem',cursor:'pointer'}}><div style={{width:18,height:18,borderRadius:'50%',background:i===0?gold:'rgba(14,14,12,0.06)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'0.58rem',fontWeight:600,color:i===0?black:gray,flexShrink:0}}>{i+1}</div><div style={{flex:1,minWidth:0}}><div style={{fontSize:'0.72rem',color:black,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{card.profiles?.business_name||card.profiles?.full_name}</div><div style={{height:3,background:'rgba(14,14,12,0.06)',borderRadius:2,marginTop:'0.25rem'}}><div style={{height:'100%',width:((card.stamps||0)/maxStamps*100)+'%',background:i===0?gold:'rgba(14,14,12,0.15)',borderRadius:2}}/></div></div><div style={{fontSize:'0.65rem',color:gray,flexShrink:0}}>{card.stamps} stamps</div></div>))}
-        {top5.length===0&&<div style={{fontSize:'0.82rem',color:gray,textAlign:'center',padding:'1rem 0'}}>No clients yet.</div>}
+
+      {/* Stats */}
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'0.6rem',marginBottom:'1rem'}}>
+        {[
+          {k:'Citas', v: todayBookings.length||bookings.length},
+          {k:'Ingresos', v:'$'+Math.round(monthRevenue).toLocaleString()},
+          {k:'Nuevos', v: newClientsMonth||cards.length},
+        ].map(m=>(
+          <div key={m.k} style={{...glassCard,padding:'0.85rem',textAlign:'center'}}>
+            <div style={{fontSize:'0.52rem',fontWeight:700,letterSpacing:'0.12em',textTransform:'uppercase',color:gray,marginBottom:'0.3rem'}}>{m.k}</div>
+            <div style={{fontFamily:ffS,fontSize:'1.4rem',fontWeight:500,color:black,lineHeight:1}}>{m.v}</div>
+          </div>
+        ))}
       </div>
-      <div style={{background:'rgba(248,246,241,0.6)',backdropFilter:'blur(20px) saturate(160%)',borderRadius:14,border:'1px solid rgba(255,255,255,0.7)',boxShadow:'inset 0 1px 0 rgba(255,255,255,0.8),0 8px 32px -8px rgba(28,28,26,0.1)',overflow:'hidden'}}>
-        <div style={{padding:'1rem 1.25rem',borderBottom:'1px solid rgba(14,14,12,0.06)',fontFamily:ffS,fontSize:'1.1rem',fontWeight:300}}>All Clients</div>
-        {sorted.map(card=>{const status=getStatus(card);const cur=card.stamps%5===0&&card.stamps>0?5:card.stamps%5;return(<div key={card.id} onClick={()=>onSelectClient(card)} style={{display:'flex',alignItems:'center',gap:'0.75rem',padding:'0.85rem 1.25rem',borderBottom:'1px solid rgba(14,14,12,0.04)',cursor:'pointer'}}><div style={{flex:1,minWidth:0}}><div style={{fontSize:'0.78rem',color:black,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{card.profiles?.business_name||card.profiles?.full_name}</div><div style={{fontSize:'0.62rem',color:gray,marginTop:'0.1rem'}}>#{card.card_number}</div></div><div style={{display:'flex',gap:2,flexShrink:0}}>{Array.from({length:5},(_,j)=><div key={j} style={{width:7,height:7,borderRadius:'50%',background:j<cur?gold:'rgba(14,14,12,0.08)'}}/>)}</div><span style={{fontSize:'0.56rem',padding:'0.18rem 0.6rem',borderRadius:20,background:status.bg,color:status.color,whiteSpace:'nowrap',flexShrink:0}}>{status.label}</span><div style={{color:gray,fontSize:'0.75rem'}}>›</div></div>);})}
-        {sorted.length===0&&<div style={{padding:'2rem',textAlign:'center',color:gray,fontSize:'0.82rem'}}>No clients yet.</div>}
+
+      {/* Sistema de Lealtad card */}
+      <div style={{background:'linear-gradient(135deg,rgba(184,151,90,0.22),rgba(184,151,90,0.08))',backdropFilter:'blur(20px)',borderRadius:16,border:'1px solid rgba(184,151,90,0.3)',padding:'1rem',marginBottom:'1rem',boxShadow:'inset 0 1px 0 rgba(255,255,255,0.5),0 8px 28px -8px rgba(184,151,90,0.3)'}}>
+        <div style={{display:'flex',alignItems:'center',gap:'0.6rem',marginBottom:'0.5rem'}}>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'center',width:28,height:28,borderRadius:8,background:black}}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={gold} strokeWidth="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+          </div>
+          <div style={{fontSize:'0.6rem',fontWeight:700,letterSpacing:'0.12em',textTransform:'uppercase',color:'rgba(28,28,26,0.6)',flex:1}}>Sistema de Lealtad</div>
+          <span style={{fontSize:'0.5rem',fontWeight:700,letterSpacing:'0.1em',textTransform:'uppercase',background:black,color:gold,padding:'0.2rem 0.55rem',borderRadius:20}}>Activo</span>
+        </div>
+        <div style={{fontSize:'0.82rem',color:black,fontWeight:500,marginBottom:'0.75rem'}}>Sella la tarjeta de tu cliente</div>
+        <div style={{display:'flex',gap:'0.5rem'}}>
+          <button onClick={onPunch} style={{flex:1,background:black,color:white,border:'none',borderRadius:10,padding:'0.65rem',fontFamily:ff,fontSize:'0.68rem',fontWeight:600,cursor:'pointer',letterSpacing:'0.05em',transition:'all 0.15s'}}>Añadir +</button>
+          <button onClick={onGoCards} style={{flex:1,background:'rgba(28,28,26,0.07)',color:black,border:'1px solid rgba(28,28,26,0.1)',borderRadius:10,padding:'0.65rem',fontFamily:ff,fontSize:'0.68rem',fontWeight:600,cursor:'pointer',letterSpacing:'0.05em',transition:'all 0.15s'}}>Borrar</button>
+        </div>
+      </div>
+
+      {/* Próximas citas */}
+      <div style={{...glassCard,overflow:'hidden'}}>
+        <div style={{padding:'0.85rem 1rem',borderBottom:'1px solid rgba(28,28,26,0.06)'}}>
+          <div style={{fontSize:'0.58rem',fontWeight:700,letterSpacing:'0.15em',textTransform:'uppercase',color:gray}}>Próximas Citas</div>
+        </div>
+        {upcoming.length===0&&<div style={{padding:'1.5rem',textAlign:'center',color:gray,fontSize:'0.78rem'}}>No hay citas próximas.</div>}
+        {upcoming.map((b,i)=>{
+          const isToday=b.date===today
+          const st=STATUS_COLORS_BOOKINGS[b.status]||STATUS_COLORS_BOOKINGS.pending
+          return(
+            <div key={b.id||i} style={{display:'flex',alignItems:'center',gap:'0.75rem',padding:'0.8rem 1rem',borderBottom:i<upcoming.length-1?'1px solid rgba(28,28,26,0.05)':'none'}}>
+              <div style={{width:42,height:42,borderRadius:10,background:isToday?gold:'rgba(28,28,26,0.07)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                <div style={{fontSize:'0.6rem',fontWeight:700,lineHeight:1,color:isToday?black:gray,textTransform:'uppercase'}}>{b.time?.split(':')[0]}</div>
+                <div style={{fontSize:'0.5rem',fontWeight:600,color:isToday?'rgba(0,0,0,0.6)':gray,lineHeight:1}}>{b.time?.includes('AM')?'AM':'PM'}</div>
+              </div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:'0.82rem',fontWeight:600,color:black,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{b.name}</div>
+                <div style={{fontSize:'0.65rem',color:gray,marginTop:'0.1rem',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{b.business}</div>
+              </div>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={gold} strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+          )
+        })}
       </div>
     </div>
   )
@@ -1901,14 +1958,18 @@ export default function Admin({session}){
         @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap');
         *,*::before,*::after{box-sizing:border-box;}
         html,body{background:#f8f6f1;overscroll-behavior:none;-webkit-font-smoothing:antialiased;}
+        @supports(padding-top:env(safe-area-inset-top)){
+          .safe-header{padding-top:env(safe-area-inset-top)!important;height:calc(52px + env(safe-area-inset-top))!important;}
+          .safe-content{padding-top:calc(52px + env(safe-area-inset-top))!important;}
+        }
         @media(max-width:700px){
           .admin-sidebar{display:none!important;}
-          .admin-main{margin-left:0!important;padding:1rem!important;padding-bottom:80px!important;}
+          .admin-main{margin-left:0!important;padding:1rem!important;padding-bottom:calc(72px + env(safe-area-inset-bottom,0px))!important;}
           .donut-grid{grid-template-columns:1fr!important;}
           .punch-row{grid-template-columns:1fr!important;}
           .mobile-nav{display:flex!important;}
         }
-        .mobile-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:rgba(28,28,26,0.82);backdrop-filter:blur(28px) saturate(200%);z-index:200;border-top:1px solid rgba(184,151,90,0.18);padding:0 8px;padding-bottom:env(safe-area-inset-bottom,0px);height:64px;align-items:center;}
+        .mobile-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:rgba(28,28,26,0.88);backdrop-filter:blur(28px) saturate(200%);z-index:200;border-top:1px solid rgba(184,151,90,0.18);padding:0 8px;padding-bottom:env(safe-area-inset-bottom,0px);height:calc(60px + env(safe-area-inset-bottom,0px));align-items:flex-start;padding-top:4px;}
         .mnav-btn{flex:1;padding:0;background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;height:100%;position:relative;transition:all 0.2s;}
         .mnav-btn .mnav-icon{width:22px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:8px;transition:all 0.2s;}
         .mnav-btn .mnav-label{font-family:${ff};font-size:10px;font-weight:500;letter-spacing:0.02em;color:rgba(255,255,255,0.35);transition:color 0.2s;}
@@ -1940,14 +2001,14 @@ export default function Admin({session}){
       `}</style>
       <div className="blob blob-1"/><div className="blob blob-2"/><div className="blob blob-3"/>
       <div style={{background:'transparent',minHeight:'100vh',fontFamily:ff,paddingBottom:70,position:'relative',zIndex:1}}>
-        <div className="glass-dark-nav" style={{position:'fixed',top:0,left:0,right:0,zIndex:100,height:52,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 1.25rem'}}>
-          <div style={{fontFamily:ffS,fontSize:'1.2rem',fontWeight:500,color:white,letterSpacing:'-0.01em'}}>A<span style={{color:gold,fontStyle:'italic'}}>+</span> CRM <span style={{fontSize:'0.46rem',letterSpacing:'0.18em',textTransform:'uppercase',color:'rgba(255,255,255,0.25)',marginLeft:'0.5rem',fontFamily:ff,fontWeight:400}}>Admin</span></div>
+        <div className="glass-dark-nav safe-header" style={{position:'fixed',top:0,left:0,right:0,zIndex:100,height:52,display:'flex',alignItems:'flex-end',justifyContent:'space-between',paddingLeft:'1.25rem',paddingRight:'1.25rem',paddingBottom:'0.6rem'}}>
+          <div style={{fontFamily:ffS,fontSize:'1.2rem',fontWeight:500,color:white,letterSpacing:'-0.01em',lineHeight:1}}>A<span style={{color:gold,fontStyle:'italic'}}>+</span> CRM <span style={{fontSize:'0.46rem',letterSpacing:'0.18em',textTransform:'uppercase',color:'rgba(255,255,255,0.25)',marginLeft:'0.5rem',fontFamily:ff,fontWeight:400}}>Admin</span></div>
           <div style={{display:'flex',alignItems:'center',gap:'0.5rem'}}>
-            <button onClick={subscribeToPush} title="Enable notifications" style={{background:'rgba(184,151,90,0.12)',border:'1px solid rgba(184,151,90,0.25)',color:'rgba(255,255,255,0.6)',padding:'0.28rem 0.75rem',fontSize:'0.52rem',cursor:'pointer',borderRadius:20,fontFamily:ff,letterSpacing:'0.1em',textTransform:'uppercase',transition:'all 0.15s'}}>Notis</button>
-            <button onClick={signOut} style={{background:'none',border:'1px solid rgba(255,255,255,0.1)',color:'rgba(255,255,255,0.38)',padding:'0.28rem 0.75rem',fontSize:'0.52rem',letterSpacing:'0.1em',textTransform:'uppercase',cursor:'pointer',borderRadius:20,fontFamily:ff,transition:'all 0.15s'}}>Sign Out</button>
+            <button onClick={subscribeToPush} title="Enable notifications" style={{background:'rgba(184,151,90,0.12)',border:'1px solid rgba(184,151,90,0.25)',color:'rgba(255,255,255,0.6)',padding:'0.28rem 0.75rem',fontSize:'0.52rem',cursor:'pointer',borderRadius:20,fontFamily:ff,letterSpacing:'0.1em',textTransform:'uppercase',transition:'all 0.15s',lineHeight:1}}>Notis</button>
+            <button onClick={signOut} style={{background:'none',border:'1px solid rgba(255,255,255,0.1)',color:'rgba(255,255,255,0.38)',padding:'0.28rem 0.75rem',fontSize:'0.52rem',letterSpacing:'0.1em',textTransform:'uppercase',cursor:'pointer',borderRadius:20,fontFamily:ff,transition:'all 0.15s',lineHeight:1}}>Sign Out</button>
           </div>
         </div>
-        <div style={{display:'flex',paddingTop:52,minHeight:'100vh'}}>
+        <div className="safe-content" style={{display:'flex',paddingTop:52,minHeight:'100vh'}}>
           {/* SIDEBAR */}
           <div className="admin-sidebar glass-sidebar" style={{width:210,flexShrink:0,position:'fixed',top:52,left:0,bottom:0,padding:'1.5rem 0',overflowY:'auto'}}>
             <button onClick={()=>setPanel('notifications')} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0.82rem 1.5rem',fontSize:'0.72rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel==='notifications'?gold:'rgba(255,255,255,0.95)',cursor:'pointer',background:'none',border:'none',borderLeft:panel==='notifications'?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>
@@ -1975,7 +2036,7 @@ export default function Admin({session}){
           {/* MAIN */}
           <div className="admin-main" style={{marginLeft:210,flex:1,padding:'1.75rem',maxWidth:980}}>
             <div key={panel} className="panel-animate">
-            {panel==='dashboard'&&<DashboardPanel cards={cards} sales={sales} onSelectClient={(card)=>{setSelectedClient(card);setPanel('client')}}/>}
+            {panel==='dashboard'&&<DashboardPanel cards={cards} sales={sales} users={users||[]} session={session} onSelectClient={(card)=>{setSelectedClient(card);setPanel('client')}} onPunch={()=>setPanel('punch')} onGoCards={()=>setPanel('cards')}/>}
             {panel==='client'&&selectedClient&&<ClientProfile card={selectedClient} onBack={()=>{setSelectedClient(null);setPanel('dashboard')}}/>}
             {panel==='notifications'&&<NotificationsPanel cards={cards} users={users}/>}
             {panel==='bookings'&&<BookingsPanel/>}
