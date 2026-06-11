@@ -1906,9 +1906,9 @@ function AdminDashboard({sales,bookings,session}){
   const greeting=hour<12?'Buenos días':hour<18?'Buenas tardes':'Buenas noches'
   const pct=Math.min((monthTotal/MONTHLY_GOAL)*100,100)
   return(
-    <div style={{padding:'20px 16px 32px',fontFamily:ff}}>
+    <div style={{padding:'12px 16px 32px',fontFamily:ff}}>
       <p style={{fontSize:13,color:gray}}>{greeting},</p>
-      <h1 style={{fontFamily:ffS,fontSize:28,fontWeight:300,color:ink,marginTop:2,marginBottom:24}}>{adminName}</h1>
+      <h1 style={{fontFamily:ffS,fontSize:28,fontWeight:300,color:ink,marginTop:2,marginBottom:20}}>{adminName}</h1>
       {/* Monthly goal card */}
       <div style={{background:ink,borderRadius:20,padding:'22px 20px',marginBottom:14,color:cream}}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
@@ -2512,7 +2512,8 @@ export default function Admin({session}){
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap');
         *,*::before,*::after{box-sizing:border-box;}
-        html,body{background:#f8f6f1;overscroll-behavior:none;-webkit-font-smoothing:antialiased;}
+        html,body{background:#f8f6f1;overscroll-behavior:none;-webkit-font-smoothing:antialiased;touch-action:manipulation;}
+        button,a,input,select,textarea{touch-action:manipulation;}
         @supports(padding-top:env(safe-area-inset-top)){
           .safe-header{padding-top:env(safe-area-inset-top)!important;height:calc(52px + env(safe-area-inset-top))!important;}
           .safe-content{padding-top:calc(52px + env(safe-area-inset-top))!important;}
@@ -2561,7 +2562,7 @@ export default function Admin({session}){
       </header>
 
       {/* ── MAIN CONTENT ── */}
-      <div style={{paddingTop:'calc(52px + env(safe-area-inset-top,0px))',paddingBottom:'calc(64px + env(safe-area-inset-bottom,0px))',minHeight:'100vh',background:'#f8f6f1'}}>
+      <div style={{paddingTop:'calc(52px + env(safe-area-inset-top,0px))',paddingBottom:'calc(64px + env(safe-area-inset-bottom,0px))',minHeight:'100vh',background:'#f8f6f1',WebkitOverflowScrolling:'touch',overflowY:'auto'}}>
         <div key={burger?panel:tab} className="panel-animate">
           {/* PRIMARY TABS */}
           {!burger&&tab==='dashboard'&&<AdminDashboard sales={sales} bookings={adminBookings} session={session}/>}
