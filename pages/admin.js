@@ -1888,14 +1888,18 @@ function scheduleLocalNotif(title,body,dateObj){
 }
 
 // ─── ADMIN DASHBOARD ─────────────────────────────────────────────────────────
-function AdminDashboard({sales,bookings,session}){
+function AdminDashboard({sales,bookings,session,users,onSaleAdded}){
+  const [addIncome,setAddIncome]=React.useState(null) // {date:'YYYY-MM-DD'}
+  const [incomeForm,setIncomeForm]=React.useState({client_id:'',service:'',amount:'',notes:''})
+  const [incomeSaving,setIncomeSaving]=React.useState(false)
   const now=new Date()
   const monthStr=now.toISOString().slice(0,7)
   const monthSales=sales.filter(s=>s.sale_date?.startsWith(monthStr)&&s.status==='paid')
-  const monthTotal=monthSales.reduce((s,x)=>s+(x.amount||0),0)
+  const monthTotal=monthSales.reduce((s,x)=>s+(parseFloat(x.amount)||0),0)
   const {start:ws,end:we}=getCurrentWeekRange()
+  const weekDays=getWeekDays(ws)
   const weekSales=monthSales.filter(s=>{ const d=new Date(s.sale_date); return d>=ws&&d<=we })
-  const weekTotal=weekSales.reduce((s,x)=>s+(x.amount||0),0)
+  const weekTotal=weekSales.reduce((s,x)=>s+(parseFloat(x.amount)||0),0)
   const weekNum=getMonthWeekNum(now)
   const weekGoal=MONTHLY_GOAL/4
   const today=now.toISOString().split('T')[0]
@@ -1905,6 +1909,25 @@ function AdminDashboard({sales,bookings,session}){
   const hour=now.getHours()
   const greeting=hour<12?'Buenos días':hour<18?'Buenas tardes':'Buenas noches'
   const pct=Math.min((monthTotal/MONTHLY_GOAL)*100,100)
+  const glCard={background:'rgba(255,255,255,0.7)',backdropFilter:'blur(20px) saturate(180%)',WebkitBackdropFilter:'blur(20px) saturate(180%)',border:'1px solid rgba(255,255,255,0.55)',boxShadow:'0 4px 24px rgba(0,0,0,0.07),inset 0 1px 0 rgba(255,255,255,0.85)',borderRadius:18}
+  async function saveIncome(e){
+    e.preventDefault(); setIncomeSaving(true)
+    const client=(users||[]).find(u=>u.id===incomeForm.client_id)
+    await fetch('/api/admin/sales',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      customer_id:incomeForm.client_id||null,
+      customer_name:client?.business_name||client?.full_name||'Manual',
+      customer_email:client?.email||'',
+      product_name:incomeForm.service,
+      amount:parseFloat(incomeForm.amount),
+      sale_date:addIncome?.date||today,
+      status:'paid',
+      notes:incomeForm.notes,
+    })})
+    setIncomeSaving(false)
+    setAddIncome(null)
+    setIncomeForm({client_id:'',service:'',amount:'',notes:''})
+    onSaleAdded?.()
+  }
   return(
     <div style={{padding:'12px 16px 32px',fontFamily:ff}}>
       <p style={{fontSize:13,color:gray}}>{greeting},</p>
@@ -1928,29 +1951,31 @@ function AdminDashboard({sales,bookings,session}){
         </div>
         <p style={{fontSize:11,opacity:0.4,marginTop:7}}>{Math.round(pct)}% completado · ${Math.max(0,MONTHLY_GOAL-monthTotal).toLocaleString()} restante</p>
       </div>
-      {/* Esta semana */}
-      <div style={{background:'rgba(184,151,90,0.07)',border:'1px solid rgba(184,151,90,0.2)',borderRadius:16,padding:16,marginBottom:14}}>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+      {/* Esta semana — tappable days */}
+      <div style={{...glCard,padding:16,marginBottom:14}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
           <p style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.1em',color:gold}}>Esta Semana</p>
-          <p style={{fontSize:11,color:gray}}>{ws.toLocaleDateString('es-PR',{month:'short',day:'numeric'})} – {we.toLocaleDateString('es-PR',{month:'short',day:'numeric'})}</p>
+          <p style={{fontSize:12,fontWeight:600,color:ink,fontFamily:ff}}>${Math.round(weekTotal)} <span style={{color:gray,fontWeight:400,fontSize:11}}>/ ${weekGoal}</span></p>
         </div>
-        <div style={{display:'flex',gap:6,alignItems:'center',marginBottom:14}}>
-          <div style={{flex:1,background:'rgba(14,14,12,0.08)',borderRadius:99,height:4}}>
-            <div style={{height:'100%',borderRadius:99,background:gold,width:Math.min((weekTotal/weekGoal)*100,100)+'%'}}/>
-          </div>
-          <p style={{fontSize:12,fontWeight:600,color:ink,fontFamily:ff,whiteSpace:'nowrap'}}>${Math.round(weekTotal)} <span style={{color:gray,fontWeight:400}}>/ ${weekGoal}</span></p>
+        <div style={{background:'rgba(14,14,12,0.07)',borderRadius:99,height:4,marginBottom:14,overflow:'hidden'}}>
+          <div style={{height:'100%',borderRadius:99,background:gold,width:Math.min((weekTotal/weekGoal)*100,100)+'%',transition:'width 0.5s'}}/>
         </div>
-        <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:6}}>
-          {[1,2,3,4].map(w=>{
-            const active=w===weekNum
-            return(
-              <div key={w} style={{background:active?ink:'rgba(14,14,12,0.04)',borderRadius:10,padding:'8px 6px',textAlign:'center'}}>
-                <p style={{fontSize:9,textTransform:'uppercase',letterSpacing:'0.07em',color:active?gold:gray}}>Sem {w}</p>
-                <p style={{fontSize:13,fontWeight:700,fontFamily:ff,color:active?cream:ink,marginTop:2}}>{active?'$'+Math.round(weekTotal):'$0'}</p>
+        {weekDays.map(day=>{
+          const dayTotal=weekSales.filter(s=>s.sale_date===day.date).reduce((a,x)=>a+(parseFloat(x.amount)||0),0)
+          const isToday=day.date===today
+          return(
+            <button key={day.date} onClick={()=>setAddIncome({date:day.date})} style={{width:'100%',display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 12px',marginBottom:6,background:isToday?'rgba(184,151,90,0.1)':'rgba(14,14,12,0.03)',border:'1px solid',borderColor:isToday?'rgba(184,151,90,0.3)':'rgba(14,14,12,0.06)',borderRadius:12,cursor:'pointer',fontFamily:ff,touchAction:'manipulation'}}>
+              <div style={{display:'flex',alignItems:'center',gap:8}}>
+                <span style={{fontSize:13,fontWeight:isToday?700:500,color:isToday?gold:ink}}>{day.name}</span>
+                {isToday&&<span style={{fontSize:9,background:gold,color:ink,borderRadius:99,padding:'1px 6px',fontWeight:700}}>HOY</span>}
               </div>
-            )
-          })}
-        </div>
+              <div style={{display:'flex',alignItems:'center',gap:8}}>
+                <span style={{fontSize:13,fontWeight:600,color:dayTotal>0?'#2d8a60':gray,fontFamily:ff}}>{dayTotal>0?'$'+Math.round(dayTotal):'—'}</span>
+                <span style={{fontSize:16,color:gold,fontWeight:300}}>+</span>
+              </div>
+            </button>
+          )
+        })}
       </div>
       {/* Quick stats */}
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:14}}>
@@ -1958,20 +1983,52 @@ function AdminDashboard({sales,bookings,session}){
           {label:'Citas hoy',val:todayB.length,color:ink},
           {label:'Pendientes',val:pendingB.length,color:'#e67e22'},
         ].map(s=>(
-          <div key={s.label} style={{background:'rgba(248,246,241,0.85)',border:'1px solid rgba(14,14,12,0.07)',borderRadius:14,padding:'14px 16px'}}>
+          <div key={s.label} style={{...glCard,padding:'14px 16px'}}>
             <p style={{fontSize:10,color:gray,textTransform:'uppercase',letterSpacing:'0.08em'}}>{s.label}</p>
             <p style={{fontSize:26,fontWeight:700,fontFamily:ff,color:s.color,marginTop:4}}>{s.val}</p>
           </div>
         ))}
       </div>
-      {/* Category placeholder */}
-      <div style={{background:'rgba(248,246,241,0.85)',border:'1px solid rgba(14,14,12,0.07)',borderRadius:14,padding:16}}>
-        <p style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.1em',color:gray}}>Categorías de gastos</p>
-        <div style={{textAlign:'center',padding:'18px 0'}}>
-          <p style={{fontSize:13,color:gray}}>Próximamente</p>
-          <p style={{fontSize:11,color:gray,opacity:0.7,marginTop:4}}>Categoriza tus gastos para ver el desglose</p>
-        </div>
-      </div>
+      {/* Add income bottom sheet */}
+      {addIncome&&(
+        <>
+          <div style={{position:'fixed',inset:0,zIndex:300,background:'rgba(0,0,0,0.3)'}} onClick={()=>setAddIncome(null)}/>
+          <div style={{position:'fixed',bottom:0,left:0,right:0,zIndex:305,background:'rgba(255,255,255,0.88)',backdropFilter:'blur(32px) saturate(200%)',WebkitBackdropFilter:'blur(32px) saturate(200%)',borderRadius:'24px 24px 0 0',border:'1px solid rgba(255,255,255,0.65)',boxShadow:'0 -8px 40px rgba(0,0,0,0.12)',paddingBottom:'calc(env(safe-area-inset-bottom,0px)+12px)',animation:'sheet-up 0.25s cubic-bezier(0.22,1,0.36,1) both'}}>
+            <div style={{width:40,height:4,background:'rgba(14,14,12,0.15)',borderRadius:99,margin:'12px auto 0'}}/>
+            <div style={{padding:'16px 20px 20px'}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
+                <h3 style={{fontFamily:ffS,fontSize:20,fontWeight:300,color:ink}}>Añadir Ingreso</h3>
+                <div style={{display:'flex',alignItems:'center',gap:8}}>
+                  <span style={{fontSize:12,color:gold,fontWeight:600}}>{new Date(addIncome.date+'T12:00:00').toLocaleDateString('es-PR',{weekday:'short',month:'short',day:'numeric'})}</span>
+                  <button onClick={()=>setAddIncome(null)} style={{background:'none',border:'none',fontSize:20,cursor:'pointer',color:gray,lineHeight:1}}>✕</button>
+                </div>
+              </div>
+              <form onSubmit={saveIncome} style={{display:'flex',flexDirection:'column',gap:12}}>
+                <div>
+                  <label style={{fontSize:11,fontWeight:600,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:4}}>Cliente</label>
+                  <select value={incomeForm.client_id} onChange={e=>setIncomeForm(p=>({...p,client_id:e.target.value}))} style={{width:'100%',height:44,borderRadius:10,border:'1px solid rgba(14,14,12,0.12)',padding:'0 12px',fontSize:14,fontFamily:ff,background:'#fff',outline:'none',boxSizing:'border-box'}}>
+                    <option value="">Sin cliente / Manual</option>
+                    {(users||[]).map(u=><option key={u.id} value={u.id}>{u.business_name||u.full_name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={{fontSize:11,fontWeight:600,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:4}}>Servicio / Concepto *</label>
+                  <input required value={incomeForm.service} onChange={e=>setIncomeForm(p=>({...p,service:e.target.value}))} placeholder="ej. Taxes 2024, Contabilidad..." style={{width:'100%',height:44,borderRadius:10,border:'1px solid rgba(14,14,12,0.12)',padding:'0 12px',fontSize:14,fontFamily:ff,background:'#fff',outline:'none',boxSizing:'border-box'}}/>
+                </div>
+                <div>
+                  <label style={{fontSize:11,fontWeight:600,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:4}}>Cantidad ($) *</label>
+                  <input required type="number" min="0.01" step="0.01" value={incomeForm.amount} onChange={e=>setIncomeForm(p=>({...p,amount:e.target.value}))} placeholder="0.00" style={{width:'100%',height:44,borderRadius:10,border:'1px solid rgba(14,14,12,0.12)',padding:'0 12px',fontSize:18,fontWeight:600,fontFamily:ff,background:'#fff',outline:'none',boxSizing:'border-box',color:ink}}/>
+                </div>
+                <div>
+                  <label style={{fontSize:11,fontWeight:600,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:4}}>Notas</label>
+                  <input value={incomeForm.notes} onChange={e=>setIncomeForm(p=>({...p,notes:e.target.value}))} placeholder="Opcional..." style={{width:'100%',height:44,borderRadius:10,border:'1px solid rgba(14,14,12,0.12)',padding:'0 12px',fontSize:14,fontFamily:ff,background:'#fff',outline:'none',boxSizing:'border-box'}}/>
+                </div>
+                <button type="submit" disabled={incomeSaving} style={{height:50,background:ink,color:cream,border:'none',borderRadius:14,fontSize:15,fontWeight:600,fontFamily:ff,cursor:'pointer',marginTop:4}}>{incomeSaving?'Guardando...':'✓ Registrar Ingreso'}</button>
+              </form>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }
@@ -2037,7 +2094,7 @@ function AdminBookings(){
       {active.map(b=>{
         const st=SC[b.status]||SC.pending
         return(
-          <div key={b.id} style={{background:'rgba(248,246,241,0.9)',border:'1px solid rgba(14,14,12,0.08)',borderRadius:16,padding:16,marginBottom:12}}>
+          <div key={b.id} style={{background:'rgba(255,255,255,0.7)',backdropFilter:'blur(20px) saturate(180%)',WebkitBackdropFilter:'blur(20px) saturate(180%)',border:'1px solid rgba(255,255,255,0.55)',boxShadow:'0 4px 20px rgba(0,0,0,0.07),inset 0 1px 0 rgba(255,255,255,0.85)',borderRadius:18,padding:16,marginBottom:12}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
               <span style={{fontSize:10,fontWeight:700,padding:'3px 10px',borderRadius:99,background:st.bg,color:st.color,textTransform:'uppercase',letterSpacing:'0.08em'}}>{st.label}</span>
               {b.facebook_page&&<span style={{fontSize:11,color:'#1877f2'}}>📘 {b.facebook_page}</span>}
@@ -2047,10 +2104,10 @@ function AdminBookings(){
             <p style={{fontSize:12,color:gray,marginTop:4}}>📅 {b.date} · 🕐 {b.time}</p>
             {b.notes&&<p style={{fontSize:11,color:gray,marginTop:6,fontStyle:'italic'}}>{b.notes}</p>}
             <div style={{display:'flex',gap:7,marginTop:12,flexWrap:'wrap'}}>
-              {b.status!=='confirmed'&&<button onClick={()=>doConfirm(b)} style={{flex:1,minWidth:90,padding:'8px',background:'#2d8a60',color:'#fff',border:'none',borderRadius:10,fontSize:12,fontWeight:600,fontFamily:ff,cursor:'pointer'}}>✓ Confirmar</button>}
-              <button onClick={()=>setBuyModal(b)} style={{flex:1,minWidth:70,padding:'8px',background:gold,color:ink,border:'none',borderRadius:10,fontSize:12,fontWeight:600,fontFamily:ff,cursor:'pointer'}}>💰 Compró</button>
-              <button onClick={()=>updateStatus(b.id,'later')} style={{padding:'8px 12px',background:'rgba(142,68,173,0.08)',color:'#8e44ad',border:'none',borderRadius:10,fontSize:12,fontFamily:ff,cursor:'pointer'}}>Dijo Luego</button>
-              <button onClick={()=>updateStatus(b.id,'cancelled')} style={{padding:'8px 12px',background:'rgba(192,57,43,0.07)',color:'#c0392b',border:'none',borderRadius:10,fontSize:12,fontFamily:ff,cursor:'pointer'}}>Cancelar</button>
+              {b.status!=='confirmed'&&<button onClick={()=>doConfirm(b)} style={{flex:1,minWidth:90,padding:'8px',background:'none',color:'#2d8a60',border:'1.5px solid #2d8a60',borderRadius:10,fontSize:12,fontWeight:600,fontFamily:ff,cursor:'pointer'}}>✓ Confirmar</button>}
+              <button onClick={()=>setBuyModal(b)} style={{flex:1,minWidth:70,padding:'8px',background:'none',color:gold,border:'1.5px solid '+gold,borderRadius:10,fontSize:12,fontWeight:600,fontFamily:ff,cursor:'pointer'}}>💰 Compró</button>
+              <button onClick={()=>updateStatus(b.id,'later')} style={{padding:'8px 12px',background:'none',color:'#8e44ad',border:'1.5px solid #8e44ad',borderRadius:10,fontSize:12,fontFamily:ff,cursor:'pointer'}}>Dijo Luego</button>
+              <button onClick={()=>updateStatus(b.id,'cancelled')} style={{padding:'8px 12px',background:'none',color:'#c0392b',border:'1.5px solid #c0392b',borderRadius:10,fontSize:12,fontFamily:ff,cursor:'pointer'}}>Cancelar</button>
             </div>
           </div>
         )
@@ -2544,6 +2601,7 @@ export default function Admin({session}){
         .action-btn:active{transform:translateY(0);}
         input:focus,select:focus,textarea:focus{border-color:${gold}!important;box-shadow:0 0 0 3px rgba(184,151,90,0.12)!important;outline:none!important;}
         @keyframes panel-in{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes sheet-up{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}
         .panel-animate{animation:panel-in 0.35s cubic-bezier(0.22,1,0.36,1) both;}
         .glass-card{background:rgba(248,246,241,0.6);backdrop-filter:blur(20px) saturate(160%);border:1px solid rgba(255,255,255,0.7);box-shadow:inset 0 1px 0 rgba(255,255,255,0.8),0 8px 32px -8px rgba(28,28,26,0.12);border-radius:14px;}
         .glass-dark-nav{background:rgba(28,28,26,0.75);backdrop-filter:blur(24px) saturate(180%);border-bottom:1px solid rgba(184,151,90,0.15);}
@@ -2565,7 +2623,7 @@ export default function Admin({session}){
       <div style={{paddingTop:'calc(52px + env(safe-area-inset-top,0px))',paddingBottom:'calc(64px + env(safe-area-inset-bottom,0px))',minHeight:'100vh',background:'#f8f6f1',WebkitOverflowScrolling:'touch',overflowY:'auto'}}>
         <div key={burger?panel:tab} className="panel-animate">
           {/* PRIMARY TABS */}
-          {!burger&&tab==='dashboard'&&<AdminDashboard sales={sales} bookings={adminBookings} session={session}/>}
+          {!burger&&tab==='dashboard'&&<AdminDashboard sales={sales} bookings={adminBookings} session={session} users={users} onSaleAdded={loadAll}/>}
           {!burger&&tab==='bookings'&&<AdminBookings/>}
           {!burger&&tab==='coldcalling'&&<AdminColdCalling/>}
 
@@ -2677,32 +2735,36 @@ export default function Admin({session}){
         </button>
       </nav>
 
-      {/* ── BURGER SLIDE-IN DRAWER ── */}
+      {/* ── BURGER BOTTOM SHEET ── */}
       {burger&&(
-        <div style={{position:'fixed',inset:0,zIndex:190}} onClick={e=>{if(e.target===e.currentTarget){setBurger(false)}}}>
-          <div style={{position:'fixed',top:'calc(52px + env(safe-area-inset-top,0px))',left:0,bottom:'calc(60px + env(safe-area-inset-bottom,0px))',width:240,background:'rgba(255,255,255,0.92)',backdropFilter:'blur(24px) saturate(180%)',WebkitBackdropFilter:'blur(24px) saturate(180%)',borderRight:'1px solid rgba(255,255,255,0.6)',boxShadow:'4px 0 24px rgba(0,0,0,0.08)',overflowY:'auto',padding:'12px 0',zIndex:191}}>
-            {[
-              {id:'crm-clients',label:'Clientes CRM'},
-              {id:'loyalty-cards',label:'Loyalty Clients'},
-              {id:'cards',label:'Cards'},
-              {id:'punch',label:'Punch Card'},
-              {id:'notifications',label:'Alertas'},
-              {id:'campaigns',label:'Campañas'},
-              {id:'catalog',label:'Catálogo'},
-              {id:'supplies',label:'Supplies'},
-              {id:'reviews',label:'Reviews'},
-              {id:'system',label:'Admin Panel'},
-            ].map(({id,label})=>(
-              <button key={id} onClick={()=>setPanel(id)} style={{display:'block',width:'100%',padding:'13px 20px',background:panel===id?'rgba(14,14,12,0.05)':'none',border:'none',borderLeft:panel===id?'3px solid '+ink:'3px solid transparent',textAlign:'left',fontFamily:ff,fontSize:13,fontWeight:panel===id?600:400,color:ink,cursor:'pointer'}}>
-                {label}
-              </button>
-            ))}
-            <div style={{height:1,background:'rgba(14,14,12,0.07)',margin:'8px 0'}}/>
-            <button onClick={signOut} style={{display:'block',width:'100%',padding:'13px 20px',background:'none',border:'none',textAlign:'left',fontFamily:ff,fontSize:13,color:gray,cursor:'pointer'}}>
+        <>
+          <div style={{position:'fixed',inset:0,zIndex:190,background:'rgba(0,0,0,0.28)'}} onClick={()=>setBurger(false)}/>
+          <div style={{position:'fixed',bottom:0,left:0,right:0,zIndex:195,background:'rgba(255,255,255,0.82)',backdropFilter:'blur(32px) saturate(200%)',WebkitBackdropFilter:'blur(32px) saturate(200%)',borderRadius:'24px 24px 0 0',border:'1px solid rgba(255,255,255,0.6)',boxShadow:'0 -8px 40px rgba(0,0,0,0.13)',paddingBottom:'calc(env(safe-area-inset-bottom,0px) + 8px)',animation:'sheet-up 0.28s cubic-bezier(0.22,1,0.36,1) both'}}>
+            <div style={{width:40,height:4,background:'rgba(14,14,12,0.15)',borderRadius:99,margin:'12px auto 16px'}}/>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,padding:'0 16px 8px'}}>
+              {[
+                {id:'crm-clients',label:'Clientes CRM',icon:'👥'},
+                {id:'loyalty-cards',label:'Loyalty',icon:'⭐'},
+                {id:'cards',label:'Cards',icon:'🃏'},
+                {id:'punch',label:'Punch Card',icon:'✦'},
+                {id:'notifications',label:'Alertas',icon:'🔔'},
+                {id:'campaigns',label:'Campañas',icon:'📣'},
+                {id:'catalog',label:'Catálogo',icon:'📦'},
+                {id:'supplies',label:'Supplies',icon:'🔧'},
+                {id:'reviews',label:'Reviews',icon:'⭐'},
+                {id:'system',label:'Admin Panel',icon:'⚙️'},
+              ].map(({id,label,icon})=>(
+                <button key={id} onClick={()=>{setPanel(id)}} style={{display:'flex',alignItems:'center',gap:10,padding:'13px 14px',background:panel===id?'rgba(14,14,12,0.07)':'rgba(14,14,12,0.03)',border:'1px solid',borderColor:panel===id?'rgba(14,14,12,0.15)':'rgba(14,14,12,0.06)',borderRadius:14,fontFamily:ff,fontSize:13,fontWeight:panel===id?600:400,color:ink,cursor:'pointer',textAlign:'left',touchAction:'manipulation'}}>
+                  <span style={{fontSize:18}}>{icon}</span>{label}
+                </button>
+              ))}
+            </div>
+            <div style={{height:1,background:'rgba(14,14,12,0.07)',margin:'8px 16px'}}/>
+            <button onClick={signOut} style={{display:'block',width:'100%',padding:'14px 20px',background:'none',border:'none',textAlign:'center',fontFamily:ff,fontSize:13,color:gray,cursor:'pointer'}}>
               Cerrar sesión
             </button>
           </div>
-        </div>
+        </>
       )}
 
       {/* MODAL: New Card */}
