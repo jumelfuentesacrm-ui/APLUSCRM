@@ -1850,6 +1850,470 @@ function AdminSystemPanel({ users, cards, allUsers, loadAll, showToast }) {
   )
 }
 
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+const MONTHLY_GOAL = 3000
+const BOOKING_LINK = 'https://accountingpluscrm.com/#booking'
+
+function waLink(phone, message) {
+  const clean = (phone||'').replace(/[^\d+]/g,'')
+  return `https://wa.me/${clean}?text=${encodeURIComponent(message)}`
+}
+function confirmCitaMsg({name,date,time,service,facebook_page}){
+  return `Hola ${name}! 🎉 Tu cita está confirmada.\n📅 Fecha: ${date}\n🕐 Hora: ${time}\n💼 Servicio: ${service||'Consulta'}\n📘 Facebook: ${facebook_page||'N/A'}\n🔗 El link de Google Meet te lo envío el mismo día de la cita.\n¡Nos vemos pronto!`
+}
+function bookingLinkMsg(name){
+  return `Hola ${name}! Te comparto el link para agendar tu cita: ${BOOKING_LINK}`
+}
+function getCurrentWeekRange(){
+  const now=new Date(); const day=now.getDay()
+  const mon=new Date(now); mon.setDate(now.getDate()-(day===0?6:day-1))
+  const fri=new Date(mon); fri.setDate(mon.getDate()+4)
+  return {start:mon, end:fri}
+}
+function getWeekDays(weekStart){
+  const names=['Lunes','Martes','Miércoles','Jueves','Viernes']
+  return names.map((name,i)=>{
+    const d=new Date(weekStart); d.setDate(weekStart.getDate()+i)
+    return {name, date:d.toISOString().split('T')[0], dateObj:d}
+  })
+}
+function getMonthWeekNum(d){
+  const first=new Date(d.getFullYear(),d.getMonth(),1)
+  return Math.ceil((d.getDate()+first.getDay())/7)
+}
+function scheduleLocalNotif(title,body,dateObj){
+  const delay=dateObj.getTime()-Date.now()
+  if(delay<=0) return
+  setTimeout(()=>{ if(Notification.permission==='granted') new Notification(title,{body}) },delay)
+}
+
+// ─── ADMIN DASHBOARD ─────────────────────────────────────────────────────────
+function AdminDashboard({sales,bookings,session}){
+  const now=new Date()
+  const monthStr=now.toISOString().slice(0,7)
+  const monthSales=sales.filter(s=>s.sale_date?.startsWith(monthStr)&&s.status==='paid')
+  const monthTotal=monthSales.reduce((s,x)=>s+(x.amount||0),0)
+  const {start:ws,end:we}=getCurrentWeekRange()
+  const weekSales=monthSales.filter(s=>{ const d=new Date(s.sale_date); return d>=ws&&d<=we })
+  const weekTotal=weekSales.reduce((s,x)=>s+(x.amount||0),0)
+  const weekNum=getMonthWeekNum(now)
+  const weekGoal=MONTHLY_GOAL/4
+  const today=now.toISOString().split('T')[0]
+  const todayB=(bookings||[]).filter(b=>b.date===today&&!b.archived)
+  const pendingB=(bookings||[]).filter(b=>!b.archived&&b.status==='pending')
+  const adminName=session?.user?.email?.split('@')[0]||'Admin'
+  const hour=now.getHours()
+  const greeting=hour<12?'Buenos días':hour<18?'Buenas tardes':'Buenas noches'
+  const pct=Math.min((monthTotal/MONTHLY_GOAL)*100,100)
+  return(
+    <div style={{padding:'20px 16px 32px',fontFamily:ff}}>
+      <p style={{fontSize:13,color:gray}}>{greeting},</p>
+      <h1 style={{fontFamily:ffS,fontSize:28,fontWeight:300,color:ink,marginTop:2,marginBottom:24}}>{adminName}</h1>
+      {/* Monthly goal card */}
+      <div style={{background:ink,borderRadius:20,padding:'22px 20px',marginBottom:14,color:cream}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
+          <div>
+            <p style={{fontSize:11,opacity:0.55,textTransform:'uppercase',letterSpacing:'0.1em'}}>Meta de {now.toLocaleString('es-PR',{month:'long'})}</p>
+            <p style={{fontSize:34,fontWeight:700,fontFamily:ff,marginTop:4,letterSpacing:'-0.02em'}}>${Math.round(monthTotal).toLocaleString()}</p>
+            <p style={{fontSize:12,opacity:0.45,marginTop:2}}>de ${MONTHLY_GOAL.toLocaleString()} meta</p>
+          </div>
+          <div style={{textAlign:'right'}}>
+            <p style={{fontSize:11,opacity:0.55,textTransform:'uppercase',letterSpacing:'0.1em'}}>Sem {weekNum}</p>
+            <p style={{fontSize:22,fontWeight:700,fontFamily:ff,marginTop:4,color:gold}}>${Math.round(weekTotal).toLocaleString()}</p>
+            <p style={{fontSize:11,opacity:0.45}}>esta semana</p>
+          </div>
+        </div>
+        <div style={{marginTop:18,background:'rgba(255,255,255,0.1)',borderRadius:99,height:6,overflow:'hidden'}}>
+          <div style={{height:'100%',borderRadius:99,background:gold,width:pct+'%',transition:'width 0.5s'}}/>
+        </div>
+        <p style={{fontSize:11,opacity:0.4,marginTop:7}}>{Math.round(pct)}% completado · ${Math.max(0,MONTHLY_GOAL-monthTotal).toLocaleString()} restante</p>
+      </div>
+      {/* Esta semana */}
+      <div style={{background:'rgba(184,151,90,0.07)',border:'1px solid rgba(184,151,90,0.2)',borderRadius:16,padding:16,marginBottom:14}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+          <p style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.1em',color:gold}}>Esta Semana</p>
+          <p style={{fontSize:11,color:gray}}>{ws.toLocaleDateString('es-PR',{month:'short',day:'numeric'})} – {we.toLocaleDateString('es-PR',{month:'short',day:'numeric'})}</p>
+        </div>
+        <div style={{display:'flex',gap:6,alignItems:'center',marginBottom:14}}>
+          <div style={{flex:1,background:'rgba(14,14,12,0.08)',borderRadius:99,height:4}}>
+            <div style={{height:'100%',borderRadius:99,background:gold,width:Math.min((weekTotal/weekGoal)*100,100)+'%'}}/>
+          </div>
+          <p style={{fontSize:12,fontWeight:600,color:ink,fontFamily:ff,whiteSpace:'nowrap'}}>${Math.round(weekTotal)} <span style={{color:gray,fontWeight:400}}>/ ${weekGoal}</span></p>
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:6}}>
+          {[1,2,3,4].map(w=>{
+            const active=w===weekNum
+            return(
+              <div key={w} style={{background:active?ink:'rgba(14,14,12,0.04)',borderRadius:10,padding:'8px 6px',textAlign:'center'}}>
+                <p style={{fontSize:9,textTransform:'uppercase',letterSpacing:'0.07em',color:active?gold:gray}}>Sem {w}</p>
+                <p style={{fontSize:13,fontWeight:700,fontFamily:ff,color:active?cream:ink,marginTop:2}}>{active?'$'+Math.round(weekTotal):'$0'}</p>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+      {/* Quick stats */}
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:14}}>
+        {[
+          {label:'Citas hoy',val:todayB.length,color:ink},
+          {label:'Pendientes',val:pendingB.length,color:'#e67e22'},
+        ].map(s=>(
+          <div key={s.label} style={{background:'rgba(248,246,241,0.85)',border:'1px solid rgba(14,14,12,0.07)',borderRadius:14,padding:'14px 16px'}}>
+            <p style={{fontSize:10,color:gray,textTransform:'uppercase',letterSpacing:'0.08em'}}>{s.label}</p>
+            <p style={{fontSize:26,fontWeight:700,fontFamily:ff,color:s.color,marginTop:4}}>{s.val}</p>
+          </div>
+        ))}
+      </div>
+      {/* Category placeholder */}
+      <div style={{background:'rgba(248,246,241,0.85)',border:'1px solid rgba(14,14,12,0.07)',borderRadius:14,padding:16}}>
+        <p style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.1em',color:gray}}>Categorías de gastos</p>
+        <div style={{textAlign:'center',padding:'18px 0'}}>
+          <p style={{fontSize:13,color:gray}}>Próximamente</p>
+          <p style={{fontSize:11,color:gray,opacity:0.7,marginTop:4}}>Categoriza tus gastos para ver el desglose</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── ADMIN BOOKINGS ───────────────────────────────────────────────────────────
+function AdminBookings(){
+  const [bookings,setBookings]=useState([])
+  const [loading,setLoading]=useState(true)
+  const [showArchived,setShowArchived]=useState(false)
+  const [showNew,setShowNew]=useState(false)
+  const [buyModal,setBuyModal]=useState(null)
+  const [form,setForm]=useState({name:'',phone:'',facebook_page:'',service:'',date:'',time:'',notes:''})
+  const [buyForm,setBuyForm]=useState({service:'',amount:'',type:'once',monthly:'',total:'',installments:'',notes:''})
+  const [saving,setSaving]=useState(false)
+  useEffect(()=>{load()},[])
+  async function load(){
+    setLoading(true)
+    const r=await fetch('/api/admin/bookings')
+    const d=await r.json()
+    setBookings(Array.isArray(d)?d:[])
+    setLoading(false)
+  }
+  async function createBooking(e){
+    e.preventDefault(); setSaving(true)
+    await fetch('/api/admin/bookings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(form)})
+    await load(); setShowNew(false); setForm({name:'',phone:'',facebook_page:'',service:'',date:'',time:'',notes:''}); setSaving(false)
+  }
+  async function updateStatus(id,status,extra={}){
+    const archived=['cancelled','bought','later'].includes(status)
+    await fetch('/api/admin/bookings',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,status,archived,...extra})})
+    await load()
+  }
+  async function confirmBuy(e){
+    e.preventDefault(); setSaving(true)
+    await fetch('/api/admin/crm-clients',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      name:buyModal.name,phone:buyModal.phone,facebook_page:buyModal.facebook_page,
+      service_acquired:buyForm.service,amount_paid:parseFloat(buyForm.amount)||0,
+      payment_type:buyForm.type,
+      monthly_amount:buyForm.monthly?parseFloat(buyForm.monthly):null,
+      total_amount:buyForm.total?parseFloat(buyForm.total):null,
+      installments:buyForm.installments?parseInt(buyForm.installments):null,
+      notes:buyForm.notes,booking_id:buyModal.id,
+    })})
+    await updateStatus(buyModal.id,'bought',{buy_service:buyForm.service,buy_amount:parseFloat(buyForm.amount)||0,buy_type:buyForm.type,buy_notes:buyForm.notes})
+    setBuyModal(null); setBuyForm({service:'',amount:'',type:'once',monthly:'',total:'',installments:'',notes:''}); setSaving(false)
+  }
+  function doConfirm(b){
+    window.open(waLink(b.phone,confirmCitaMsg({name:b.name,date:b.date,time:b.time,service:b.service,facebook_page:b.facebook_page})),'_blank')
+    updateStatus(b.id,'confirmed')
+  }
+  const active=bookings.filter(b=>!b.archived)
+  const archived=bookings.filter(b=>b.archived)
+  const SC={pending:{label:'Pendiente',color:'#e67e22',bg:'rgba(230,126,34,0.1)'},confirmed:{label:'Confirmada',color:'#2d8a60',bg:'rgba(45,138,96,0.1)'},cancelled:{label:'Cancelada',color:'#c0392b',bg:'rgba(192,57,43,0.1)'},bought:{label:'Compró',color:gold,bg:'rgba(184,151,90,0.12)'},later:{label:'Dijo Luego',color:'#8e44ad',bg:'rgba(142,68,173,0.1)'}}
+  const inp2={width:'100%',boxSizing:'border-box',height:44,borderRadius:10,border:'1px solid rgba(14,14,12,0.12)',padding:'0 12px',fontSize:14,fontFamily:ff,background:'#fff',outline:'none',marginBottom:0}
+  return(
+    <div style={{padding:'20px 16px 32px',fontFamily:ff}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}}>
+        <h1 style={{fontFamily:ffS,fontSize:26,fontWeight:300,color:ink}}>Bookings</h1>
+        <button onClick={()=>setShowNew(true)} style={{background:ink,color:cream,border:'none',borderRadius:99,padding:'8px 18px',fontSize:13,fontWeight:600,fontFamily:ff,cursor:'pointer'}}>+ Nueva</button>
+      </div>
+      {loading&&<p style={{color:gray,textAlign:'center',padding:'40px 0',fontSize:13}}>Cargando...</p>}
+      {!loading&&active.length===0&&<div style={{textAlign:'center',padding:'40px 0',color:gray}}><p style={{fontSize:15}}>No hay citas activas</p><p style={{fontSize:12,marginTop:4}}>Toca "+ Nueva" para crear una</p></div>}
+      {active.map(b=>{
+        const st=SC[b.status]||SC.pending
+        return(
+          <div key={b.id} style={{background:'rgba(248,246,241,0.9)',border:'1px solid rgba(14,14,12,0.08)',borderRadius:16,padding:16,marginBottom:12}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+              <span style={{fontSize:10,fontWeight:700,padding:'3px 10px',borderRadius:99,background:st.bg,color:st.color,textTransform:'uppercase',letterSpacing:'0.08em'}}>{st.label}</span>
+              {b.facebook_page&&<span style={{fontSize:11,color:'#1877f2'}}>📘 {b.facebook_page}</span>}
+            </div>
+            <p style={{fontSize:16,fontWeight:600,color:ink}}>{b.name}</p>
+            <p style={{fontSize:13,color:gray,marginTop:2}}>{b.service||'Consulta'}</p>
+            <p style={{fontSize:12,color:gray,marginTop:4}}>📅 {b.date} · 🕐 {b.time}</p>
+            {b.notes&&<p style={{fontSize:11,color:gray,marginTop:6,fontStyle:'italic'}}>{b.notes}</p>}
+            <div style={{display:'flex',gap:7,marginTop:12,flexWrap:'wrap'}}>
+              {b.status!=='confirmed'&&<button onClick={()=>doConfirm(b)} style={{flex:1,minWidth:90,padding:'8px',background:'#2d8a60',color:'#fff',border:'none',borderRadius:10,fontSize:12,fontWeight:600,fontFamily:ff,cursor:'pointer'}}>✓ Confirmar</button>}
+              <button onClick={()=>setBuyModal(b)} style={{flex:1,minWidth:70,padding:'8px',background:gold,color:ink,border:'none',borderRadius:10,fontSize:12,fontWeight:600,fontFamily:ff,cursor:'pointer'}}>💰 Compró</button>
+              <button onClick={()=>updateStatus(b.id,'later')} style={{padding:'8px 12px',background:'rgba(142,68,173,0.08)',color:'#8e44ad',border:'none',borderRadius:10,fontSize:12,fontFamily:ff,cursor:'pointer'}}>Dijo Luego</button>
+              <button onClick={()=>updateStatus(b.id,'cancelled')} style={{padding:'8px 12px',background:'rgba(192,57,43,0.07)',color:'#c0392b',border:'none',borderRadius:10,fontSize:12,fontFamily:ff,cursor:'pointer'}}>Cancelar</button>
+            </div>
+          </div>
+        )
+      })}
+      {archived.length>0&&<button onClick={()=>setShowArchived(!showArchived)} style={{width:'100%',padding:12,background:'none',border:'1px solid rgba(14,14,12,0.1)',borderRadius:12,color:gray,fontSize:13,fontFamily:ff,cursor:'pointer',marginTop:8}}>{showArchived?'▲':'▼'} Ver Archivo ({archived.length})</button>}
+      {showArchived&&archived.map(b=>{
+        const st=SC[b.status]||SC.pending
+        return(
+          <div key={b.id} style={{background:'rgba(248,246,241,0.5)',border:'1px solid rgba(14,14,12,0.05)',borderRadius:14,padding:14,marginTop:8,opacity:0.75}}>
+            <div style={{display:'flex',justifyContent:'space-between'}}>
+              <p style={{fontSize:14,fontWeight:600,color:ink}}>{b.name}</p>
+              <span style={{fontSize:10,fontWeight:700,padding:'3px 8px',borderRadius:99,background:st.bg,color:st.color}}>{st.label}</span>
+            </div>
+            <p style={{fontSize:12,color:gray,marginTop:4}}>{b.date} · {b.service||'Consulta'}</p>
+            {b.buy_service&&<p style={{fontSize:11,color:gold,marginTop:4}}>💰 {b.buy_service} · ${b.buy_amount}</p>}
+          </div>
+        )
+      })}
+      {/* New booking sheet */}
+      {showNew&&(
+        <div style={{position:'fixed',inset:0,zIndex:300,background:'rgba(0,0,0,0.5)',display:'flex',alignItems:'flex-end'}} onClick={e=>e.target===e.currentTarget&&setShowNew(false)}>
+          <div style={{background:cream,borderRadius:'20px 20px 0 0',padding:'24px 20px 40px',width:'100%',maxHeight:'92vh',overflowY:'auto',boxSizing:'border-box'}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}}>
+              <h2 style={{fontFamily:ffS,fontSize:22,fontWeight:300,color:ink}}>Nueva Cita</h2>
+              <button onClick={()=>setShowNew(false)} style={{background:'none',border:'none',fontSize:20,cursor:'pointer',color:gray}}>✕</button>
+            </div>
+            <form onSubmit={createBooking} style={{display:'flex',flexDirection:'column',gap:12}}>
+              {[{k:'name',l:'Nombre del cliente',t:'text',r:true},{k:'phone',l:'Teléfono (ej: +17875551234)',t:'tel',r:true},{k:'facebook_page',l:'Página de Facebook',t:'text',r:true},{k:'service',l:'Servicio',t:'text'},{k:'date',l:'Fecha',t:'date',r:true},{k:'time',l:'Hora',t:'time',r:true}].map(f=>(
+                <div key={f.k}>
+                  <label style={{fontSize:11,fontWeight:600,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:4}}>{f.l}</label>
+                  <input required={!!f.r} type={f.t} value={form[f.k]} onChange={e=>setForm(p=>({...p,[f.k]:e.target.value}))} style={inp2}/>
+                </div>
+              ))}
+              <div>
+                <label style={{fontSize:11,fontWeight:600,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:4}}>Notas</label>
+                <textarea value={form.notes} onChange={e=>setForm(p=>({...p,notes:e.target.value}))} rows={3} style={{...inp2,height:'auto',padding:'10px 12px',resize:'none'}}/>
+              </div>
+              <button type="submit" disabled={saving} style={{height:48,background:ink,color:cream,border:'none',borderRadius:12,fontSize:15,fontWeight:600,fontFamily:ff,cursor:'pointer',marginTop:4}}>{saving?'Guardando...':'Crear Cita'}</button>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* Buy sheet */}
+      {buyModal&&(
+        <div style={{position:'fixed',inset:0,zIndex:300,background:'rgba(0,0,0,0.5)',display:'flex',alignItems:'flex-end'}} onClick={e=>e.target===e.currentTarget&&setBuyModal(null)}>
+          <div style={{background:cream,borderRadius:'20px 20px 0 0',padding:'24px 20px 40px',width:'100%',maxHeight:'92vh',overflowY:'auto',boxSizing:'border-box'}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}}>
+              <h2 style={{fontFamily:ffS,fontSize:20,fontWeight:300,color:ink}}>💰 {buyModal.name}</h2>
+              <button onClick={()=>setBuyModal(null)} style={{background:'none',border:'none',fontSize:20,cursor:'pointer',color:gray}}>✕</button>
+            </div>
+            <form onSubmit={confirmBuy} style={{display:'flex',flexDirection:'column',gap:12}}>
+              <div>
+                <label style={{fontSize:11,fontWeight:600,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:4}}>Servicio adquirido</label>
+                <input required value={buyForm.service} onChange={e=>setBuyForm(p=>({...p,service:e.target.value}))} style={inp2}/>
+              </div>
+              <div>
+                <label style={{fontSize:11,fontWeight:600,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:4}}>Cantidad pagada ($)</label>
+                <input required type="number" min="0" step="0.01" value={buyForm.amount} onChange={e=>setBuyForm(p=>({...p,amount:e.target.value}))} style={inp2}/>
+              </div>
+              <div>
+                <label style={{fontSize:11,fontWeight:600,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:8}}>Tipo de pago</label>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8}}>
+                  {[['once','Pago único'],['subscription','Suscripción'],['installments','Cuotas']].map(([v,l])=>(
+                    <button type="button" key={v} onClick={()=>setBuyForm(p=>({...p,type:v}))} style={{padding:'10px 4px',borderRadius:10,border:'1px solid',borderColor:buyForm.type===v?ink:'rgba(14,14,12,0.12)',background:buyForm.type===v?ink:'#fff',color:buyForm.type===v?cream:ink,fontSize:11,fontFamily:ff,cursor:'pointer',textAlign:'center'}}>{l}</button>
+                  ))}
+                </div>
+              </div>
+              {buyForm.type==='subscription'&&<div><label style={{fontSize:11,fontWeight:600,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:4}}>Monto mensual ($)</label><input type="number" min="0" step="0.01" value={buyForm.monthly} onChange={e=>setBuyForm(p=>({...p,monthly:e.target.value}))} style={inp2}/></div>}
+              {buyForm.type==='installments'&&<><div><label style={{fontSize:11,fontWeight:600,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:4}}>Total a saldar ($)</label><input type="number" min="0" step="0.01" value={buyForm.total} onChange={e=>setBuyForm(p=>({...p,total:e.target.value}))} style={inp2}/></div><div><label style={{fontSize:11,fontWeight:600,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:4}}>Número de cuotas</label><input type="number" min="1" value={buyForm.installments} onChange={e=>setBuyForm(p=>({...p,installments:e.target.value}))} style={inp2}/></div></>}
+              <div>
+                <label style={{fontSize:11,fontWeight:600,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:4}}>Notas</label>
+                <textarea value={buyForm.notes} onChange={e=>setBuyForm(p=>({...p,notes:e.target.value}))} rows={3} style={{...inp2,height:'auto',padding:'10px 12px',resize:'none'}}/>
+              </div>
+              <button type="submit" disabled={saving} style={{height:48,background:gold,color:ink,border:'none',borderRadius:12,fontSize:14,fontWeight:600,fontFamily:ff,cursor:'pointer'}}>
+                {saving?'Guardando...':'✓ Confirmar compra → Crear cliente'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── ADMIN COLD CALLING ───────────────────────────────────────────────────────
+function AdminColdCalling(){
+  const [leads,setLeads]=useState([])
+  const [loading,setLoading]=useState(true)
+  const [showForm,setShowForm]=useState(null)
+  const [expanded,setExpanded]=useState({})
+  const [form,setForm]=useState({business_name:'',phone:'',pueblo:'',responded:false,followup_date:'',notes:''})
+  const [saving,setSaving]=useState(false)
+  useEffect(()=>{load()},[])
+  async function load(){
+    setLoading(true)
+    const r=await fetch('/api/admin/cold-calls')
+    const d=await r.json()
+    setLeads(d.leads||[])
+    setLoading(false)
+  }
+  async function saveLead(e){
+    e.preventDefault(); setSaving(true)
+    const call_status=form.responded?(form.followup_date?'follow_up':'responded'):'no_answer'
+    await fetch('/api/admin/cold-calls',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...form,call_status})})
+    if(form.responded&&form.followup_date&&typeof window!=='undefined'&&'Notification' in window){
+      Notification.requestPermission().then(p=>{
+        if(p==='granted'){
+          const d=new Date(form.followup_date+'T09:00:00')
+          scheduleLocalNotif('Follow-up pendiente 📞',`Follow-up con ${form.business_name} hoy`,d)
+        }
+      })
+    }
+    await load(); setShowForm(null); setForm({business_name:'',phone:'',pueblo:'',responded:false,followup_date:'',notes:''}); setSaving(false)
+  }
+  const {start:ws,end:we}=getCurrentWeekRange()
+  const weekDays=getWeekDays(ws)
+  const byDay={}
+  leads.forEach(l=>{ const d=l.created_at?.split('T')[0]; if(!byDay[d])byDay[d]=[]; byDay[d].push(l) })
+  const weekLeads=weekDays.flatMap(d=>byDay[d.date]||[])
+  const responded=weekLeads.filter(l=>l.call_status!=='no_answer').length
+  const followups=weekLeads.filter(l=>l.call_status==='follow_up').length
+  const SS={no_answer:{label:'No respondió',color:'#c0392b',bg:'rgba(192,57,43,0.08)'},responded:{label:'Respondió',color:'#2d8a60',bg:'rgba(45,138,96,0.1)'},follow_up:{label:'Follow-up',color:gold,bg:'rgba(184,151,90,0.12)'},booked:{label:'Agendó',color:'#5b8dee',bg:'rgba(91,141,238,0.1)'}}
+  const inp2={width:'100%',boxSizing:'border-box',height:44,borderRadius:10,border:'1px solid rgba(14,14,12,0.12)',padding:'0 12px',fontSize:14,fontFamily:ff,background:'#fff',outline:'none'}
+  return(
+    <div style={{padding:'20px 16px 32px',fontFamily:ff}}>
+      <h1 style={{fontFamily:ffS,fontSize:26,fontWeight:300,color:ink,marginBottom:16}}>Cold Calling</h1>
+      {/* Weekly summary */}
+      <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:8,marginBottom:18}}>
+        {[{l:'Total',v:weekLeads.length,c:ink},{l:'Respond.',v:responded,c:'#2d8a60'},{l:'No resp.',v:weekLeads.length-responded,c:'#c0392b'},{l:'Follow-up',v:followups,c:gold}].map(s=>(
+          <div key={s.l} style={{background:'rgba(248,246,241,0.9)',border:'1px solid rgba(14,14,12,0.07)',borderRadius:12,padding:'10px 6px',textAlign:'center'}}>
+            <p style={{fontSize:18,fontWeight:700,fontFamily:ff,color:s.c}}>{s.v}</p>
+            <p style={{fontSize:9,color:gray,textTransform:'uppercase',letterSpacing:'0.06em',marginTop:2}}>{s.l}</p>
+          </div>
+        ))}
+      </div>
+      {/* Weekly card */}
+      <div style={{background:'rgba(248,246,241,0.9)',border:'1px solid rgba(14,14,12,0.08)',borderRadius:18,overflow:'hidden'}}>
+        <div style={{padding:'14px 16px',borderBottom:'1px solid rgba(14,14,12,0.06)'}}>
+          <p style={{fontSize:13,fontWeight:600,color:ink}}>Semana del {ws.toLocaleDateString('es-PR',{day:'numeric',month:'long'})} al {new Date(ws.getTime()+4*86400000).toLocaleDateString('es-PR',{day:'numeric',month:'long'})}</p>
+        </div>
+        {weekDays.map((day,i)=>{
+          const dayLeads=byDay[day.date]||[]
+          const isExp=expanded[day.date]
+          const isToday=day.date===new Date().toISOString().split('T')[0]
+          return(
+            <div key={day.date} style={{borderBottom:i<4?'1px solid rgba(14,14,12,0.06)':'none'}}>
+              <button onClick={()=>setExpanded(p=>({...p,[day.date]:!p[day.date]}))} style={{width:'100%',padding:'13px 16px',background:'none',border:'none',cursor:'pointer',display:'flex',justifyContent:'space-between',alignItems:'center',fontFamily:ff}}>
+                <div style={{display:'flex',alignItems:'center',gap:8}}>
+                  <span style={{fontSize:14,fontWeight:600,color:isToday?gold:ink}}>{day.name}</span>
+                  {isToday&&<span style={{fontSize:9,background:gold,color:ink,borderRadius:99,padding:'2px 7px',fontWeight:700}}>HOY</span>}
+                  <span style={{fontSize:11,color:gray}}>{day.dateObj.toLocaleDateString('es-PR',{day:'numeric',month:'short'})}</span>
+                </div>
+                <div style={{display:'flex',alignItems:'center',gap:8}}>
+                  {dayLeads.length>0&&<span style={{fontSize:12,background:'rgba(14,14,12,0.07)',borderRadius:99,padding:'2px 8px',fontWeight:600,color:ink}}>{dayLeads.length}</span>}
+                  <span style={{fontSize:12,color:gray}}>{isExp?'▲':'▼'}</span>
+                </div>
+              </button>
+              {isExp&&(
+                <div style={{padding:'0 16px 16px'}}>
+                  {dayLeads.map(l=>{
+                    const st=SS[l.call_status]||SS.no_answer
+                    return(
+                      <div key={l.id} style={{background:'#fff',borderRadius:12,padding:12,marginBottom:8,border:'1px solid rgba(14,14,12,0.06)'}}>
+                        <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
+                          <div>
+                            <p style={{fontSize:14,fontWeight:600,color:ink}}>{l.business_name}</p>
+                            {l.pueblo&&<p style={{fontSize:12,color:gray}}>{l.pueblo}</p>}
+                          </div>
+                          <span style={{fontSize:9,fontWeight:700,padding:'3px 8px',borderRadius:99,background:st.bg,color:st.color,textTransform:'uppercase',whiteSpace:'nowrap'}}>{st.label}</span>
+                        </div>
+                        {l.phone&&<a href={`tel:${l.phone}`} style={{fontSize:12,color:'#2d8a60',display:'block',marginTop:6,textDecoration:'none'}}>📞 {l.phone}</a>}
+                        {l.followup_date&&<p style={{fontSize:11,color:gold,marginTop:4}}>🔔 Follow-up: {l.followup_date}</p>}
+                        {l.notes&&<p style={{fontSize:11,color:gray,marginTop:6,fontStyle:'italic'}}>{l.notes}</p>}
+                        <button onClick={()=>window.open(waLink(l.phone,bookingLinkMsg(l.business_name)),'_blank')} style={{marginTop:10,padding:'6px 14px',background:'rgba(14,14,12,0.05)',border:'none',borderRadius:8,fontSize:11,fontWeight:600,fontFamily:ff,cursor:'pointer',color:ink}}>📎 Enviar link de booking</button>
+                      </div>
+                    )
+                  })}
+                  <button onClick={()=>setShowForm(day.date)} style={{width:'100%',padding:10,background:'none',border:'1px dashed rgba(14,14,12,0.18)',borderRadius:10,fontSize:13,fontFamily:ff,cursor:'pointer',color:gray}}>+ Registrar Lead</button>
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+      {/* Register lead sheet */}
+      {showForm&&(
+        <div style={{position:'fixed',inset:0,zIndex:300,background:'rgba(0,0,0,0.5)',display:'flex',alignItems:'flex-end'}} onClick={e=>e.target===e.currentTarget&&setShowForm(null)}>
+          <div style={{background:cream,borderRadius:'20px 20px 0 0',padding:'24px 20px 40px',width:'100%',maxHeight:'92vh',overflowY:'auto',boxSizing:'border-box'}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}}>
+              <h2 style={{fontFamily:ffS,fontSize:22,fontWeight:300,color:ink}}>Registrar Lead</h2>
+              <button onClick={()=>setShowForm(null)} style={{background:'none',border:'none',fontSize:20,cursor:'pointer',color:gray}}>✕</button>
+            </div>
+            <form onSubmit={saveLead} style={{display:'flex',flexDirection:'column',gap:12}}>
+              {[{k:'business_name',l:'Nombre del negocio',t:'text',r:true},{k:'phone',l:'Teléfono',t:'tel',r:true},{k:'pueblo',l:'Pueblo / Ciudad',t:'text'}].map(f=>(
+                <div key={f.k}>
+                  <label style={{fontSize:11,fontWeight:600,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:4}}>{f.l}</label>
+                  <input required={!!f.r} type={f.t} value={form[f.k]} onChange={e=>setForm(p=>({...p,[f.k]:e.target.value}))} style={inp2}/>
+                </div>
+              ))}
+              <div>
+                <label style={{fontSize:11,fontWeight:600,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:8}}>¿Respondió?</label>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+                  {[['Sí',true],['No',false]].map(([l,v])=>(
+                    <button type="button" key={l} onClick={()=>setForm(p=>({...p,responded:v}))} style={{padding:'10px',borderRadius:10,border:'1px solid',borderColor:form.responded===v?ink:'rgba(14,14,12,0.12)',background:form.responded===v?ink:'#fff',color:form.responded===v?cream:ink,fontSize:14,fontWeight:600,fontFamily:ff,cursor:'pointer'}}>{l}</button>
+                  ))}
+                </div>
+              </div>
+              {form.responded&&<div>
+                <label style={{fontSize:11,fontWeight:600,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:4}}>Follow-up ¿cuándo?</label>
+                <input type="date" value={form.followup_date} onChange={e=>setForm(p=>({...p,followup_date:e.target.value}))} style={inp2}/>
+              </div>}
+              <div>
+                <label style={{fontSize:11,fontWeight:600,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:4}}>Notas del cliente</label>
+                <textarea value={form.notes} onChange={e=>setForm(p=>({...p,notes:e.target.value}))} rows={3} placeholder="Contexto para cuando lo llames de vuelta..." style={{...inp2,height:'auto',padding:'10px 12px',resize:'none'}}/>
+              </div>
+              <button type="submit" disabled={saving} style={{height:48,background:ink,color:cream,border:'none',borderRadius:12,fontSize:15,fontWeight:600,fontFamily:ff,cursor:'pointer'}}>{saving?'Guardando...':'Registrar Lead'}</button>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── CRM CLIENTS PANEL ────────────────────────────────────────────────────────
+function AdminCRMClients(){
+  const [clients,setClients]=useState([])
+  const [loading,setLoading]=useState(true)
+  const [search,setSearch]=useState('')
+  useEffect(()=>{
+    fetch('/api/admin/crm-clients').then(r=>r.json()).then(d=>setClients(d.clients||[])).finally(()=>setLoading(false))
+  },[])
+  const filtered=clients.filter(c=>c.name?.toLowerCase().includes(search.toLowerCase())||c.service_acquired?.toLowerCase().includes(search.toLowerCase()))
+  const TL={once:'Pago único',subscription:'Suscripción',installments:'Cuotas'}
+  return(
+    <div style={{padding:'20px 16px 32px',fontFamily:ff}}>
+      <h1 style={{fontFamily:ffS,fontSize:26,fontWeight:300,color:ink,marginBottom:16}}>Clientes</h1>
+      <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar cliente o servicio..." style={{width:'100%',boxSizing:'border-box',height:44,borderRadius:12,border:'1px solid rgba(14,14,12,0.12)',padding:'0 16px',fontSize:14,fontFamily:ff,background:'rgba(248,246,241,0.8)',outline:'none',marginBottom:16}}/>
+      {loading&&<p style={{color:gray,textAlign:'center',padding:'40px 0'}}>Cargando...</p>}
+      {!loading&&filtered.length===0&&<p style={{color:gray,textAlign:'center',padding:'40px 0',fontSize:14}}>Aún no hay clientes. Cuando alguien "Compre" en Bookings, aparecerá aquí.</p>}
+      {filtered.map(c=>(
+        <div key={c.id} style={{background:'rgba(248,246,241,0.9)',border:'1px solid rgba(14,14,12,0.08)',borderRadius:16,padding:16,marginBottom:12}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
+            <div>
+              <p style={{fontSize:16,fontWeight:600,color:ink}}>{c.name}</p>
+              {c.facebook_page&&<p style={{fontSize:12,color:'#1877f2',marginTop:2}}>📘 {c.facebook_page}</p>}
+            </div>
+            <span style={{fontSize:10,padding:'3px 10px',borderRadius:99,background:'rgba(184,151,90,0.12)',color:gold,fontWeight:600}}>{TL[c.payment_type]||'Pago único'}</span>
+          </div>
+          <div style={{marginTop:10,padding:'10px 12px',background:'rgba(14,14,12,0.03)',borderRadius:10}}>
+            <p style={{fontSize:13,color:ink,fontWeight:500}}>{c.service_acquired}</p>
+            <p style={{fontSize:20,fontWeight:700,fontFamily:ff,color:'#2d8a60',marginTop:2}}>${(c.amount_paid||0).toLocaleString()}</p>
+            {c.payment_type==='subscription'&&c.monthly_amount&&<p style={{fontSize:11,color:gray}}>${c.monthly_amount}/mes</p>}
+            {c.payment_type==='installments'&&c.installments&&<p style={{fontSize:11,color:gray}}>{c.installments} cuotas · total ${c.total_amount}</p>}
+          </div>
+          {c.notes&&<p style={{fontSize:11,color:gray,marginTop:8,fontStyle:'italic'}}>{c.notes}</p>}
+          <p style={{fontSize:10,color:gray,marginTop:8}}>{new Date(c.created_at).toLocaleDateString('es-PR',{year:'numeric',month:'long',day:'numeric'})}</p>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export default function Admin({session}){
   const router=useRouter()
   const [panel,setPanel]=useState('dashboard')
@@ -2022,6 +2486,13 @@ export default function Admin({session}){
   const inp={width:'100%',padding:'0.75rem 0.9rem',border:'1px solid rgba(184,151,90,0.2)',borderRadius:10,background:'rgba(248,246,241,0.7)',fontFamily:ff,fontSize:'0.88rem',outline:'none',color:black,marginBottom:'1rem',boxSizing:'border-box',backdropFilter:'blur(8px)'}
   const lbl={fontSize:'0.56rem',letterSpacing:'0.13em',textTransform:'uppercase',color:gray,display:'block',marginBottom:'0.35rem'}
 
+  const [tab,setTab]=useState('dashboard')
+  const [burger,setBurger]=useState(false)
+  const [adminBookings,setAdminBookings]=useState([])
+  useEffect(()=>{
+    fetch('/api/admin/bookings').then(r=>r.json()).then(d=>setAdminBookings(Array.isArray(d)?d:[])).catch(()=>{})
+  },[loading])
+
   if(loading)return(
     <div style={{minHeight:'100vh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',background:'#f8f6f1',fontFamily:ff,position:'relative',overflow:'hidden'}}>
       <div style={{position:'absolute',top:'-10%',right:'-5%',width:400,height:400,borderRadius:'50%',background:'rgba(184,151,90,0.18)',filter:'blur(80px)',pointerEvents:'none'}}/>
@@ -2032,6 +2503,9 @@ export default function Admin({session}){
       </div>
     </div>
   )
+
+  // Burger menu panels use the old `panel` state; primary tabs use `tab`
+  const activePanel = burger ? panel : tab
 
   return(
     <>
@@ -2080,71 +2554,49 @@ export default function Admin({session}){
         .blob-2{top:45%;left:-80px;width:340px;height:340px;background:rgba(184,151,90,0.13);filter:blur(70px);animation:float-slower 18s ease-in-out infinite;}
         .blob-3{bottom:0;right:25%;width:280px;height:280px;background:rgba(184,151,90,0.1);filter:blur(60px);animation:float-slow 16s ease-in-out infinite;}
       `}</style>
-      <div className="blob blob-1"/><div className="blob blob-2"/><div className="blob blob-3"/>
-      <div style={{background:'transparent',minHeight:'100vh',fontFamily:ff,paddingBottom:70,position:'relative',zIndex:1}}>
-        <div className="glass-dark-nav safe-header" style={{position:'fixed',top:0,left:0,right:0,zIndex:100,height:52,display:'flex',alignItems:'flex-end',justifyContent:'space-between',paddingLeft:'1.25rem',paddingRight:'1.25rem',paddingBottom:'0.6rem'}}>
-          <div style={{fontFamily:ffS,fontSize:'1.2rem',fontWeight:500,color:white,letterSpacing:'-0.01em',lineHeight:1}}>A<span style={{color:gold,fontStyle:'italic'}}>+</span> CRM <span style={{fontSize:'0.46rem',letterSpacing:'0.18em',textTransform:'uppercase',color:'rgba(255,255,255,0.25)',marginLeft:'0.5rem',fontFamily:ff,fontWeight:400}}>Admin</span></div>
-          <div style={{display:'flex',alignItems:'center',gap:'0.5rem'}}>
-            <button onClick={subscribeToPush} title="Enable notifications" style={{background:'rgba(184,151,90,0.12)',border:'1px solid rgba(184,151,90,0.25)',color:'rgba(255,255,255,0.6)',padding:'0.28rem 0.75rem',fontSize:'0.52rem',cursor:'pointer',borderRadius:20,fontFamily:ff,letterSpacing:'0.1em',textTransform:'uppercase',transition:'all 0.15s',lineHeight:1}}>Notis</button>
-            <button onClick={signOut} style={{background:'none',border:'1px solid rgba(255,255,255,0.1)',color:'rgba(255,255,255,0.38)',padding:'0.28rem 0.75rem',fontSize:'0.52rem',letterSpacing:'0.1em',textTransform:'uppercase',cursor:'pointer',borderRadius:20,fontFamily:ff,transition:'all 0.15s',lineHeight:1}}>Sign Out</button>
-          </div>
-        </div>
-        <div className="safe-content" style={{display:'flex',paddingTop:52,minHeight:'100vh'}}>
-          {/* SIDEBAR */}
-          <div className="admin-sidebar glass-sidebar" style={{width:210,flexShrink:0,position:'fixed',top:52,left:0,bottom:0,padding:'1.5rem 0',overflowY:'auto'}}>
-            <button onClick={()=>setPanel('notifications')} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0.82rem 1.5rem',fontSize:'0.72rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel==='notifications'?gold:'rgba(255,255,255,0.95)',cursor:'pointer',background:'none',border:'none',borderLeft:panel==='notifications'?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>
-              <span>Alerts</span>
-              {getNotifications(cards).length>0&&<span style={{background:'#c0392b',color:'white',borderRadius:'50%',width:18,height:18,fontSize:'0.6rem',fontWeight:700,display:'inline-flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>{getNotifications(cards).length}</span>}
-            </button>
-            <button onClick={()=>setPanel('bookings')} style={{display:'flex',alignItems:'center',padding:'0.82rem 1.5rem',fontSize:'0.72rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel==='bookings'?gold:'rgba(255,255,255,0.95)',cursor:'pointer',background:'none',border:'none',borderLeft:panel==='bookings'?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>Bookings</button>
-            <div style={{height:'1px',background:'rgba(255,255,255,0.06)',margin:'0.25rem 1.5rem'}}/>
-            {[['dashboard','Dashboard'],['clients','Clients'],['campaigns','Campaigns']].map(([id,label])=>(<button key={id} onClick={()=>setPanel(id)} style={{display:'flex',alignItems:'center',padding:'0.82rem 1.5rem',fontSize:'0.72rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel===id?gold:'rgba(255,255,255,0.95)',cursor:'pointer',background:'none',border:'none',borderLeft:panel===id?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>{label}</button>))}
-            <div style={{height:'1px',background:'rgba(255,255,255,0.06)',margin:'0.25rem 1.5rem'}}/>
-            <button onClick={()=>setLoyaltyOpen(o=>!o)} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0.82rem 1.5rem',fontSize:'0.72rem',letterSpacing:'0.1em',textTransform:'uppercase',color:['cards','punch'].includes(panel)?gold:'rgba(255,255,255,0.95)',cursor:'pointer',background:'none',border:'none',width:'100%',textAlign:'left',fontFamily:ff}}>
-              <span>Loyalty Program</span>
-              <span style={{fontSize:'0.6rem',display:'inline-block',transform:loyaltyOpen?'rotate(180deg)':'rotate(0deg)',transition:'transform 0.2s'}}>▾</span>
-            </button>
-            {loyaltyOpen&&(<div style={{background:'rgba(0,0,0,0.15)'}}>
-              {[['cards','Cards'],['punch','Punch']].map(([id,label])=>(<button key={id} onClick={()=>setPanel(id)} style={{display:'flex',alignItems:'center',padding:'0.68rem 1.5rem 0.68rem 2.25rem',fontSize:'0.68rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel===id?gold:'rgba(255,255,255,0.9)',cursor:'pointer',background:'none',border:'none',borderLeft:panel===id?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>{label}</button>))}
-            </div>)}
-            <div style={{height:'1px',background:'rgba(255,255,255,0.06)',margin:'0.25rem 1.5rem'}}/>
-            <button onClick={()=>setPanel('catalog')} style={{display:'flex',alignItems:'center',padding:'0.82rem 1.5rem',fontSize:'0.72rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel==='catalog'?gold:'rgba(255,255,255,0.95)',cursor:'pointer',background:'none',border:'none',borderLeft:panel==='catalog'?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>Catalog</button>
-            <button onClick={()=>setPanel('supplies')} style={{display:'flex',alignItems:'center',padding:'0.82rem 1.5rem',fontSize:'0.72rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel==='supplies'?gold:'rgba(255,255,255,0.95)',cursor:'pointer',background:'none',border:'none',borderLeft:panel==='supplies'?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>Supplies</button>
-            <div style={{height:'1px',background:'rgba(255,255,255,0.06)',margin:'0.25rem 1.5rem'}}/>
-            <button onClick={()=>setPanel('reviews')} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0.82rem 1.5rem',fontSize:'0.72rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel==='reviews'?gold:'rgba(255,255,255,0.95)',cursor:'pointer',background:'none',border:'none',borderLeft:panel==='reviews'?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>
-              <span>Reviews</span>
-            </button>
-            <button onClick={()=>setPanel('system')} style={{display:'flex',alignItems:'center',padding:'0.82rem 1.5rem',fontSize:'0.72rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel==='system'?gold:'rgba(255,255,255,0.95)',cursor:'pointer',background:'none',border:'none',borderLeft:panel==='system'?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>Admin Panel</button>
-          </div>
+      {/* ── GLASS HEADER ── */}
+      <header style={{position:'fixed',top:0,left:0,right:0,zIndex:200,height:'calc(52px + env(safe-area-inset-top,0px))',paddingTop:'env(safe-area-inset-top,0px)',background:'rgba(255,255,255,0.72)',backdropFilter:'blur(20px) saturate(180%)',WebkitBackdropFilter:'blur(20px) saturate(180%)',borderBottom:'1px solid rgba(255,255,255,0.5)',boxShadow:'0 2px 20px rgba(0,0,0,0.06)',display:'flex',alignItems:'flex-end',justifyContent:'space-between',paddingLeft:20,paddingRight:20,paddingBottom:10}}>
+        <div style={{fontFamily:ffS,fontSize:'1.2rem',fontWeight:500,color:ink,lineHeight:1}}>A<span style={{color:gold,fontStyle:'italic'}}>+</span> CRM</div>
+        <button onClick={signOut} style={{background:'none',border:'1px solid rgba(14,14,12,0.12)',color:gray,padding:'5px 14px',fontSize:11,letterSpacing:'0.08em',textTransform:'uppercase',cursor:'pointer',borderRadius:20,fontFamily:ff}}>Salir</button>
+      </header>
 
-          {/* MAIN */}
-          <div className="admin-main" style={{marginLeft:210,flex:1,padding:'1.75rem',maxWidth:980}}>
-            <div key={panel} className="panel-animate">
-            {panel==='dashboard'&&<DashboardPanel cards={cards} sales={sales} users={users||[]} session={session} onSelectClient={(card)=>{setSelectedClient(card);setPanel('client')}} onPunch={()=>setPanel('punch')} onGoCards={()=>setPanel('cards')}/>}
-            {panel==='client'&&selectedClient&&<ClientProfile card={selectedClient} onBack={()=>{setSelectedClient(null);setPanel('dashboard')}}/>}
-            {panel==='notifications'&&<NotificationsPanel cards={cards} users={users}/>}
-            {panel==='bookings'&&<BookingsPanel/>}
-            {panel==='campaigns'&&<CampaignsPanel cards={cards} users={users}/>}
-            {panel==='catalog'&&<CatalogPanel catalog={catalog} onSetCost={(item)=>{setEditCost(item);setCostForm({cost:item.catalog_costs?.cost||'',notes:item.catalog_costs?.notes||''});setModal('cost')}} onSetSuppliers={(item)=>{setSuppliersItem(item);setSuppliersText(item.catalog_costs?.suppliers||'');setSuppliersTitle('');setModal('suppliers')}}/>}
-            {panel==='supplies'&&<SuppliesPanel supplies={supplies}
-              onAdd={()=>{setSupplyForm({name:'',category:'',cost:'',unit:'month',provider:'',renewal_date:'',notes:''});setSupplyModal('add')}}
-              onEdit={(s)=>{setSupplyForm({name:s.name,category:s.category||'',cost:s.cost,unit:s.unit||'month',provider:s.provider||'',renewal_date:s.renewal_date||'',notes:s.notes||''});setSupplyModal(s)}}
-              onDelete={async(id)=>{if(!confirm('Delete this supply?'))return;await fetch('/api/admin/supplies',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})});showToast('Supply deleted');loadAll()}}
-              showToast={showToast}
-            />}
-            {panel==='reviews'&&<ReviewsPanel/>}
-            {panel==='system'&&<AdminSystemPanel users={users} cards={cards} allUsers={allUsers} loadAll={loadAll} showToast={showToast}/>}
-            {panel==='loyalty'&&(<div><h2 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300,marginBottom:'1.5rem'}}>Loyalty Program</h2><div style={{display:'flex',flexDirection:'column',gap:'0.75rem'}}>{[['cards','Cards','Create and manage loyalty cards'],['punch','Punch','Register payments and stamps']].map(([id,label,desc])=>(<div key={id} onClick={()=>setPanel(id)} style={{background:white,borderRadius:10,padding:'1.25rem 1.5rem',border:'1px solid rgba(14,14,12,0.07)',cursor:'pointer',display:'flex',justifyContent:'space-between',alignItems:'center'}}><div><div style={{fontFamily:ffS,fontSize:'1.1rem',fontWeight:300,color:black,marginBottom:'0.2rem'}}>{label}</div><div style={{fontSize:'0.68rem',color:gray}}>{desc}</div></div><div style={{color:gold,fontSize:'1rem'}}>›</div></div>))}</div></div>)}
-            {panel==='clients'&&<ClientsPanel users={users} cards={cards} search={clientSearch} setSearch={setClientSearch}
-              onEdit={(u)=>{setEditingClient(u);setEditForm({name:u.full_name||'',business:u.business_name||'',phone:u.phone||'',email:'',password:''});setModal('editclient')}}
-              onAddPayment={(card)=>{setPunchId(card.id);setPanel('punch')}}
-              onCreateCard={(uid)=>{setForm({user_id:uid});setModal('card')}}
-              onCreateNew={()=>{setForm({});setModal('card')}}
-              onDelete={async(uid)=>{if(!confirm('Delete this client?'))return;const u=users.find(u=>u.id===uid);await fetch('/api/admin/users',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:uid})});await fetch('/api/admin/activity-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'Deleted client',target:u?.business_name||u?.full_name||'',type:'delete'})});showToast('Client deleted');loadAll()}}
-              onFiles={(u)=>{setFilesClient(u);setModal('files')}}
-              onExpense={(u)=>{setExpenseClient(u);setExpenseForm({amount:'',description:'',date:new Date().toISOString().split('T')[0]});setModal('expense')}}
-              onHistory={(u)=>{setHistoryClient(u);setModal('history')}}
-            />}
+      {/* ── MAIN CONTENT ── */}
+      <div style={{paddingTop:'calc(52px + env(safe-area-inset-top,0px))',paddingBottom:'calc(64px + env(safe-area-inset-bottom,0px))',minHeight:'100vh',background:'#f8f6f1'}}>
+        <div key={burger?panel:tab} className="panel-animate">
+          {/* PRIMARY TABS */}
+          {!burger&&tab==='dashboard'&&<AdminDashboard sales={sales} bookings={adminBookings} session={session}/>}
+          {!burger&&tab==='bookings'&&<AdminBookings/>}
+          {!burger&&tab==='coldcalling'&&<AdminColdCalling/>}
+
+          {/* BURGER PANELS */}
+          {burger&&panel==='crm-clients'&&<AdminCRMClients/>}
+          {burger&&panel==='loyalty-cards'&&<ClientsPanel users={users} cards={cards} search={clientSearch} setSearch={setClientSearch}
+            onEdit={(u)=>{setEditingClient(u);setEditForm({name:u.full_name||'',business:u.business_name||'',phone:u.phone||'',email:'',password:''});setModal('editclient')}}
+            onAddPayment={(card)=>{setPunchId(card.id);setPanel('punch')}}
+            onCreateCard={(uid)=>{setForm({user_id:uid});setModal('card')}}
+            onCreateNew={()=>{setForm({});setModal('card')}}
+            onDelete={async(uid)=>{if(!confirm('Eliminar cliente?'))return;const u=users.find(u=>u.id===uid);await fetch('/api/admin/users',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:uid})});showToast('Cliente eliminado');loadAll()}}
+            onFiles={(u)=>{setFilesClient(u);setModal('files')}}
+            onExpense={(u)=>{setExpenseClient(u);setExpenseForm({amount:'',description:'',date:new Date().toISOString().split('T')[0]});setModal('expense')}}
+            onHistory={(u)=>{setHistoryClient(u);setModal('history')}}
+          />}
+          {burger&&panel==='cards'&&<>
+            <div style={{padding:'20px 16px 8px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+              <h2 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300}}>Cards</h2>
+              <button onClick={()=>setModal('card')} style={{background:black,color:white,border:'none',padding:'0.6rem 1.1rem',fontFamily:ff,fontSize:'0.6rem',letterSpacing:'0.12em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>+ New</button>
+            </div>
+            <div style={{padding:'0 16px'}}>
+            <input type="text" placeholder="Search client..." value={search} onChange={e=>setSearch(e.target.value)} style={{width:'100%',padding:'0.7rem 1rem',border:'1px solid '+gl,borderRadius:3,fontFamily:ff,fontSize:'0.82rem',outline:'none',marginBottom:'1.25rem',boxSizing:'border-box',background:white}}/>
+            <div style={{display:'flex',flexDirection:'column',gap:'0.75rem'}}>
+                {cards.filter(c=>(c.profiles?.full_name||'').toLowerCase().includes(search.toLowerCase())||(c.profiles?.business_name||'').toLowerCase().includes(search.toLowerCase())).map(card=>{
+                  const cur=card.stamps%5===0&&card.stamps>0?5:card.stamps%5
+                  const cycle=Math.ceil((card.stamps||1)/5)||1
+                  const hasR=card.stamps>0&&card.stamps%5===0
+                  return(<div key={card.id} style={{background:'rgba(248,246,241,0.6)',backdropFilter:'blur(20px) saturate(160%)',borderRadius:14,border:'1px solid rgba(255,255,255,0.7)',boxShadow:'inset 0 1px 0 rgba(255,255,255,0.8),0 8px 32px -8px rgba(28,28,26,0.1)',overflow:'hidden'}}>
+                    <div style={{background:'linear-gradient(135deg,#1a1917,#252320)',padding:'1rem 1.25rem',color:white,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                      <div>
+                        <div style={{fontFamily:ffS,fontSize:'0.9rem',marginBottom:'0.15rem'}}>A<span style={{color:gold,fontStyle:'italic'}}>+</span> CRM</div>
+                        <div style={{fontSize:'0.72rem',color:'rgba(255,255,255,0.8)',marginBottom:'0.5rem'}}>{card.profiles?.business_name||card.profiles?.full_name}</div>}
             {panel==='cards'&&<>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1rem'}}>
                 <h2 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300}}>Cards</h2>
@@ -2192,24 +2644,84 @@ export default function Admin({session}){
                 })}
                 {cards.length===0&&<p style={{color:gray,fontSize:'0.85rem'}}>No cards yet.</p>}
               </div>
+            </div>
             </>}
-            {panel==='punch'&&<>
+          {burger&&panel==='punch'&&<div style={{padding:'20px 16px'}}>
               <h2 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300,marginBottom:'1.25rem'}}>Punch Card</h2>
               <div style={{background:white,borderRadius:10,padding:'1.5rem',border:'1px solid rgba(14,14,12,0.07)'}}>
-                <div className="punch-row" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1rem',marginBottom:'1rem'}}>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1rem',marginBottom:'1rem'}}>
                   <div><label style={lbl}>Client</label><select value={punchId} onChange={e=>setPunchId(e.target.value)} style={{...inp,marginBottom:0}}><option value="">Select</option>{cards.map(c=><option key={c.id} value={c.id}>{c.profiles?.business_name||c.profiles?.full_name} · {c.stamps%5===0&&c.stamps>0?5:c.stamps%5}/5</option>)}</select></div>
-                  <div><label style={lbl}>Amount <span style={{color:'#c0392b'}}>*</span></label><input style={{...inp,marginBottom:0}} type="number" step="0.01" placeholder="0.00" value={punchAmt} onChange={e=>setPunchAmt(e.target.value)}/></div>
+                  <div><label style={lbl}>Amount *</label><input style={{...inp,marginBottom:0}} type="number" step="0.01" placeholder="0.00" value={punchAmt} onChange={e=>setPunchAmt(e.target.value)}/></div>
                 </div>
-                {punchId&&(()=>{const card=cards.find(c=>c.id===punchId);const cur=card?(card.stamps%5===0&&card.stamps>0?5:card.stamps%5):0;return<div style={{background:'linear-gradient(135deg,#1a1917,#252320)',borderRadius:10,padding:'1.1rem',marginBottom:'1rem',border:'1px solid rgba(184,151,90,0.22)',color:white}}><div style={{fontFamily:ffS,fontSize:'1rem',marginBottom:'0.45rem'}}>A<span style={{color:gold,fontStyle:'italic'}}>+</span> CRM · {card?.profiles?.business_name||card?.profiles?.full_name}</div><div style={{display:'flex',gap:5}}>{Array.from({length:5},(_,i)=><div key={i} style={{width:15,height:15,borderRadius:'50%',border:'1.5px solid rgba(184,151,90,0.22)',background:i<cur?gold:i===cur?'rgba(184,151,90,0.35)':'transparent'}}/>)}</div></div>})()}
                 <button onClick={doPunch} style={{width:'100%',background:black,color:white,border:'none',padding:'0.85rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Give Stamp</button>
               </div>
-            </>}
-            </div>
+            </div>}
+          {burger&&panel==='notifications'&&<NotificationsPanel cards={cards} users={users}/>}
+          {burger&&panel==='campaigns'&&<CampaignsPanel cards={cards} users={users}/>}
+          {burger&&panel==='catalog'&&<CatalogPanel catalog={catalog} onSetCost={(item)=>{setEditCost(item);setCostForm({cost:item.catalog_costs?.cost||'',notes:item.catalog_costs?.notes||''});setModal('cost')}} onSetSuppliers={(item)=>{setSuppliersItem(item);setSuppliersText(item.catalog_costs?.suppliers||'');setSuppliersTitle('');setModal('suppliers')}}/>}
+          {burger&&panel==='supplies'&&<SuppliesPanel supplies={supplies} onAdd={()=>{setSupplyForm({name:'',category:'',cost:'',unit:'month',provider:'',renewal_date:'',notes:''});setSupplyModal('add')}} onEdit={(s)=>{setSupplyForm({name:s.name,category:s.category||'',cost:s.cost,unit:s.unit||'month',provider:s.provider||'',renewal_date:s.renewal_date||'',notes:s.notes||''});setSupplyModal(s)}} onDelete={async(id)=>{if(!confirm('Delete?'))return;await fetch('/api/admin/supplies',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})});showToast('Deleted');loadAll()}} showToast={showToast}/>}
+          {burger&&panel==='reviews'&&<ReviewsPanel/>}
+          {burger&&panel==='system'&&<AdminSystemPanel users={users} cards={cards} allUsers={allUsers} loadAll={loadAll} showToast={showToast}/>}
+        </div>
+      </div>
+
+      {/* ── GLASS BOTTOM NAV ── */}
+      <nav style={{position:'fixed',bottom:0,left:0,right:0,zIndex:200,height:'calc(60px + env(safe-area-inset-bottom,0px))',paddingBottom:'env(safe-area-inset-bottom,0px)',background:'rgba(255,255,255,0.72)',backdropFilter:'blur(20px) saturate(180%)',WebkitBackdropFilter:'blur(20px) saturate(180%)',borderTop:'1px solid rgba(255,255,255,0.5)',boxShadow:'0 -2px 20px rgba(0,0,0,0.06)',display:'flex',alignItems:'flex-start',paddingTop:8}}>
+        {[
+          {id:'dashboard',label:'Dashboard',icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>},
+          {id:'bookings',label:'Bookings',icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>},
+          {id:'coldcalling',label:'Llamadas',icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.65 3.38 2 2 0 0 1 3.62 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.58a16 16 0 0 0 6 6l.96-.87a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.92 16.92z"/></svg>},
+        ].map(({id,label,icon})=>{
+          const active=!burger&&tab===id
+          return(
+            <button key={id} onClick={()=>{setTab(id);setBurger(false)}} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:3,border:'none',background:'none',cursor:'pointer',padding:'4px 0'}}>
+              <span style={{color:active?ink:'rgba(14,14,12,0.3)',transition:'color 0.15s'}}>{icon}</span>
+              <span style={{fontSize:10,fontFamily:ff,fontWeight:active?700:400,color:active?ink:'rgba(14,14,12,0.35)',letterSpacing:'0.02em',borderBottom:active?'2px solid '+ink:'2px solid transparent',paddingBottom:1}}>{label}</span>
+            </button>
+          )
+        })}
+        {/* Burger */}
+        <button onClick={()=>setBurger(o=>!o)} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:3,border:'none',background:'none',cursor:'pointer',padding:'4px 0'}}>
+          <span style={{color:burger?ink:'rgba(14,14,12,0.3)',transition:'color 0.15s'}}>
+            {burger
+              ?<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              :<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            }
+          </span>
+          <span style={{fontSize:10,fontFamily:ff,fontWeight:burger?700:400,color:burger?ink:'rgba(14,14,12,0.35)',letterSpacing:'0.02em',borderBottom:burger?'2px solid '+ink:'2px solid transparent',paddingBottom:1}}>Más</span>
+        </button>
+      </nav>
+
+      {/* ── BURGER SLIDE-IN DRAWER ── */}
+      {burger&&(
+        <div style={{position:'fixed',inset:0,zIndex:190}} onClick={e=>{if(e.target===e.currentTarget){setBurger(false)}}}>
+          <div style={{position:'fixed',top:'calc(52px + env(safe-area-inset-top,0px))',left:0,bottom:'calc(60px + env(safe-area-inset-bottom,0px))',width:240,background:'rgba(255,255,255,0.92)',backdropFilter:'blur(24px) saturate(180%)',WebkitBackdropFilter:'blur(24px) saturate(180%)',borderRight:'1px solid rgba(255,255,255,0.6)',boxShadow:'4px 0 24px rgba(0,0,0,0.08)',overflowY:'auto',padding:'12px 0',zIndex:191}}>
+            {[
+              {id:'crm-clients',label:'Clientes CRM'},
+              {id:'loyalty-cards',label:'Loyalty Clients'},
+              {id:'cards',label:'Cards'},
+              {id:'punch',label:'Punch Card'},
+              {id:'notifications',label:'Alertas'},
+              {id:'campaigns',label:'Campañas'},
+              {id:'catalog',label:'Catálogo'},
+              {id:'supplies',label:'Supplies'},
+              {id:'reviews',label:'Reviews'},
+              {id:'system',label:'Admin Panel'},
+            ].map(({id,label})=>(
+              <button key={id} onClick={()=>setPanel(id)} style={{display:'block',width:'100%',padding:'13px 20px',background:panel===id?'rgba(14,14,12,0.05)':'none',border:'none',borderLeft:panel===id?'3px solid '+ink:'3px solid transparent',textAlign:'left',fontFamily:ff,fontSize:13,fontWeight:panel===id?600:400,color:ink,cursor:'pointer'}}>
+                {label}
+              </button>
+            ))}
+            <div style={{height:1,background:'rgba(14,14,12,0.07)',margin:'8px 0'}}/>
+            <button onClick={signOut} style={{display:'block',width:'100%',padding:'13px 20px',background:'none',border:'none',textAlign:'left',fontFamily:ff,fontSize:13,color:gray,cursor:'pointer'}}>
+              Cerrar sesión
+            </button>
           </div>
         </div>
+      )}
 
-        {/* MOBILE NAV */}
-        <div className="mobile-nav">
+      {/* OLD MOBILE NAV (hidden — replaced) */}
+      <div className="mobile-nav" style={{display:'none!important'}}>
           {/* Agenda */}
           <button className={`mnav-btn${panel==='dashboard'?' active':''}`} onClick={()=>{setPanel('dashboard');setHamburgerOpen(false)}}>
             <div className="mnav-icon">
@@ -2232,54 +2744,7 @@ export default function Admin({session}){
             <span className="mnav-label">Reservas</span>
           </button>
           {/* Burger → upward card */}
-          <button className={`mnav-btn${hamburgerOpen||['notifications','campaigns','cards','punch','catalog','supplies','system'].includes(panel)?' active':''}`} onClick={()=>setHamburgerOpen(o=>!o)}>
-            <div className="mnav-icon">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                {hamburgerOpen
-                  ? <><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></>
-                  : <><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></>
-                }
-              </svg>
-            </div>
-            <span className="mnav-label">Más</span>
-          </button>
-        </div>
-
-        {/* UPWARD MENU CARD */}
-        {hamburgerOpen&&(
-          <>
-            <div onClick={()=>setHamburgerOpen(false)} style={{position:'fixed',inset:0,zIndex:198}}/>
-            <div className="menu-card" style={{
-              position:'fixed',bottom:72,right:12,zIndex:199,
-              background:'rgba(20,20,18,0.92)',backdropFilter:'blur(28px) saturate(180%)',
-              borderRadius:18,padding:'8px 0',minWidth:200,
-              border:'1px solid rgba(184,151,90,0.18)',
-              boxShadow:'0 -8px 40px rgba(0,0,0,0.35),0 0 0 1px rgba(255,255,255,0.04)',
-            }}>
-              {[
-                ['notifications','Alertas',<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>],
-                ['campaigns','Campañas',<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9l20-7z"/></svg>],
-                ['cards','Loyalty Cards',<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>],
-                ['punch','Punch Card',<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>],
-                ['catalog','Catálogo',<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>],
-                ['supplies','Supplies',<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>],
-                ['system','Admin Panel',<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>],
-              ].map(([id,label,icon])=>(
-                <button key={id} onClick={()=>{setPanel(id);setHamburgerOpen(false)}} style={{
-                  display:'flex',alignItems:'center',gap:'0.75rem',width:'100%',
-                  padding:'0.72rem 1.1rem',background:panel===id?'rgba(184,151,90,0.1)':'none',
-                  border:'none',cursor:'pointer',fontFamily:ff,fontSize:'0.78rem',fontWeight:500,
-                  color:panel===id?gold:'rgba(255,255,255,0.72)',textAlign:'left',
-                  borderLeft:panel===id?'2px solid '+gold:'2px solid transparent',
-                  transition:'all 0.15s',
-                }}>
-                  <span style={{color:panel===id?gold:'rgba(255,255,255,0.4)',flexShrink:0}}>{icon}</span>
-                  {label}
-                </button>
-              ))}
-            </div>
-          </>
-        )}
+          {/* old nav replaced */}
 
         {/* MODAL: New Card */}
         {modal==='card'&&(<div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:500,display:'flex',alignItems:'flex-end',justifyContent:'center'}} onClick={e=>e.target===e.currentTarget&&setModal(null)}>
