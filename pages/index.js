@@ -228,10 +228,10 @@ function CallBubble() {
 
 function PhoneMockup({ variant = 'hoy' }) {
   const citas = [
-    { h: '9:00 AM', n: 'María Rivera', s: 'Corte + Tinte', c: 'bg-gold' },
-    { h: '10:30 AM', n: 'Carlos Méndez', s: 'Barba clásica', c: 'bg-ink/70' },
-    { h: '12:00 PM', n: 'Yamilet Cruz', s: 'Manicure', c: 'bg-gold' },
-    { h: '2:00 PM', n: 'Jorge Pagán', s: 'Consulta', c: 'bg-ink/70' },
+    { h: '9:00 AM', n: 'María Rivera', s: 'Corte + Tinte', bg: '#b8975a' },
+    { h: '10:30 AM', n: 'Carlos Méndez', s: 'Barba clásica', bg: '#0e0e0c' },
+    { h: '12:00 PM', n: 'Yamilet Cruz', s: 'Manicure', bg: '#b8975a' },
+    { h: '2:00 PM', n: 'Jorge Pagán', s: 'Consulta', bg: '#0e0e0c' },
   ]
   return (
     <div className="glass-dark relative rounded-[36px] p-2 shadow-soft" style={{ aspectRatio: '9/19' }}>
@@ -277,9 +277,9 @@ function PhoneMockup({ variant = 'hoy' }) {
           <div className="mt-1 space-y-1">
             {citas.map((c) => (
               <div key={c.h} className="flex items-center gap-2 rounded-lg border border-ink/5 p-1.5" style={{ background: 'rgba(255,255,255,0.6)' }}>
-                <div className={`flex h-7 w-10 flex-col items-center justify-center rounded-md text-cream ${c.c}`}>
-                  <span style={{ fontSize: 7, fontWeight: 700, lineHeight: 1 }}>{c.h.split(' ')[0]}</span>
-                  <span style={{ fontSize: 6, fontWeight: 600, lineHeight: 1, opacity: 0.8 }}>{c.h.split(' ')[1]}</span>
+                <div style={{ background: c.bg, width: 40, height: 28, borderRadius: 6, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <span style={{ fontSize: 7, fontWeight: 700, lineHeight: 1, color: '#fff' }}>{c.h.split(' ')[0]}</span>
+                  <span style={{ fontSize: 6, fontWeight: 600, lineHeight: 1, color: 'rgba(255,255,255,0.8)' }}>{c.h.split(' ')[1]}</span>
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-ink font-semibold" style={{ fontSize: 9, lineHeight: 1.2 }}>{c.n}</p>
