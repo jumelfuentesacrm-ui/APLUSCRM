@@ -3094,23 +3094,12 @@ export default function Admin({session}){
           </div>
         )}
 
-        {toast&&(
-          <div style={{
-            position:'fixed',bottom:'5.5rem',right:'1.25rem',
-            background:ink,color:white,
-            padding:'0.85rem 1.25rem',borderRadius:10,
-            fontSize:'0.74rem',fontFamily:ff,lineHeight:1.5,
-            borderLeft:'3px solid '+gold,
-            zIndex:9999,maxWidth:300,
-            boxShadow:'0 8px 32px rgba(0,0,0,0.22)',
-            backdropFilter:'blur(8px)',
-            animation:'slideIn 0.2s ease'
-          }}>
-            <style>{`@keyframes slideIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}`}</style>
-            {toast}
-          </div>
-        )}
-      </div>
+      {toast&&(
+        <div style={{position:'fixed',bottom:'5.5rem',right:'1.25rem',background:ink,color:white,padding:'0.85rem 1.25rem',borderRadius:10,fontSize:'0.74rem',fontFamily:ff,lineHeight:1.5,borderLeft:'3px solid '+gold,zIndex:9999,maxWidth:300,boxShadow:'0 8px 32px rgba(0,0,0,0.22)',backdropFilter:'blur(8px)',animation:'slideIn 0.2s ease'}}>
+          <style>{`@keyframes slideIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}`}</style>
+          {toast}
+        </div>
+      )}
     </>
   )
 }
