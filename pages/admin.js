@@ -1903,14 +1903,21 @@ export default function Admin({session}){
         html,body{background:#f8f6f1;overscroll-behavior:none;-webkit-font-smoothing:antialiased;}
         @media(max-width:700px){
           .admin-sidebar{display:none!important;}
-          .admin-main{margin-left:0!important;padding:1rem!important;}
+          .admin-main{margin-left:0!important;padding:1rem!important;padding-bottom:80px!important;}
           .donut-grid{grid-template-columns:1fr!important;}
           .punch-row{grid-template-columns:1fr!important;}
           .mobile-nav{display:flex!important;}
         }
-        .mobile-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:rgba(28,28,26,0.85);backdrop-filter:blur(20px) saturate(160%);z-index:200;border-top:1px solid rgba(184,151,90,0.2);}
-        .mobile-nav button{flex:1;padding:0.75rem 0.1rem;background:none;border:none;color:rgba(255,255,255,0.38);font-family:${ff};font-size:0.58rem;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:0.2rem;transition:color 0.15s;}
-        .mobile-nav button.active{color:${gold};}
+        .mobile-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:rgba(28,28,26,0.82);backdrop-filter:blur(28px) saturate(200%);z-index:200;border-top:1px solid rgba(184,151,90,0.18);padding:0 8px;padding-bottom:env(safe-area-inset-bottom,0px);height:64px;align-items:center;}
+        .mnav-btn{flex:1;padding:0;background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;height:100%;position:relative;transition:all 0.2s;}
+        .mnav-btn .mnav-icon{width:22px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:8px;transition:all 0.2s;}
+        .mnav-btn .mnav-label{font-family:${ff};font-size:10px;font-weight:500;letter-spacing:0.02em;color:rgba(255,255,255,0.35);transition:color 0.2s;}
+        .mnav-btn svg{color:rgba(255,255,255,0.35);transition:color 0.2s;}
+        .mnav-btn.active .mnav-icon{background:${gold};box-shadow:0 4px 14px rgba(184,151,90,0.45);}
+        .mnav-btn.active svg{color:#0e0e0c;}
+        .mnav-btn.active .mnav-label{color:${gold};}
+        @keyframes menu-up{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+        .menu-card{animation:menu-up 0.22s cubic-bezier(0.22,1,0.36,1) both;}
         .sidebar-btn{transition:background 0.15s,color 0.15s,border-color 0.15s;}
         .sidebar-btn:hover{background:rgba(255,255,255,0.05)!important;}
         .client-row:hover{background:rgba(184,151,90,0.04);}
@@ -2057,46 +2064,70 @@ export default function Admin({session}){
 
         {/* MOBILE NAV */}
         <div className="mobile-nav">
-          {[
-            ['notifications','Alerts'],
-            ['dashboard','Dashboard'],
-            ['loyalty','Loyalty'],
-          ].map(([id,label])=>(
-            <button key={id} onClick={()=>{setPanel(id);setHamburgerOpen(false)}}
-              className={panel===id||(['cards','punch','rewards'].includes(panel)&&id==='loyalty')?'active':''}>
-              {label}
-            </button>
-          ))}
-          <button onClick={()=>setHamburgerOpen(o=>!o)}
-            className={hamburgerOpen||['clients','campaigns','catalog','supplies','system','bookings'].includes(panel)?'active':''}
-            style={{border:'1px solid rgba(184,151,90,0.35)',borderRadius:4,margin:'0.35rem 0.15rem',padding:'0.2rem 0.6rem',background:hamburgerOpen?'rgba(184,151,90,0.12)':'transparent'}}>
-            <span style={{fontSize:'1.15rem',lineHeight:1,display:'block'}}>☰</span>
+          {/* Agenda */}
+          <button className={`mnav-btn${panel==='dashboard'?' active':''}`} onClick={()=>{setPanel('dashboard');setHamburgerOpen(false)}}>
+            <div className="mnav-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            </div>
+            <span className="mnav-label">Agenda</span>
+          </button>
+          {/* Clientes */}
+          <button className={`mnav-btn${panel==='clients'?' active':''}`} onClick={()=>{setPanel('clients');setHamburgerOpen(false)}}>
+            <div className="mnav-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </div>
+            <span className="mnav-label">Clientes</span>
+          </button>
+          {/* Bookings */}
+          <button className={`mnav-btn${panel==='bookings'?' active':''}`} onClick={()=>{setPanel('bookings');setHamburgerOpen(false)}}>
+            <div className="mnav-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+            </div>
+            <span className="mnav-label">Reservas</span>
+          </button>
+          {/* Burger → upward card */}
+          <button className={`mnav-btn${hamburgerOpen||['notifications','campaigns','cards','punch','catalog','supplies','system'].includes(panel)?' active':''}`} onClick={()=>setHamburgerOpen(o=>!o)}>
+            <div className="mnav-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                {hamburgerOpen
+                  ? <><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></>
+                  : <><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></>
+                }
+              </svg>
+            </div>
+            <span className="mnav-label">Más</span>
           </button>
         </div>
 
-        {/* HAMBURGER DRAWER */}
+        {/* UPWARD MENU CARD */}
         {hamburgerOpen&&(
           <>
-            <div onClick={()=>setHamburgerOpen(false)}
-              style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.45)',zIndex:195}}/>
-            <div style={{position:'fixed',bottom:0,left:0,right:0,background:ink,zIndex:196,
-              paddingBottom:52}}>
-              <div style={{width:36,height:3,background:'rgba(255,255,255,0.15)',borderRadius:2,margin:'0.75rem auto 0.5rem'}}/>
+            <div onClick={()=>setHamburgerOpen(false)} style={{position:'fixed',inset:0,zIndex:198}}/>
+            <div className="menu-card" style={{
+              position:'fixed',bottom:72,right:12,zIndex:199,
+              background:'rgba(20,20,18,0.92)',backdropFilter:'blur(28px) saturate(180%)',
+              borderRadius:18,padding:'8px 0',minWidth:200,
+              border:'1px solid rgba(184,151,90,0.18)',
+              boxShadow:'0 -8px 40px rgba(0,0,0,0.35),0 0 0 1px rgba(255,255,255,0.04)',
+            }}>
               {[
-                ['bookings','Bookings'],
-                ['clients','Clients'],
-                ['campaigns','Campaigns'],
-                ['catalog','Catalog'],
-                ['supplies','Supplies'],
-                ['system','Admin Panel'],
-              ].map(([id,label])=>(
-                <button key={id} onClick={()=>{setPanel(id);setHamburgerOpen(false)}}
-                  style={{display:'flex',alignItems:'center',width:'100%',padding:'0.9rem 1.5rem',
-                    background:panel===id?'rgba(184,151,90,0.08)':'none',border:'none',
-                    borderLeft:panel===id?'2px solid '+gold:'2px solid transparent',
-                    color:panel===id?gold:'rgba(255,255,255,0.65)',
-                    fontFamily:ff,fontSize:'0.72rem',letterSpacing:'0.1em',textTransform:'uppercase',
-                    cursor:'pointer',textAlign:'left'}}>
+                ['notifications','Alertas',<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>],
+                ['campaigns','Campañas',<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9l20-7z"/></svg>],
+                ['cards','Loyalty Cards',<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>],
+                ['punch','Punch Card',<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>],
+                ['catalog','Catálogo',<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>],
+                ['supplies','Supplies',<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>],
+                ['system','Admin Panel',<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>],
+              ].map(([id,label,icon])=>(
+                <button key={id} onClick={()=>{setPanel(id);setHamburgerOpen(false)}} style={{
+                  display:'flex',alignItems:'center',gap:'0.75rem',width:'100%',
+                  padding:'0.72rem 1.1rem',background:panel===id?'rgba(184,151,90,0.1)':'none',
+                  border:'none',cursor:'pointer',fontFamily:ff,fontSize:'0.78rem',fontWeight:500,
+                  color:panel===id?gold:'rgba(255,255,255,0.72)',textAlign:'left',
+                  borderLeft:panel===id?'2px solid '+gold:'2px solid transparent',
+                  transition:'all 0.15s',
+                }}>
+                  <span style={{color:panel===id?gold:'rgba(255,255,255,0.4)',flexShrink:0}}>{icon}</span>
                   {label}
                 </button>
               ))}
