@@ -7,27 +7,16 @@ const supabase = createClient(
 
 export default async function handler(req, res) {
   if (req.method === 'POST') {
-    const { name, phone, facebook_page, service, date, time, notes } = req.body
+    const { name, phone, business, facebook_page, service, date, time, notes } = req.body
     if (!name || !phone || !date || !time) {
       return res.status(400).json({ error: 'Missing required fields' })
     }
-    // Try full insert; if columns don't exist yet fall back to base columns
-    let { data, error } = await supabase
+    const { data, error } = await supabase
       .from('bookings')
-      .insert([{ name, phone, facebook_page, service, date, time, notes, status: 'pending', archived: false }])
+      .insert([{ name, phone, business: business || name, facebook_page, service, date, time, notes, status: 'pending', archived: false }])
       .select()
       .single()
-    const firstError = error?.message
-    if (error) {
-      const fallback = await supabase
-        .from('bookings')
-        .insert([{ name, phone, date, time, notes, status: 'pending' }])
-        .select()
-        .single()
-      data = fallback.data
-      error = fallback.error
-    }
-    if (error) return res.status(500).json({ error: error.message, firstError })
+    if (error) return res.status(500).json({ error: error.message })
     return res.status(201).json(data)
   }
 
