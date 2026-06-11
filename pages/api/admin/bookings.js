@@ -17,6 +17,7 @@ export default async function handler(req, res) {
       .insert([{ name, phone, facebook_page, service, date, time, notes, status: 'pending', archived: false }])
       .select()
       .single()
+    const firstError = error?.message
     if (error) {
       const fallback = await supabase
         .from('bookings')
@@ -26,7 +27,7 @@ export default async function handler(req, res) {
       data = fallback.data
       error = fallback.error
     }
-    if (error) return res.status(500).json({ error: error.message })
+    if (error) return res.status(500).json({ error: error.message, firstError })
     return res.status(201).json(data)
   }
 
