@@ -2088,6 +2088,7 @@ function AdminBookings(){
   const [saving,setSaving]=useState(false)
   const [weekView,setWeekView]=useState(false)
   const [expandedWeek,setExpandedWeek]=useState(null)
+  const [expandedDay,setExpandedDay]=useState({})
   useEffect(()=>{load()},[])
   async function load(){
     setLoading(true)
@@ -2207,16 +2208,24 @@ function AdminBookings(){
                       const dayB=wb.filter(b=>b.date===day.date)
                       const isToday=day.date===new Date().toISOString().split('T')[0]
                       const isWeekend=day.name==='Sábado'||day.name==='Domingo'
-                      if(dayB.length===0&&isWeekend) return null
+                      const dayKey=`${w}-${day.date}`
+                      const isDayExp=expandedDay[dayKey]!==false&&(expandedDay[dayKey]===true||dayB.length>0)
                       return(
-                        <div key={day.date} style={{marginBottom:dayB.length?12:0}}>
-                          <div style={{display:'flex',alignItems:'center',gap:6,padding:'6px 4px',marginBottom:dayB.length?6:0}}>
+                        <div key={day.date} style={{marginBottom:6,borderRadius:10,overflow:'hidden',background:isToday?'rgba(184,151,90,0.05)':isWeekend?'rgba(14,14,12,0.02)':'transparent'}}>
+                          <button onClick={()=>setExpandedDay(p=>({...p,[dayKey]:!isDayExp}))} style={{width:'100%',display:'flex',alignItems:'center',gap:6,padding:'8px 8px',background:'none',border:'none',cursor:'pointer',fontFamily:ff,touchAction:'manipulation'}}>
                             <span style={{fontSize:12,fontWeight:700,color:isToday?gold:isWeekend?gray:ink}}>{day.name}</span>
                             {isToday&&<span style={{fontSize:9,background:gold,color:ink,borderRadius:99,padding:'1px 6px',fontWeight:700}}>HOY</span>}
                             <span style={{fontSize:11,color:gray}}>{day.dateObj.toLocaleDateString('es-PR',{day:'numeric',month:'short'})}</span>
-                            {dayB.length===0&&<span style={{fontSize:11,color:gray,opacity:0.5,marginLeft:4}}>sin citas</span>}
-                          </div>
-                          {dayB.map(b=><BookingCard key={b.id} b={b}/>)}
+                            {dayB.length>0&&<span style={{fontSize:11,background:'rgba(184,151,90,0.15)',color:gold,borderRadius:99,padding:'1px 7px',fontWeight:700,marginLeft:'auto'}}>{dayB.length}</span>}
+                            {dayB.length===0&&<span style={{fontSize:11,color:gray,opacity:0.4,marginLeft:'auto'}}>sin citas</span>}
+                            <span style={{fontSize:10,color:gray,marginLeft:dayB.length?0:0}}>{isDayExp?'▲':'▼'}</span>
+                          </button>
+                          {isDayExp&&dayB.length>0&&(
+                            <div style={{padding:'0 4px 8px'}}>
+                              {dayB.map(b=><BookingCard key={b.id} b={b}/>)}
+                            </div>
+                          )}
+                          {isDayExp&&dayB.length===0&&<p style={{padding:'4px 8px 10px',fontSize:12,color:gray,opacity:0.5}}>Sin citas este día</p>}
                         </div>
                       )
                     })}
