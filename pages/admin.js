@@ -2596,12 +2596,12 @@ export default function Admin({session}){
                     <div style={{background:'linear-gradient(135deg,#1a1917,#252320)',padding:'1rem 1.25rem',color:white,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
                       <div>
                         <div style={{fontFamily:ffS,fontSize:'0.9rem',marginBottom:'0.15rem'}}>A<span style={{color:gold,fontStyle:'italic'}}>+</span> CRM</div>
-                        <div style={{fontSize:'0.72rem',color:'rgba(255,255,255,0.8)',marginBottom:'0.5rem'}}>{card.profiles?.business_name||card.profiles?.full_name}</div>}
-            {panel==='cards'&&<>
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1rem'}}>
-                <h2 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300}}>Cards</h2>
-                <button onClick={()=>setModal('card')} style={{background:black,color:white,border:'none',padding:'0.6rem 1.1rem',fontFamily:ff,fontSize:'0.6rem',letterSpacing:'0.12em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>+ New</button>
-              </div>
+          {burger&&panel==='cards'&&<>
+            <div style={{padding:'20px 16px 8px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+              <h2 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300}}>Cards</h2>
+              <button onClick={()=>setModal('card')} style={{background:black,color:white,border:'none',padding:'0.6rem 1.1rem',fontFamily:ff,fontSize:'0.6rem',letterSpacing:'0.12em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>+ New</button>
+            </div>
+            <div style={{padding:'0 16px'}}>
               <input type="text" placeholder="Search client..." value={search} onChange={e=>setSearch(e.target.value)} style={{width:'100%',padding:'0.7rem 1rem',border:'1px solid '+gl,borderRadius:3,fontFamily:ff,fontSize:'0.82rem',outline:'none',marginBottom:'1.25rem',boxSizing:'border-box',background:white}}/>
               <div style={{display:'flex',flexDirection:'column',gap:'0.75rem'}}>
                 {cards.filter(c=>(c.profiles?.full_name||'').toLowerCase().includes(search.toLowerCase())||(c.profiles?.business_name||'').toLowerCase().includes(search.toLowerCase())).map(card=>{
@@ -2645,7 +2645,7 @@ export default function Admin({session}){
                 {cards.length===0&&<p style={{color:gray,fontSize:'0.85rem'}}>No cards yet.</p>}
               </div>
             </div>
-            </>}
+          </>}
           {burger&&panel==='punch'&&<div style={{padding:'20px 16px'}}>
               <h2 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300,marginBottom:'1.25rem'}}>Punch Card</h2>
               <div style={{background:white,borderRadius:10,padding:'1.5rem',border:'1px solid rgba(14,14,12,0.07)'}}>
