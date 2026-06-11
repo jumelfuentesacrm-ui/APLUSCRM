@@ -1902,10 +1902,10 @@ function scheduleLocalNotif(title,body,dateObj){
 
 // ─── ADMIN DASHBOARD ─────────────────────────────────────────────────────────
 function AdminDashboard({sales,bookings,session,users,onSaleAdded}){
-  const [addIncome,setAddIncome]=React.useState(null)
-  const [incomeForm,setIncomeForm]=React.useState({client_id:'',service:'',amount:'',notes:''})
-  const [incomeSaving,setIncomeSaving]=React.useState(false)
-  const [activeSem,setActiveSem]=React.useState(null)
+  const [addIncome,setAddIncome]=useState(null)
+  const [incomeForm,setIncomeForm]=useState({client_id:'',service:'',amount:'',notes:''})
+  const [incomeSaving,setIncomeSaving]=useState(false)
+  const [activeSem,setActiveSem]=useState(null)
   const now=new Date()
   const monthStr=now.toISOString().slice(0,7)
   const monthSales=sales.filter(s=>s.sale_date?.startsWith(monthStr)&&s.status==='paid')
