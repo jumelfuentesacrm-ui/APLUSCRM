@@ -498,7 +498,7 @@ function Booking() {
                   <Check className="h-6 w-6" />
                 </div>
                 <h3 className="mt-4 font-serif text-ink text-2xl">¡Reserva confirmada!</h3>
-                <p className="mt-2 text-ink/70" style={{ fontSize: 13 }}>Te escribimos al WhatsApp con los detalles.</p>
+                <p className="mt-2 text-ink/70" style={{ fontSize: 13 }}>Te escribiremos pronto por WhatsApp.</p>
                 <button onClick={() => { setStep('form'); setName(''); setPhone(''); setBusiness(''); setDate(''); setTime('') }} className="mt-5 text-ink underline underline-offset-2" style={{ fontSize: 12, fontWeight: 600 }}>
                   Reservar otra
                 </button>
