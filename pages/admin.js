@@ -1350,6 +1350,82 @@ const STATUS_COLORS = {
   completed: { label:'Completed', color:'#b8975a', bg:'rgba(184,151,90,0.12)' },
 }
 
+function ReviewsPanel() {
+  const [reviews, setReviews] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [filter, setFilter] = useState('pending')
+
+  async function load() {
+    setLoading(true)
+    try {
+      const r = await fetch(`/api/reviews?status=${filter}`)
+      const d = await r.json()
+      setReviews(Array.isArray(d) ? d : [])
+    } catch(e) { setReviews([]) }
+    setLoading(false)
+  }
+  useEffect(() => { load() }, [filter])
+
+  async function moderate(id, status) {
+    await fetch('/api/reviews', { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ id, status }) })
+    load()
+  }
+
+  const tabs = [['pending','Pendientes'],['approved','Aprobadas'],['rejected','Rechazadas']]
+  const glassCard = {background:'rgba(248,246,241,0.65)',backdropFilter:'blur(20px) saturate(160%)',borderRadius:14,border:'1px solid rgba(255,255,255,0.75)',boxShadow:'inset 0 1px 0 rgba(255,255,255,0.85),0 4px 20px -4px rgba(28,28,26,0.08)'}
+
+  return (
+    <div style={{maxWidth:640}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1.25rem'}}>
+        <h2 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300}}>Reseñas del sitio</h2>
+        <div style={{fontSize:'0.62rem',color:gray}}>{reviews.length} {filter}</div>
+      </div>
+      <div style={{display:'flex',gap:'0.4rem',marginBottom:'1.25rem'}}>
+        {tabs.map(([id,label])=>(
+          <button key={id} onClick={()=>setFilter(id)} style={{padding:'0.45rem 1rem',borderRadius:20,border:'none',cursor:'pointer',fontFamily:ff,fontSize:'0.62rem',fontWeight:700,letterSpacing:'0.08em',textTransform:'uppercase',background:filter===id?black:'rgba(28,28,26,0.07)',color:filter===id?white:gray,transition:'all 0.15s'}}>{label}</button>
+        ))}
+      </div>
+      {loading && <div style={{padding:'2rem',textAlign:'center',color:gray,fontSize:'0.82rem'}}>Cargando…</div>}
+      {!loading && reviews.length === 0 && <div style={{...glassCard,padding:'2rem',textAlign:'center',color:gray,fontSize:'0.82rem'}}>No hay reseñas {filter}.</div>}
+      <div style={{display:'flex',flexDirection:'column',gap:'0.75rem'}}>
+        {reviews.map(r=>(
+          <div key={r.id} style={{...glassCard,padding:'1rem 1.25rem'}}>
+            <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:'1rem'}}>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{display:'flex',alignItems:'center',gap:'0.4rem',marginBottom:'0.35rem'}}>
+                  {Array.from({length:5},(_,i)=>(
+                    <div key={i} style={{width:10,height:10,borderRadius:'50%',background:i<r.rating?gold:'rgba(184,151,90,0.15)'}}/>
+                  ))}
+                  <span style={{fontSize:'0.6rem',color:gray,marginLeft:'0.2rem'}}>★ {r.rating}/5</span>
+                </div>
+                <p style={{fontSize:'0.82rem',color:black,lineHeight:1.5,marginBottom:'0.5rem'}}>"{r.text}"</p>
+                <div style={{display:'flex',gap:'0.4rem',flexWrap:'wrap'}}>
+                  <span style={{fontSize:'0.65rem',fontWeight:600,color:black}}>{r.name}</span>
+                  <span style={{fontSize:'0.65rem',color:gray}}>·</span>
+                  <span style={{fontSize:'0.65rem',color:gray}}>{r.business}</span>
+                  <span style={{fontSize:'0.65rem',color:'rgba(28,28,26,0.3)'}}>·</span>
+                  <span style={{fontSize:'0.6rem',color:'rgba(28,28,26,0.35)'}}>{new Date(r.created_at).toLocaleDateString('es-PR',{month:'short',day:'numeric',year:'numeric'})}</span>
+                </div>
+              </div>
+              {filter === 'pending' && (
+                <div style={{display:'flex',flexDirection:'column',gap:'0.4rem',flexShrink:0}}>
+                  <button onClick={()=>moderate(r.id,'approved')} style={{padding:'0.45rem 0.85rem',background:'rgba(45,138,96,0.1)',color:'#2d8a60',border:'1px solid rgba(45,138,96,0.25)',borderRadius:6,cursor:'pointer',fontFamily:ff,fontSize:'0.6rem',fontWeight:700,letterSpacing:'0.08em',textTransform:'uppercase'}}>Aprobar</button>
+                  <button onClick={()=>moderate(r.id,'rejected')} style={{padding:'0.45rem 0.85rem',background:'rgba(192,57,43,0.08)',color:'#c0392b',border:'1px solid rgba(192,57,43,0.2)',borderRadius:6,cursor:'pointer',fontFamily:ff,fontSize:'0.6rem',fontWeight:700,letterSpacing:'0.08em',textTransform:'uppercase'}}>Rechazar</button>
+                </div>
+              )}
+              {filter !== 'pending' && (
+                <span style={{fontSize:'0.58rem',fontWeight:700,padding:'0.2rem 0.65rem',borderRadius:20,background:filter==='approved'?'rgba(45,138,96,0.1)':'rgba(192,57,43,0.08)',color:filter==='approved'?'#2d8a60':'#c0392b',flexShrink:0}}>
+                  {filter === 'approved' ? 'Aprobada' : 'Rechazada'}
+                </span>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function BookingsPanel() {
   const [bookings, setBookings] = useState([])
   const [loading, setLoading] = useState(true)
@@ -2030,6 +2106,9 @@ export default function Admin({session}){
             <button onClick={()=>setPanel('catalog')} style={{display:'flex',alignItems:'center',padding:'0.82rem 1.5rem',fontSize:'0.72rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel==='catalog'?gold:'rgba(255,255,255,0.95)',cursor:'pointer',background:'none',border:'none',borderLeft:panel==='catalog'?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>Catalog</button>
             <button onClick={()=>setPanel('supplies')} style={{display:'flex',alignItems:'center',padding:'0.82rem 1.5rem',fontSize:'0.72rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel==='supplies'?gold:'rgba(255,255,255,0.95)',cursor:'pointer',background:'none',border:'none',borderLeft:panel==='supplies'?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>Supplies</button>
             <div style={{height:'1px',background:'rgba(255,255,255,0.06)',margin:'0.25rem 1.5rem'}}/>
+            <button onClick={()=>setPanel('reviews')} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0.82rem 1.5rem',fontSize:'0.72rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel==='reviews'?gold:'rgba(255,255,255,0.95)',cursor:'pointer',background:'none',border:'none',borderLeft:panel==='reviews'?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>
+              <span>Reviews</span>
+            </button>
             <button onClick={()=>setPanel('system')} style={{display:'flex',alignItems:'center',padding:'0.82rem 1.5rem',fontSize:'0.72rem',letterSpacing:'0.1em',textTransform:'uppercase',color:panel==='system'?gold:'rgba(255,255,255,0.95)',cursor:'pointer',background:'none',border:'none',borderLeft:panel==='system'?'2px solid '+gold:'2px solid transparent',width:'100%',textAlign:'left',fontFamily:ff}}>Admin Panel</button>
           </div>
 
@@ -2048,6 +2127,7 @@ export default function Admin({session}){
               onDelete={async(id)=>{if(!confirm('Delete this supply?'))return;await fetch('/api/admin/supplies',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})});showToast('Supply deleted');loadAll()}}
               showToast={showToast}
             />}
+            {panel==='reviews'&&<ReviewsPanel/>}
             {panel==='system'&&<AdminSystemPanel users={users} cards={cards} allUsers={allUsers} loadAll={loadAll} showToast={showToast}/>}
             {panel==='loyalty'&&(<div><h2 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300,marginBottom:'1.5rem'}}>Loyalty Program</h2><div style={{display:'flex',flexDirection:'column',gap:'0.75rem'}}>{[['cards','Cards','Create and manage loyalty cards'],['punch','Punch','Register payments and stamps']].map(([id,label,desc])=>(<div key={id} onClick={()=>setPanel(id)} style={{background:white,borderRadius:10,padding:'1.25rem 1.5rem',border:'1px solid rgba(14,14,12,0.07)',cursor:'pointer',display:'flex',justifyContent:'space-between',alignItems:'center'}}><div><div style={{fontFamily:ffS,fontSize:'1.1rem',fontWeight:300,color:black,marginBottom:'0.2rem'}}>{label}</div><div style={{fontSize:'0.68rem',color:gray}}>{desc}</div></div><div style={{color:gold,fontSize:'1rem'}}>›</div></div>))}</div></div>)}
             {panel==='clients'&&<ClientsPanel users={users} cards={cards} search={clientSearch} setSearch={setClientSearch}
