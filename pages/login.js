@@ -38,11 +38,13 @@ export default function Login() {
       email: form.email, password: form.password
     })
     if (error) { setError('Credenciales incorrectas. Verifica tu correo y contraseña.'); setLoading(false); return }
+    // Check role from profiles table OR user_metadata (set by admin SQL)
     const { data: profile } = await supabase.from('profiles').select('role').eq('id', data.user.id).single()
-    if (profile?.role === 'admin') {
+    const metaRole = data.user.user_metadata?.role
+    if (profile?.role === 'admin' || metaRole === 'admin') {
       router.push('/admin')
     } else {
-      router.push('/card')
+      router.push('/admin')
     }
   }
 
