@@ -399,20 +399,20 @@ function Booking() {
   }
 
   return (
-    <section id="booking" className="relative px-4 py-16">
+    <section id="booking" className="relative py-16" style={{ paddingLeft: 16, paddingRight: 16, overflowX: 'hidden' }}>
       <div className="absolute inset-x-0 rounded-full blur-3xl" style={{ top: '33%', zIndex: -10, margin: '0 auto', height: 320, maxWidth: '40rem', background: 'oklch(0.74 0.115 75 / 0.22)' }} />
-      <div className="mx-auto max-w-6xl">
-        <div className="grid gap-12 md:grid-cols-2 md:items-start md:gap-16">
+      <div style={{ maxWidth: 1152, margin: '0 auto', width: '100%' }}>
+        <div className="grid gap-10 md:grid-cols-2 md:items-start md:gap-16">
           {/* Left: copy */}
           <div>
             <SectionLabel>Reserva tu demo</SectionLabel>
-            <h2 className="mt-2 font-serif text-ink" style={{ fontSize: 'clamp(28px, 4vw, 44px)', lineHeight: 1.05 }}>
+            <h2 className="mt-2 font-serif text-ink" style={{ fontSize: 'clamp(26px, 4vw, 44px)', lineHeight: 1.05 }}>
               15 minutos. <em className="text-gold">Cero compromiso.</em>
             </h2>
             <p className="mt-3 text-muted-foreground" style={{ fontSize: 14 }}>
               Te mostramos el sistema funcionando con tu tipo de negocio. Tú decides si te sirve.
             </p>
-            <div className="mt-8 space-y-4">
+            <div className="mt-6 space-y-3">
               {[
                 { icon: CalendarCheck, t: 'Demo personalizado', d: 'Adaptado a tu industria y tipo de negocio.' },
                 { icon: MessageSquare, t: 'Sin presión de ventas', d: 'Te enseñamos el sistema y respondes tus dudas.' },
@@ -431,49 +431,66 @@ function Booking() {
             </div>
           </div>
           {/* Right: form */}
-          <div>
+          <div style={{ minWidth: 0, width: '100%' }}>
             {step === 'form' ? (
-              <form className="glass rounded-3xl p-5" onSubmit={handleSubmit} style={{ overflow: 'hidden' }}>
+              <form className="glass rounded-3xl" style={{ padding: 20, width: '100%', boxSizing: 'border-box' }} onSubmit={handleSubmit}>
                 <p className="text-muted-foreground" style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Elige un día</p>
-                <div className="mt-2 flex gap-2 pb-1" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                  {dates.map((d) => {
-                    const active = date === d.iso
-                    return (
-                      <button type="button" key={d.iso} onClick={() => setDate(d.iso)}
-                        className={`flex h-16 w-14 shrink-0 flex-col items-center justify-center rounded-2xl border transition-all ${active ? 'bg-ink text-cream border-ink glow-gold' : 'border-border text-ink'}`}
-                        style={!active ? { background: 'oklch(0.985 0.008 85 / 0.6)' } : {}}>
-                        <span style={{ fontSize: 20, fontWeight: 700, lineHeight: 1, fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif' }}>{d.label}</span>
-                        <span className={`mt-1 ${active ? 'text-cream/70' : 'text-muted-foreground'}`} style={{ fontSize: 9, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>{d.sub}</span>
-                      </button>
-                    )
-                  })}
+                {/* Date row: negative margin to escape form padding, restored as scroll padding */}
+                <div style={{ marginLeft: -20, marginRight: -20, paddingLeft: 20, paddingRight: 20, overflowX: 'auto', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', msOverflowStyle: 'none', marginTop: 8, paddingBottom: 4 }}>
+                  <div style={{ display: 'flex', gap: 8, width: 'max-content' }}>
+                    {dates.map((d) => {
+                      const active = date === d.iso
+                      return (
+                        <button type="button" key={d.iso} onClick={() => setDate(d.iso)}
+                          style={{
+                            width: 52, height: 60, flexShrink: 0, display: 'flex', flexDirection: 'column',
+                            alignItems: 'center', justifyContent: 'center', borderRadius: 16, border: '1px solid',
+                            borderColor: active ? '#0e0e0c' : 'rgba(14,14,12,0.12)',
+                            background: active ? '#0e0e0c' : 'rgba(248,246,241,0.7)',
+                            cursor: 'pointer', transition: 'all 0.15s',
+                          }}>
+                          <span style={{ fontSize: 18, fontWeight: 700, lineHeight: 1, fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif', color: active ? '#f8f6f1' : '#0e0e0c' }}>{d.label}</span>
+                          <span style={{ fontSize: 8, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: 3, color: active ? 'rgba(248,246,241,0.65)' : '#6b6b67' }}>{d.sub}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
                 </div>
-                <p className="mt-5 text-muted-foreground" style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Elige una hora</p>
-                <div className="mt-2 grid grid-cols-3 gap-2">
+                <p className="mt-4 text-muted-foreground" style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Elige una hora</p>
+                <div style={{ marginTop: 8, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
                   {slots.map((s) => {
                     const active = time === s
                     return (
                       <button type="button" key={s} onClick={() => setTime(s)}
-                        className={`h-10 rounded-xl border text-sm font-semibold transition-all ${active ? 'bg-gold text-ink border-gold' : 'text-ink/80 border-border'}`}
-                        style={!active ? { background: 'oklch(0.985 0.008 85 / 0.6)' } : {}}>
+                        style={{
+                          height: 40, borderRadius: 12, border: '1px solid',
+                          borderColor: active ? '#b8975a' : 'rgba(14,14,12,0.12)',
+                          background: active ? '#b8975a' : 'rgba(248,246,241,0.7)',
+                          color: active ? '#0e0e0c' : 'rgba(14,14,12,0.75)',
+                          fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
+                          fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s',
+                        }}>
                         {s}
                       </button>
                     )
                   })}
                 </div>
-                <div className="mt-5 space-y-2.5">
-                  <input required value={name} onChange={e => setName(e.target.value)} placeholder="Tu nombre" className="h-12 w-full rounded-xl border border-border px-4 text-ink outline-none placeholder:text-muted-foreground focus:border-gold" style={{ fontSize: 14, background: 'oklch(0.985 0.008 85 / 0.6)' }} />
-                  <input required type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="WhatsApp o teléfono" className="h-12 w-full rounded-xl border border-border px-4 text-ink outline-none placeholder:text-muted-foreground focus:border-gold" style={{ fontSize: 14, background: 'oklch(0.985 0.008 85 / 0.6)' }} />
-                  <input required value={business} onChange={e => setBusiness(e.target.value)} placeholder="Nombre del negocio" className="h-12 w-full rounded-xl border border-border px-4 text-ink outline-none placeholder:text-muted-foreground focus:border-gold" style={{ fontSize: 14, background: 'oklch(0.985 0.008 85 / 0.6)' }} />
+                <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {[
+                    { val: name, set: setName, ph: 'Tu nombre', type: 'text' },
+                    { val: phone, set: setPhone, ph: 'WhatsApp o teléfono', type: 'tel' },
+                    { val: business, set: setBusiness, ph: 'Nombre del negocio', type: 'text' },
+                  ].map(f => (
+                    <input key={f.ph} required value={f.val} type={f.type} onChange={e => f.set(e.target.value)} placeholder={f.ph}
+                      style={{ height: 48, width: '100%', boxSizing: 'border-box', borderRadius: 12, border: '1px solid rgba(14,14,12,0.12)', padding: '0 16px', fontSize: 14, fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif', background: 'rgba(248,246,241,0.7)', color: '#0e0e0c', outline: 'none' }} />
+                  ))}
                 </div>
-                {error && <p className="mt-3 text-center" style={{ fontSize: 12, color: '#c0392b' }}>{error}</p>}
+                {error && <p style={{ marginTop: 12, textAlign: 'center', fontSize: 12, color: '#c0392b' }}>{error}</p>}
                 <button type="submit" disabled={!date || !time || loading}
-                  className="mt-5 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-ink text-cream font-semibold transition-transform active:scale-[0.98] disabled:opacity-40"
-                  style={{ fontSize: 15 }}>
-                  {loading ? 'Enviando…' : 'Confirmar reserva'}
-                  {!loading && <ArrowRight className="h-4 w-4" />}
+                  style={{ marginTop: 20, height: 48, width: '100%', borderRadius: 99, border: 'none', background: '#0e0e0c', color: '#f8f6f1', fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif', fontSize: 15, fontWeight: 600, cursor: loading || !date || !time ? 'not-allowed' : 'pointer', opacity: !date || !time || loading ? 0.4 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, transition: 'opacity 0.2s' }}>
+                  {loading ? 'Enviando…' : <>Confirmar reserva <ArrowRight style={{ width: 16, height: 16 }} /></>}
                 </button>
-                <p className="mt-3 text-center text-muted-foreground" style={{ fontSize: 11 }}>Te confirmamos por WhatsApp en menos de 1 hora.</p>
+                <p style={{ marginTop: 12, textAlign: 'center', fontSize: 11, color: '#6b6b67' }}>Te confirmamos por WhatsApp en menos de 1 hora.</p>
               </form>
             ) : (
               <div className="glass-gold rounded-3xl p-8 text-center">
