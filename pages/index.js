@@ -316,7 +316,7 @@ function Trust() {
         <div className="glass grid grid-cols-2 gap-px overflow-hidden rounded-2xl md:grid-cols-4">
           {items.map((it) => (
             <div key={it.v} className="p-5 text-center" style={{ background: 'oklch(0.985 0.008 85 / 0.4)' }}>
-              <p className="font-serif text-ink text-2xl md:text-3xl" style={{ fontVariantNumeric: 'lining-nums', fontFeatureSettings: '"lnum" 1' }}>{it.k}</p>
+              <p className="text-ink text-2xl md:text-3xl font-bold" style={{ fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif', letterSpacing: '-0.02em' }}>{it.k}</p>
               <p className="mt-1 text-muted-foreground" style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>{it.v}</p>
             </div>
           ))}
@@ -433,16 +433,16 @@ function Booking() {
           {/* Right: form */}
           <div>
             {step === 'form' ? (
-              <form className="glass rounded-3xl p-5" onSubmit={handleSubmit}>
+              <form className="glass rounded-3xl p-5" onSubmit={handleSubmit} style={{ overflow: 'hidden' }}>
                 <p className="text-muted-foreground" style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Elige un día</p>
-                <div className="mt-2 -mx-1 flex gap-2 overflow-x-auto pb-1 px-1">
+                <div className="mt-2 flex gap-2 pb-1" style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                   {dates.map((d) => {
                     const active = date === d.iso
                     return (
                       <button type="button" key={d.iso} onClick={() => setDate(d.iso)}
                         className={`flex h-16 w-14 shrink-0 flex-col items-center justify-center rounded-2xl border transition-all ${active ? 'bg-ink text-cream border-ink glow-gold' : 'border-border text-ink'}`}
                         style={!active ? { background: 'oklch(0.985 0.008 85 / 0.6)' } : {}}>
-                        <span className="font-serif text-xl leading-none" style={{ fontVariantNumeric: 'lining-nums', fontFeatureSettings: '"lnum" 1' }}>{d.label}</span>
+                        <span style={{ fontSize: 20, fontWeight: 700, lineHeight: 1, fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif' }}>{d.label}</span>
                         <span className={`mt-1 ${active ? 'text-cream/70' : 'text-muted-foreground'}`} style={{ fontSize: 9, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>{d.sub}</span>
                       </button>
                     )
