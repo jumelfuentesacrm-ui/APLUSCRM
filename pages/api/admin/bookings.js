@@ -11,11 +11,21 @@ export default async function handler(req, res) {
     if (!name || !phone || !date || !time) {
       return res.status(400).json({ error: 'Missing required fields' })
     }
-    const { data, error } = await supabase
+    // Try with all columns first; fall back to base columns if migration hasn't run yet
+    let { data, error } = await supabase
       .from('bookings')
       .insert([{ name, phone, facebook_page, service, date, time, notes, status: 'pending', archived: false }])
       .select()
       .single()
+    if (error && (error.message.includes('column') || error.message.includes('does not exist'))) {
+      const fallback = await supabase
+        .from('bookings')
+        .insert([{ name, phone, date, time, notes, status: 'pending' }])
+        .select()
+        .single()
+      data = fallback.data
+      error = fallback.error
+    }
     if (error) return res.status(500).json({ error: error.message })
     return res.status(201).json(data)
   }
