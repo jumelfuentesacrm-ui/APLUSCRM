@@ -2087,8 +2087,8 @@ function AdminBookings(){
   const [buyForm,setBuyForm]=useState({service:'',amount:'',type:'once',monthly:'',total:'',installments:'',notes:''})
   const [saving,setSaving]=useState(false)
   const [weekView,setWeekView]=useState(false)
-  const [expandedWeek,setExpandedWeek]=useState(null)
-  const [expandedDay,setExpandedDay]=useState({})
+  const [calDate,setCalDate]=useState(new Date())
+  const [calDay,setCalDay]=useState(null)
   useEffect(()=>{load()},[])
   async function load(){
     setLoading(true)
@@ -2152,17 +2152,18 @@ function AdminBookings(){
     )
   }
   const now2=new Date()
-  // build week buckets for week view
-  const weekBuckets=[1,2,3,4].map(w=>{
-    const wStart=getMonthWeekStart(w,now2)
-    const wEnd=wStart?new Date(wStart.getTime()+6*86400000):null
-    const days=wStart?getWeekDays(wStart):[]
-    const wBookings=wStart?active.filter(b=>{
-      const bd=new Date(b.date+'T12:00:00')
-      return bd>=wStart&&bd<=wEnd
-    }):[]
-    return{w,wStart,wEnd,days,bookings:wBookings}
-  }).filter(b=>b.wStart)
+  const todayISO=now2.toISOString().split('T')[0]
+  // ── calendar grid ──
+  const calYear=calDate.getFullYear(),calMonth=calDate.getMonth()
+  const calFirstDay=new Date(calYear,calMonth,1)
+  const calDow=calFirstDay.getDay() // 0=Sun
+  const gridOffset=calDow===0?6:calDow-1 // how many days before the 1st (Mon-based)
+  const calGridStart=new Date(calFirstDay); calGridStart.setDate(1-gridOffset)
+  const totalCells=Math.ceil((gridOffset+new Date(calYear,calMonth+1,0).getDate())/7)*7
+  const calCells=[]
+  for(let i=0;i<totalCells;i++){const c=new Date(calGridStart);c.setDate(calGridStart.getDate()+i);calCells.push(c)}
+  const calDayBookings=calDay?active.filter(b=>b.date===calDay):[]
+  const mesNames=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
   return(
     <div style={{padding:'20px 16px 32px',fontFamily:ff}}>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
@@ -2171,7 +2172,7 @@ function AdminBookings(){
       </div>
       {/* View toggle */}
       <div style={{display:'flex',gap:6,marginBottom:16,background:'rgba(14,14,12,0.05)',borderRadius:12,padding:4}}>
-        {[{id:false,label:'Lista'},{id:true,label:'Semanas'}].map(v=>(
+        {[{id:false,label:'Lista'},{id:true,label:'Calendario'}].map(v=>(
           <button key={String(v.id)} onClick={()=>setWeekView(v.id)} style={{flex:1,padding:'8px',border:'none',borderRadius:9,background:weekView===v.id?'#fff':'none',fontFamily:ff,fontSize:13,fontWeight:weekView===v.id?600:400,color:weekView===v.id?ink:gray,cursor:'pointer',boxShadow:weekView===v.id?'0 1px 4px rgba(0,0,0,0.08)':'none',touchAction:'manipulation'}}>{v.label}</button>
         ))}
       </div>
@@ -2183,59 +2184,57 @@ function AdminBookings(){
           {active.map(b=><BookingCard key={b.id} b={b}/>)}
         </>
       )}
-      {/* ── SEMANAS VIEW ── */}
+      {/* ── CALENDARIO VIEW ── */}
       {weekView&&(
-        <>
-          {weekBuckets.map(({w,wStart,wEnd,days,bookings:wb})=>{
-            const isExp=expandedWeek===w
-            const isCurrentWeek=w===getMonthWeekNum(now2)
-            return(
-              <div key={w} style={{...glCard2,marginBottom:12,overflow:'hidden'}}>
-                <button onClick={()=>setExpandedWeek(isExp?null:w)} style={{width:'100%',display:'flex',justifyContent:'space-between',alignItems:'center',padding:'14px 16px',background:'none',border:'none',cursor:'pointer',fontFamily:ff,touchAction:'manipulation'}}>
-                  <div style={{display:'flex',alignItems:'center',gap:10}}>
-                    <span style={{fontSize:14,fontWeight:700,color:isCurrentWeek?gold:ink}}>Sem {w}</span>
-                    {isCurrentWeek&&<span style={{fontSize:9,background:gold,color:ink,borderRadius:99,padding:'2px 7px',fontWeight:700}}>ESTA</span>}
-                    <span style={{fontSize:11,color:gray}}>{wStart.toLocaleDateString('es-PR',{day:'numeric',month:'short'})} – {wEnd.toLocaleDateString('es-PR',{day:'numeric',month:'short'})}</span>
-                  </div>
-                  <div style={{display:'flex',alignItems:'center',gap:8}}>
-                    {wb.length>0&&<span style={{fontSize:12,background:'rgba(14,14,12,0.08)',borderRadius:99,padding:'2px 9px',fontWeight:600,color:ink}}>{wb.length}</span>}
-                    <span style={{fontSize:13,color:gray}}>{isExp?'▲':'▼'}</span>
-                  </div>
+        <div style={{...glCard2,padding:'16px 12px 12px'}}>
+          {/* Month nav */}
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}}>
+            <button onClick={()=>{const d=new Date(calDate);d.setMonth(d.getMonth()-1);setCalDate(d);setCalDay(null)}} style={{background:'none',border:'none',fontSize:20,color:gray,cursor:'pointer',padding:'0 6px',touchAction:'manipulation'}}>‹</button>
+            <span style={{fontSize:15,fontWeight:700,color:ink}}>{mesNames[calMonth]} {calYear}</span>
+            <button onClick={()=>{const d=new Date(calDate);d.setMonth(d.getMonth()+1);setCalDate(d);setCalDay(null)}} style={{background:'none',border:'none',fontSize:20,color:gray,cursor:'pointer',padding:'0 6px',touchAction:'manipulation'}}>›</button>
+          </div>
+          {/* Day headers */}
+          <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',marginBottom:4}}>
+            {['L','M','X','J','V','S','D'].map(d=><div key={d} style={{textAlign:'center',fontSize:10,fontWeight:700,color:gray,padding:'4px 0'}}>{d}</div>)}
+          </div>
+          {/* Day cells */}
+          <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:2}}>
+            {calCells.map(cell=>{
+              const iso=`${cell.getFullYear()}-${String(cell.getMonth()+1).padStart(2,'0')}-${String(cell.getDate()).padStart(2,'0')}`
+              const inMonth=cell.getMonth()===calMonth
+              const isToday=iso===todayISO
+              const isSelected=iso===calDay
+              const dayBs=active.filter(b=>b.date===iso)
+              const isWeekend=cell.getDay()===0||cell.getDay()===6
+              return(
+                <button key={iso} onClick={()=>setCalDay(isSelected?null:iso)}
+                  style={{display:'flex',flexDirection:'column',alignItems:'center',padding:'6px 2px',borderRadius:10,border:'1.5px solid',
+                    borderColor:isSelected?gold:isToday?'rgba(184,151,90,0.4)':'transparent',
+                    background:isSelected?'rgba(184,151,90,0.12)':isToday?'rgba(184,151,90,0.06)':'transparent',
+                    cursor:'pointer',touchAction:'manipulation',minHeight:44}}>
+                  <span style={{fontSize:13,fontWeight:isToday?700:400,color:!inMonth?'rgba(14,14,12,0.2)':isToday?gold:isWeekend?gray:ink,lineHeight:1}}>{cell.getDate()}</span>
+                  {dayBs.length>0&&inMonth&&(
+                    <div style={{display:'flex',gap:2,marginTop:3,flexWrap:'wrap',justifyContent:'center'}}>
+                      {dayBs.slice(0,3).map((_,i)=><span key={i} style={{width:5,height:5,borderRadius:'50%',background:gold,display:'block'}}/>)}
+                      {dayBs.length>3&&<span style={{fontSize:7,color:gold,fontWeight:700}}>+{dayBs.length-3}</span>}
+                    </div>
+                  )}
                 </button>
-                {isExp&&(
-                  <div style={{borderTop:'1px solid rgba(14,14,12,0.06)',padding:'8px 12px 12px'}}>
-                    {days.map(day=>{
-                      const dayB=wb.filter(b=>b.date===day.date)
-                      const isToday=day.date===new Date().toISOString().split('T')[0]
-                      const isWeekend=day.name==='Sábado'||day.name==='Domingo'
-                      const dayKey=`${w}-${day.date}`
-                      const isDayExp=expandedDay[dayKey]!==false&&(expandedDay[dayKey]===true||dayB.length>0)
-                      return(
-                        <div key={day.date} style={{marginBottom:6,borderRadius:10,overflow:'hidden',background:isToday?'rgba(184,151,90,0.05)':isWeekend?'rgba(14,14,12,0.02)':'transparent'}}>
-                          <button onClick={()=>setExpandedDay(p=>({...p,[dayKey]:!isDayExp}))} style={{width:'100%',display:'flex',alignItems:'center',gap:6,padding:'8px 8px',background:'none',border:'none',cursor:'pointer',fontFamily:ff,touchAction:'manipulation'}}>
-                            <span style={{fontSize:12,fontWeight:700,color:isToday?gold:isWeekend?gray:ink}}>{day.name}</span>
-                            {isToday&&<span style={{fontSize:9,background:gold,color:ink,borderRadius:99,padding:'1px 6px',fontWeight:700}}>HOY</span>}
-                            <span style={{fontSize:11,color:gray}}>{day.dateObj.toLocaleDateString('es-PR',{day:'numeric',month:'short'})}</span>
-                            {dayB.length>0&&<span style={{fontSize:11,background:'rgba(184,151,90,0.15)',color:gold,borderRadius:99,padding:'1px 7px',fontWeight:700,marginLeft:'auto'}}>{dayB.length}</span>}
-                            {dayB.length===0&&<span style={{fontSize:11,color:gray,opacity:0.4,marginLeft:'auto'}}>sin citas</span>}
-                            <span style={{fontSize:10,color:gray,marginLeft:dayB.length?0:0}}>{isDayExp?'▲':'▼'}</span>
-                          </button>
-                          {isDayExp&&dayB.length>0&&(
-                            <div style={{padding:'0 4px 8px'}}>
-                              {dayB.map(b=><BookingCard key={b.id} b={b}/>)}
-                            </div>
-                          )}
-                          {isDayExp&&dayB.length===0&&<p style={{padding:'4px 8px 10px',fontSize:12,color:gray,opacity:0.5}}>Sin citas este día</p>}
-                        </div>
-                      )
-                    })}
-                    {wb.length===0&&<p style={{textAlign:'center',color:gray,fontSize:13,padding:'12px 0'}}>Sin citas esta semana</p>}
-                  </div>
-                )}
-              </div>
-            )
-          })}
-        </>
+              )
+            })}
+          </div>
+          {/* Selected day panel */}
+          {calDay&&(
+            <div style={{marginTop:16,borderTop:'1px solid rgba(14,14,12,0.06)',paddingTop:14}}>
+              <p style={{fontSize:12,fontWeight:700,color:ink,marginBottom:10}}>
+                {new Date(calDay+'T12:00:00').toLocaleDateString('es-PR',{weekday:'long',day:'numeric',month:'long'})}
+                {calDayBookings.length>0&&<span style={{fontSize:11,color:gold,marginLeft:8}}>({calDayBookings.length} cita{calDayBookings.length!==1?'s':''})</span>}
+              </p>
+              {calDayBookings.length===0&&<p style={{textAlign:'center',color:gray,fontSize:13,padding:'16px 0'}}>Sin citas este día</p>}
+              {calDayBookings.map(b=><BookingCard key={b.id} b={b}/>)}
+            </div>
+          )}
+        </div>
       )}
       {archived.length>0&&<button onClick={()=>setShowArchived(!showArchived)} style={{width:'100%',padding:12,background:'none',border:'1px solid rgba(14,14,12,0.1)',borderRadius:12,color:gray,fontSize:13,fontFamily:ff,cursor:'pointer',marginTop:8,touchAction:'manipulation'}}>{showArchived?'▲':'▼'} Ver Archivo ({archived.length})</button>}
       {showArchived&&archived.map(b=>{
