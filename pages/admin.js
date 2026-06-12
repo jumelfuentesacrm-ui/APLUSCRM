@@ -2155,12 +2155,12 @@ function AdminBookings(){
   // build week buckets for week view
   const weekBuckets=[1,2,3,4].map(w=>{
     const wStart=getMonthWeekStart(w,now2)
-    const days=wStart?getWeekDays(wStart):[]
-    const wBookings=active.filter(b=>{
-      const d=new Date(b.date+'T12:00:00')
-      return d.getMonth()===now2.getMonth()&&d.getFullYear()===now2.getFullYear()&&getMonthWeekNum(d)===w
-    })
     const wEnd=wStart?new Date(wStart.getTime()+6*86400000):null
+    const days=wStart?getWeekDays(wStart):[]
+    const wBookings=wStart?active.filter(b=>{
+      const bd=new Date(b.date+'T12:00:00')
+      return bd>=wStart&&bd<=wEnd
+    }):[]
     return{w,wStart,wEnd,days,bookings:wBookings}
   }).filter(b=>b.wStart)
   return(
