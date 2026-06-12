@@ -2162,7 +2162,15 @@ function AdminBookings(){
   const totalCells=Math.ceil((gridOffset+new Date(calYear,calMonth+1,0).getDate())/7)*7
   const calCells=[]
   for(let i=0;i<totalCells;i++){const c=new Date(calGridStart);c.setDate(calGridStart.getDate()+i);calCells.push(c)}
-  const calDayBookings=calDay?active.filter(b=>b.date===calDay):[]
+  function parseTimeVal(t){
+    if(!t) return 0
+    const [time,ampm]=t.split(' ')
+    let [h,m]=time.split(':').map(Number)
+    if(ampm==='PM'&&h!==12) h+=12
+    if(ampm==='AM'&&h===12) h=0
+    return h*60+m
+  }
+  const calDayBookings=calDay?[...active.filter(b=>b.date===calDay)].sort((a,b)=>parseTimeVal(a.time)-parseTimeVal(b.time)):[]
   const mesNames=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
   return(
     <div style={{padding:'20px 16px 32px',fontFamily:ff}}>
@@ -2226,10 +2234,16 @@ function AdminBookings(){
           {/* Selected day panel */}
           {calDay&&(
             <div style={{marginTop:16,borderTop:'1px solid rgba(14,14,12,0.06)',paddingTop:14}}>
-              <p style={{fontSize:12,fontWeight:700,color:ink,marginBottom:10}}>
-                {new Date(calDay+'T12:00:00').toLocaleDateString('es-PR',{weekday:'long',day:'numeric',month:'long'})}
-                {calDayBookings.length>0&&<span style={{fontSize:11,color:gold,marginLeft:8}}>({calDayBookings.length} cita{calDayBookings.length!==1?'s':''})</span>}
-              </p>
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
+                <div>
+                  <p style={{fontSize:13,fontWeight:700,color:ink,margin:0,textTransform:'capitalize'}}>
+                    {new Date(calDay+'T12:00:00').toLocaleDateString('es-PR',{weekday:'long',day:'numeric',month:'long'})}
+                  </p>
+                  {calDayBookings.length>0&&<p style={{fontSize:11,color:gold,margin:'2px 0 0'}}>{calDayBookings.length} cita{calDayBookings.length!==1?'s':''}</p>}
+                </div>
+                <button onClick={()=>{setForm(f=>({...f,date:calDay}));setShowNew(true)}}
+                  style={{background:ink,color:cream,border:'none',borderRadius:99,padding:'7px 14px',fontSize:12,fontWeight:600,fontFamily:ff,cursor:'pointer',touchAction:'manipulation',whiteSpace:'nowrap'}}>+ Cita</button>
+              </div>
               {calDayBookings.length===0&&<p style={{textAlign:'center',color:gray,fontSize:13,padding:'16px 0'}}>Sin citas este día</p>}
               {calDayBookings.map(b=><BookingCard key={b.id} b={b}/>)}
             </div>

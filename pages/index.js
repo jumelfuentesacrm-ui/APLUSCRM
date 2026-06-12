@@ -365,6 +365,57 @@ function ServiceCard({ icon: Icon, title, desc }) {
   )
 }
 
+function makeICS(date, time, name) {
+  const [y, m, d] = date.split('-')
+  const [t, ampm] = time.split(' ')
+  let [h, min] = t.split(':').map(Number)
+  if (ampm === 'PM' && h !== 12) h += 12
+  if (ampm === 'AM' && h === 12) h = 0
+  const pad = n => String(n).padStart(2, '0')
+  const dtStart = `${y}${m}${d}T${pad(h)}${pad(min)}00`
+  const dtEnd = `${y}${m}${d}T${pad(h + 1)}${pad(min)}00`
+  return [`BEGIN:VCALENDAR`, `VERSION:2.0`, `BEGIN:VEVENT`,
+    `SUMMARY:Demo A+ CRM`, `DTSTART:${dtStart}`, `DTEND:${dtEnd}`,
+    `DESCRIPTION:Demo personalizado con ${name}`,
+    `END:VEVENT`, `END:VCALENDAR`].join('\r\n')
+}
+
+function AddToCalBtn({ date, time, name }) {
+  function handleICS() {
+    const ics = makeICS(date, time, name)
+    const blob = new Blob([ics], { type: 'text/calendar' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a'); a.href = url; a.download = 'demo-aplus.ics'; a.click()
+    URL.revokeObjectURL(url)
+  }
+  function handleGcal() {
+    const [y, m, d] = date.split('-')
+    const [t, ampm] = time.split(' ')
+    let [h, min] = t.split(':').map(Number)
+    if (ampm === 'PM' && h !== 12) h += 12
+    if (ampm === 'AM' && h === 12) h = 0
+    const pad = n => String(n).padStart(2, '0')
+    const dt = `${y}${m}${d}T${pad(h)}${pad(min)}00`
+    const dtEnd = `${y}${m}${d}T${pad(h + 1)}${pad(min)}00`
+    window.open(`https://calendar.google.com/calendar/r/eventedit?text=Demo+A%2B+CRM&dates=${dt}/${dtEnd}&details=Demo+personalizado`, '_blank')
+  }
+  const isIOS = typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent)
+  return (
+    <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <button onClick={isIOS ? handleICS : handleGcal}
+        style={{ height: 48, width: '100%', borderRadius: 99, border: 'none', background: '#0e0e0c', color: '#f8f6f1', fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+        📅 Añadir al calendario
+      </button>
+      {!isIOS && (
+        <button onClick={handleICS}
+          style={{ height: 40, width: '100%', borderRadius: 99, border: '1px solid rgba(14,14,12,0.15)', background: 'transparent', color: '#0e0e0c', fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+          Descargar archivo .ics (Apple Calendar)
+        </button>
+      )}
+    </div>
+  )
+}
+
 function Booking() {
   const [step, setStep] = useState('form')
   const [date, setDate] = useState('')
@@ -374,14 +425,15 @@ function Booking() {
   const [business, setBusiness] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [confirmed, setConfirmed] = useState({ date: '', time: '', name: '' })
 
   const dates = useMemo(() => {
     const arr = [], today = new Date()
     const dias = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
     const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
-    for (let i = 1; i <= 7; i++) {
+    for (let i = 1; i <= 14; i++) {
       const d = new Date(today); d.setDate(today.getDate() + i)
-      arr.push({ label: String(d.getDate()), sub: `${dias[d.getDay()]} · ${meses[d.getMonth()]}`, iso: d.toISOString().slice(0, 10) })
+      arr.push({ label: String(d.getDate()), sub: `${dias[d.getDay()]} · ${meses[d.getMonth()]}`, iso: `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` })
     }
     return arr
   }, [])
@@ -393,119 +445,92 @@ function Booking() {
     try {
       const res = await fetch('/api/admin/bookings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, phone, business, date, time }) })
       if (!res.ok) throw new Error()
+      setConfirmed({ date, time, name })
       setStep('done')
     } catch { setError('Hubo un error. Inténtalo de nuevo o escríbenos al WhatsApp.') }
     finally { setLoading(false) }
   }
 
+  const ff = 'Inter, ui-sans-serif, system-ui, sans-serif'
+
   return (
-    <section id="booking" className="relative py-16" style={{ paddingLeft: 16, paddingRight: 16, overflowX: 'hidden' }}>
-      <div className="absolute inset-x-0 rounded-full blur-3xl" style={{ top: '33%', zIndex: -10, margin: '0 auto', height: 320, maxWidth: '40rem', background: 'oklch(0.74 0.115 75 / 0.22)' }} />
-      <div style={{ maxWidth: 1152, margin: '0 auto', width: '100%' }}>
-        <div className="grid gap-10 md:grid-cols-2 md:items-start md:gap-16">
-          {/* Left: copy */}
-          <div>
-            <SectionLabel>Reserva tu demo</SectionLabel>
-            <h2 className="mt-2 font-serif text-ink" style={{ fontSize: 'clamp(26px, 4vw, 44px)', lineHeight: 1.05 }}>
-              15 minutos. <em className="text-gold">Cero compromiso.</em>
+    <section id="booking" style={{ padding: '48px 16px', overflowX: 'hidden', position: 'relative' }}>
+      <div style={{ position: 'absolute', inset: 0, zIndex: -10, top: '33%', margin: '0 auto', height: 320, maxWidth: '40rem', borderRadius: '50%', filter: 'blur(48px)', background: 'oklch(0.74 0.115 75 / 0.22)', pointerEvents: 'none' }} />
+      <div style={{ maxWidth: 480, margin: '0 auto', width: '100%' }}>
+        {/* heading – always visible, compact */}
+        {step === 'form' && (
+          <div style={{ marginBottom: 20, textAlign: 'center' }}>
+            <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#b8975a', marginBottom: 6 }}>Reserva tu demo</p>
+            <h2 style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: 'clamp(24px,6vw,38px)', lineHeight: 1.05, color: '#1c1c1a', margin: 0 }}>
+              15 minutos. <em style={{ color: '#b8975a' }}>Cero compromiso.</em>
             </h2>
-            <p className="mt-3 text-muted-foreground" style={{ fontSize: 14 }}>
-              Te mostramos el sistema funcionando con tu tipo de negocio. Tú decides si te sirve.
-            </p>
-            <div className="mt-6 space-y-3">
+          </div>
+        )}
+        {step === 'form' ? (
+          <form style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(20px) saturate(180%)', WebkitBackdropFilter: 'blur(20px) saturate(180%)', border: '1px solid rgba(255,255,255,0.55)', boxShadow: '0 4px 24px rgba(0,0,0,0.07),inset 0 1px 0 rgba(255,255,255,0.85)', borderRadius: 28, padding: '20px 18px', width: '100%', boxSizing: 'border-box' }} onSubmit={handleSubmit}>
+            <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#6b6b67' }}>Elige un día</p>
+            {/* scrollable date strip */}
+            <div style={{ marginLeft: -18, marginRight: -18, paddingLeft: 18, paddingRight: 18, overflowX: 'auto', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', msOverflowStyle: 'none', marginTop: 10, paddingBottom: 4 }}>
+              <div style={{ display: 'flex', gap: 8, width: 'max-content' }}>
+                {dates.map((d) => {
+                  const active = date === d.iso
+                  return (
+                    <button type="button" key={d.iso} onClick={() => setDate(d.iso)}
+                      style={{ width: 56, height: 64, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderRadius: 18, border: '1.5px solid', borderColor: active ? '#0e0e0c' : 'rgba(14,14,12,0.12)', background: active ? '#0e0e0c' : 'rgba(248,246,241,0.5)', cursor: 'pointer', touchAction: 'manipulation' }}>
+                      <span style={{ fontSize: 20, fontWeight: 700, lineHeight: 1, fontFamily: ff, color: active ? '#f8f6f1' : '#0e0e0c' }}>{d.label}</span>
+                      <span style={{ fontSize: 9, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: 3, color: active ? 'rgba(248,246,241,0.6)' : '#6b6b67' }}>{d.sub}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+            <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#6b6b67', marginTop: 18 }}>Elige una hora</p>
+            <div style={{ marginTop: 10, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+              {slots.map((s) => {
+                const active = time === s
+                return (
+                  <button type="button" key={s} onClick={() => setTime(s)}
+                    style={{ height: 44, borderRadius: 14, border: '1.5px solid', borderColor: active ? '#b8975a' : 'rgba(14,14,12,0.12)', background: active ? '#b8975a' : 'rgba(248,246,241,0.5)', color: active ? '#0e0e0c' : 'rgba(14,14,12,0.7)', fontFamily: ff, fontSize: 13, fontWeight: 600, cursor: 'pointer', touchAction: 'manipulation' }}>
+                    {s}
+                  </button>
+                )
+              })}
+            </div>
+            <div style={{ marginTop: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
               {[
-                { icon: CalendarCheck, t: 'Demo personalizado', d: 'Adaptado a tu industria y tipo de negocio.' },
-                { icon: MessageSquare, t: 'Sin presión de ventas', d: 'Te enseñamos el sistema y respondes tus dudas.' },
-                { icon: Check, t: 'Confirmas por WhatsApp', d: 'Recibes confirmación en menos de una hora.' },
-              ].map(x => (
-                <div key={x.t} className="flex gap-3">
-                  <div className="glass-gold flex h-9 w-9 shrink-0 items-center justify-center rounded-xl">
-                    <x.icon className="h-4 w-4 text-ink" />
-                  </div>
-                  <div>
-                    <p className="text-ink font-semibold" style={{ fontSize: 13 }}>{x.t}</p>
-                    <p className="text-muted-foreground" style={{ fontSize: 12 }}>{x.d}</p>
-                  </div>
-                </div>
+                { val: name, set: setName, ph: 'Tu nombre', type: 'text' },
+                { val: phone, set: setPhone, ph: 'WhatsApp o teléfono', type: 'tel' },
+                { val: business, set: setBusiness, ph: 'Nombre del negocio', type: 'text' },
+              ].map(f => (
+                <input key={f.ph} required value={f.val} type={f.type} onChange={e => f.set(e.target.value)} placeholder={f.ph}
+                  style={{ height: 52, width: '100%', boxSizing: 'border-box', borderRadius: 14, border: '1.5px solid rgba(14,14,12,0.12)', padding: '0 16px', fontSize: 16, fontFamily: ff, background: 'rgba(248,246,241,0.5)', color: '#0e0e0c', outline: 'none', WebkitAppearance: 'none' }} />
               ))}
             </div>
+            {error && <p style={{ marginTop: 12, textAlign: 'center', fontSize: 12, color: '#c0392b' }}>{error}</p>}
+            <button type="submit" disabled={!date || !time || loading}
+              style={{ marginTop: 20, height: 52, width: '100%', borderRadius: 99, border: 'none', background: '#0e0e0c', color: '#f8f6f1', fontFamily: ff, fontSize: 16, fontWeight: 600, cursor: loading || !date || !time ? 'not-allowed' : 'pointer', opacity: !date || !time || loading ? 0.4 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, touchAction: 'manipulation' }}>
+              {loading ? 'Enviando…' : <>Confirmar reserva <ArrowRight style={{ width: 16, height: 16 }} /></>}
+            </button>
+            <p style={{ marginTop: 10, textAlign: 'center', fontSize: 11, color: '#6b6b67' }}>Te confirmamos por WhatsApp en menos de 1 hora.</p>
+          </form>
+        ) : (
+          <div style={{ background: 'rgba(184,151,90,0.08)', border: '1px solid rgba(184,151,90,0.25)', borderRadius: 28, padding: '32px 24px', textAlign: 'center' }}>
+            <div style={{ margin: '0 auto', width: 56, height: 56, borderRadius: '50%', background: '#0e0e0c', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Check style={{ width: 24, height: 24, color: '#f8f6f1' }} />
+            </div>
+            <h3 style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: 28, fontWeight: 400, color: '#1c1c1a', marginTop: 16, marginBottom: 4 }}>¡Reserva confirmada!</h3>
+            <p style={{ fontSize: 14, color: 'rgba(28,28,26,0.65)', marginBottom: 4 }}>
+              {confirmed.date && new Date(confirmed.date+'T12:00:00').toLocaleDateString('es-PR',{weekday:'long',day:'numeric',month:'long'})}
+            </p>
+            <p style={{ fontSize: 14, color: '#b8975a', fontWeight: 600, marginBottom: 4 }}>{confirmed.time}</p>
+            <p style={{ fontSize: 13, color: 'rgba(28,28,26,0.6)' }}>Te escribiremos pronto por WhatsApp.</p>
+            {confirmed.date && confirmed.time && <AddToCalBtn date={confirmed.date} time={confirmed.time} name={confirmed.name} />}
+            <button onClick={() => { setStep('form'); setName(''); setPhone(''); setBusiness(''); setDate(''); setTime('') }}
+              style={{ marginTop: 16, background: 'none', border: 'none', fontSize: 12, fontWeight: 600, color: '#1c1c1a', textDecoration: 'underline', cursor: 'pointer', fontFamily: ff }}>
+              Reservar otra
+            </button>
           </div>
-          {/* Right: form */}
-          <div style={{ minWidth: 0, width: '100%' }}>
-            {step === 'form' ? (
-              <form className="glass rounded-3xl" style={{ padding: 20, width: '100%', boxSizing: 'border-box' }} onSubmit={handleSubmit}>
-                <p className="text-muted-foreground" style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Elige un día</p>
-                {/* Date row: negative margin to escape form padding, restored as scroll padding */}
-                <div style={{ marginLeft: -20, marginRight: -20, paddingLeft: 20, paddingRight: 20, overflowX: 'auto', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', msOverflowStyle: 'none', marginTop: 8, paddingBottom: 4 }}>
-                  <div style={{ display: 'flex', gap: 8, width: 'max-content' }}>
-                    {dates.map((d) => {
-                      const active = date === d.iso
-                      return (
-                        <button type="button" key={d.iso} onClick={() => setDate(d.iso)}
-                          style={{
-                            width: 52, height: 60, flexShrink: 0, display: 'flex', flexDirection: 'column',
-                            alignItems: 'center', justifyContent: 'center', borderRadius: 16, border: '1px solid',
-                            borderColor: active ? '#0e0e0c' : 'rgba(14,14,12,0.12)',
-                            background: active ? '#0e0e0c' : 'rgba(248,246,241,0.7)',
-                            cursor: 'pointer', transition: 'all 0.15s',
-                          }}>
-                          <span style={{ fontSize: 18, fontWeight: 700, lineHeight: 1, fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif', color: active ? '#f8f6f1' : '#0e0e0c' }}>{d.label}</span>
-                          <span style={{ fontSize: 8, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: 3, color: active ? 'rgba(248,246,241,0.65)' : '#6b6b67' }}>{d.sub}</span>
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-                <p className="mt-4 text-muted-foreground" style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Elige una hora</p>
-                <div style={{ marginTop: 8, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
-                  {slots.map((s) => {
-                    const active = time === s
-                    return (
-                      <button type="button" key={s} onClick={() => setTime(s)}
-                        style={{
-                          height: 40, borderRadius: 12, border: '1px solid',
-                          borderColor: active ? '#b8975a' : 'rgba(14,14,12,0.12)',
-                          background: active ? '#b8975a' : 'rgba(248,246,241,0.7)',
-                          color: active ? '#0e0e0c' : 'rgba(14,14,12,0.75)',
-                          fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
-                          fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s',
-                        }}>
-                        {s}
-                      </button>
-                    )
-                  })}
-                </div>
-                <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {[
-                    { val: name, set: setName, ph: 'Tu nombre', type: 'text' },
-                    { val: phone, set: setPhone, ph: 'WhatsApp o teléfono', type: 'tel' },
-                    { val: business, set: setBusiness, ph: 'Nombre del negocio', type: 'text' },
-                  ].map(f => (
-                    <input key={f.ph} required value={f.val} type={f.type} onChange={e => f.set(e.target.value)} placeholder={f.ph}
-                      style={{ height: 48, width: '100%', boxSizing: 'border-box', borderRadius: 12, border: '1px solid rgba(14,14,12,0.12)', padding: '0 16px', fontSize: 14, fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif', background: 'rgba(248,246,241,0.7)', color: '#0e0e0c', outline: 'none' }} />
-                  ))}
-                </div>
-                {error && <p style={{ marginTop: 12, textAlign: 'center', fontSize: 12, color: '#c0392b' }}>{error}</p>}
-                <button type="submit" disabled={!date || !time || loading}
-                  style={{ marginTop: 20, height: 48, width: '100%', borderRadius: 99, border: 'none', background: '#0e0e0c', color: '#f8f6f1', fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif', fontSize: 15, fontWeight: 600, cursor: loading || !date || !time ? 'not-allowed' : 'pointer', opacity: !date || !time || loading ? 0.4 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, transition: 'opacity 0.2s' }}>
-                  {loading ? 'Enviando…' : <>Confirmar reserva <ArrowRight style={{ width: 16, height: 16 }} /></>}
-                </button>
-                <p style={{ marginTop: 12, textAlign: 'center', fontSize: 11, color: '#6b6b67' }}>Te confirmamos por WhatsApp en menos de 1 hora.</p>
-              </form>
-            ) : (
-              <div className="glass-gold rounded-3xl p-8 text-center">
-                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-ink text-cream">
-                  <Check className="h-6 w-6" />
-                </div>
-                <h3 className="mt-4 font-serif text-ink text-2xl">¡Reserva confirmada!</h3>
-                <p className="mt-2 text-ink/70" style={{ fontSize: 13 }}>Te escribiremos pronto por WhatsApp.</p>
-                <button onClick={() => { setStep('form'); setName(''); setPhone(''); setBusiness(''); setDate(''); setTime('') }} className="mt-5 text-ink underline underline-offset-2" style={{ fontSize: 12, fontWeight: 600 }}>
-                  Reservar otra
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
+        )}
       </div>
     </section>
   )
