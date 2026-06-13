@@ -2595,17 +2595,18 @@ export default function Admin({session}){
 
   async function loadAll(){
     setLoading(true)
-    const [c,u,r,cat]=await Promise.all([
-      fetch('/api/admin/cards').then(r=>r.json()),
-      fetch('/api/admin/users').then(r=>r.json()),
-      fetch('/api/admin/rewards').then(r=>r.json()),
-      fetch('/api/admin/catalog').then(r=>r.json())
-    ])
-    setCards(c.cards||[]);setUsers(u.users||[]);setRewards(r.rewards||[]);setCatalog(cat.items||[])
-    fetch('/api/admin/supplies').then(r=>r.json()).then(d=>setSupplies(d.supplies||[])).catch(()=>{})
-    fetch('/api/admin/users?all=1').then(r=>r.json()).then(d=>setAllUsers(d.users||[])).catch(()=>{})
-    // Load sales for financial card
-    fetch('/api/admin/sales').then(r=>r.json()).then(d=>setSales(d.sales||[])).catch(e=>console.error('Sales fetch error:',e))
+    try {
+      const [c,u,r,cat]=await Promise.all([
+        fetch('/api/admin/cards').then(r=>r.json()).catch(()=>({})),
+        fetch('/api/admin/users').then(r=>r.json()).catch(()=>({})),
+        fetch('/api/admin/rewards').then(r=>r.json()).catch(()=>({})),
+        fetch('/api/admin/catalog').then(r=>r.json()).catch(()=>({})),
+      ])
+      setCards(c.cards||[]);setUsers(u.users||[]);setRewards(r.rewards||[]);setCatalog(cat.items||[])
+      fetch('/api/admin/supplies').then(r=>r.json()).then(d=>setSupplies(d.supplies||[])).catch(()=>{})
+      fetch('/api/admin/users?all=1').then(r=>r.json()).then(d=>setAllUsers(d.users||[])).catch(()=>{})
+      fetch('/api/admin/sales').then(r=>r.json()).then(d=>setSales(d.sales||[])).catch(()=>{})
+    } catch(_) {}
     setLoading(false)
   }
 
@@ -2928,7 +2929,7 @@ export default function Admin({session}){
                 {id:'reviews',label:'Reviews',icon:'⭐'},
                 {id:'system',label:'Admin Panel',icon:'⚙️'},
               ].map(({id,label,icon})=>(
-                <button key={id} onClick={()=>{setPanel(id)}} style={{display:'flex',alignItems:'center',gap:10,padding:'13px 14px',background:panel===id?'rgba(14,14,12,0.07)':'rgba(14,14,12,0.03)',border:'1px solid',borderColor:panel===id?'rgba(14,14,12,0.15)':'rgba(14,14,12,0.06)',borderRadius:14,fontFamily:ff,fontSize:13,fontWeight:panel===id?600:400,color:ink,cursor:'pointer',textAlign:'left',touchAction:'manipulation'}}>
+                <button key={id} onClick={()=>{setPanel(id);setBurger(false)}} style={{display:'flex',alignItems:'center',gap:10,padding:'13px 14px',background:panel===id?'rgba(14,14,12,0.07)':'rgba(14,14,12,0.03)',border:'1px solid',borderColor:panel===id?'rgba(14,14,12,0.15)':'rgba(14,14,12,0.06)',borderRadius:14,fontFamily:ff,fontSize:13,fontWeight:panel===id?600:400,color:ink,cursor:'pointer',textAlign:'left',touchAction:'manipulation'}}>
                   <span style={{fontSize:18}}>{icon}</span>{label}
                 </button>
               ))}
