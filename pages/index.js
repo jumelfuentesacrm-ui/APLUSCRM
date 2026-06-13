@@ -137,26 +137,29 @@ function TopNav() {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  // lock body scroll when drawer open
-  useEffect(() => {
-    document.body.style.overflow = open ? 'hidden' : ''
-    return () => { document.body.style.overflow = '' }
-  }, [open])
+  function close() { setOpen(false) }
 
-  function handleNavClick(href) {
-    setOpen(false)
-    // small delay so drawer closes before scroll
+  function handleNavClick(e, href) {
+    e.preventDefault()
+    e.stopPropagation()
+    close()
     setTimeout(() => {
       const el = document.querySelector(href)
       if (el) el.scrollIntoView({ behavior: 'smooth' })
-    }, 200)
+    }, 320)
+  }
+
+  function onOverlayClick(e) {
+    e.preventDefault()
+    e.stopPropagation()
+    close()
   }
 
   function onTouchStart(e) { touchStartX.current = e.touches[0].clientX }
   function onTouchEnd(e) {
     if (touchStartX.current === null) return
-    const dx = touchStartX.current - e.changedTouches[0].clientX
-    if (dx > 60) setOpen(false) // swipe left to close
+    const dx = e.changedTouches[0].clientX - touchStartX.current
+    if (dx > 60) close()
     touchStartX.current = null
   }
 
@@ -174,7 +177,6 @@ function TopNav() {
             <span className="text-muted-foreground" style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.2em' }}>CRM</span>
           </a>
 
-          {/* Desktop nav */}
           <nav className="hidden items-center gap-6 md:flex">
             {NAV_LINKS.map(([href, label]) => (
               <a key={href} href={href} className="text-ink/60 hover:text-ink transition-colors" style={{ fontSize: 13, fontWeight: 500 }}>{label}</a>
@@ -185,61 +187,66 @@ function TopNav() {
             <a href="#booking" className="bg-ink text-cream inline-flex h-9 items-center gap-1.5 rounded-full px-4 text-xs font-semibold transition-all hover:bg-ink/80 active:scale-95">
               Agendar demo <ArrowRight className="h-3 w-3" />
             </a>
-            {/* Burger — mobile only */}
             <button
               className="md:hidden flex flex-col justify-center items-center gap-1.5 w-9 h-9 rounded-xl"
-              style={{ background: 'rgba(28,28,26,0.07)', border: 'none', cursor: 'pointer' }}
+              style={{ background: 'rgba(28,28,26,0.07)', border: 'none', cursor: 'pointer', flexShrink: 0 }}
               onClick={() => setOpen(o => !o)}
               aria-label="Menú"
             >
-              <span style={{ display: 'block', width: 18, height: 2, background: '#1c1c1a', borderRadius: 2, transition: 'all 0.2s', transform: open ? 'translateY(4px) rotate(45deg)' : 'none' }} />
-              <span style={{ display: 'block', width: 18, height: 2, background: '#1c1c1a', borderRadius: 2, transition: 'all 0.2s', opacity: open ? 0 : 1 }} />
-              <span style={{ display: 'block', width: 18, height: 2, background: '#1c1c1a', borderRadius: 2, transition: 'all 0.2s', transform: open ? 'translateY(-4px) rotate(-45deg)' : 'none' }} />
+              <span style={{ display: 'block', width: 18, height: 2, background: '#1c1c1a', borderRadius: 2, transition: 'transform 0.22s', transform: open ? 'translateY(5px) rotate(45deg)' : 'none' }} />
+              <span style={{ display: 'block', width: 18, height: 2, background: '#1c1c1a', borderRadius: 2, transition: 'opacity 0.22s', opacity: open ? 0 : 1 }} />
+              <span style={{ display: 'block', width: 18, height: 2, background: '#1c1c1a', borderRadius: 2, transition: 'transform 0.22s', transform: open ? 'translateY(-5px) rotate(-45deg)' : 'none' }} />
             </button>
           </div>
         </div>
       </header>
 
-      {/* Overlay */}
-      <div
-        onClick={() => setOpen(false)}
-        style={{ position: 'fixed', inset: 0, zIndex: 48, background: 'rgba(14,14,12,0.45)', backdropFilter: 'blur(2px)', transition: 'opacity 0.25s', opacity: open ? 1 : 0, pointerEvents: open ? 'auto' : 'none' }}
-      />
-
-      {/* Drawer */}
-      <div
-        onTouchStart={onTouchStart}
-        onTouchEnd={onTouchEnd}
-        style={{
-          position: 'fixed', top: 0, right: 0, bottom: 0, zIndex: 49,
-          width: 'min(80vw, 300px)',
-          background: 'rgba(248,246,241,0.97)',
-          backdropFilter: 'blur(24px)',
-          boxShadow: '-8px 0 40px rgba(14,14,12,0.18)',
-          transform: open ? 'translateX(0)' : 'translateX(100%)',
-          transition: 'transform 0.3s cubic-bezier(0.4,0,0.2,1)',
-          display: 'flex', flexDirection: 'column', padding: '80px 28px 40px',
-          overflowY: 'auto',
-        }}
-      >
-        <nav style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          {NAV_LINKS.map(([href, label]) => (
-            <button
-              key={href}
-              onClick={() => handleNavClick(href)}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', padding: '14px 0', fontSize: 22, fontFamily: 'Cormorant Garamond, serif', fontWeight: 500, color: '#1c1c1a', borderBottom: '1px solid rgba(184,151,90,0.15)' }}
+      {/* Fullscreen portal: overlay + drawer rendered together, pointer-events off when closed */}
+      <div style={{ position: 'fixed', inset: 0, zIndex: 9990, pointerEvents: open ? 'auto' : 'none' }}>
+        {/* Overlay */}
+        <div
+          onClick={onOverlayClick}
+          style={{ position: 'absolute', inset: 0, background: 'rgba(14,14,12,0.5)', transition: 'opacity 0.28s', opacity: open ? 1 : 0 }}
+        />
+        {/* Drawer */}
+        <div
+          onTouchStart={onTouchStart}
+          onTouchEnd={onTouchEnd}
+          style={{
+            position: 'absolute', top: 0, right: 0, bottom: 0,
+            width: 'min(78vw, 290px)',
+            background: '#f8f6f1',
+            boxShadow: '-8px 0 40px rgba(14,14,12,0.2)',
+            transform: open ? 'translateX(0)' : 'translateX(100%)',
+            transition: 'transform 0.3s cubic-bezier(0.4,0,0.2,1)',
+            display: 'flex', flexDirection: 'column',
+            padding: '72px 28px 40px',
+            overflowY: 'auto',
+          }}
+        >
+          <nav style={{ display: 'flex', flexDirection: 'column' }}>
+            {NAV_LINKS.map(([href, label]) => (
+              <a
+                key={href}
+                href={href}
+                onClick={e => handleNavClick(e, href)}
+                style={{ display: 'block', padding: '15px 0', fontSize: 24, fontFamily: 'Cormorant Garamond, serif', fontWeight: 500, color: '#1c1c1a', borderBottom: '1px solid rgba(184,151,90,0.18)', textDecoration: 'none', cursor: 'pointer' }}
+              >
+                {label}
+              </a>
+            ))}
+          </nav>
+          <div style={{ marginTop: 28 }}>
+            <a
+              href="#booking"
+              onClick={e => handleNavClick(e, '#booking')}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, height: 50, borderRadius: 99, background: '#1c1c1a', color: '#f8f6f1', fontSize: 14, fontWeight: 700, textDecoration: 'none' }}
             >
-              {label}
-            </button>
-          ))}
-        </nav>
-        <div style={{ marginTop: 32 }}>
-          <a href="#booking" onClick={() => setOpen(false)}
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, height: 48, borderRadius: 99, background: '#1c1c1a', color: '#f8f6f1', fontSize: 14, fontWeight: 600, textDecoration: 'none' }}>
-            Agendar demo <ArrowRight style={{ width: 14, height: 14 }} />
-          </a>
+              Agendar demo <ArrowRight style={{ width: 14, height: 14 }} />
+            </a>
+          </div>
+          <p style={{ marginTop: 'auto', paddingTop: 32, fontSize: 11, color: '#6b6b67', textAlign: 'center' }}>← desliza para cerrar</p>
         </div>
-        <p style={{ marginTop: 'auto', paddingTop: 32, fontSize: 11, color: '#6b6b67', textAlign: 'center' }}>Desliza a la derecha para cerrar</p>
       </div>
     </>
   )
