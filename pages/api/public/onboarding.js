@@ -6,18 +6,18 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 )
 
-webpush.setVapidDetails(
-  'mailto:jfuentes@accountingpluscrm.com',
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
-  process.env.VAPID_PRIVATE_KEY
-)
-
 function normalizePhone(raw = '') {
   return (raw || '').replace(/\D/g, '').slice(-10)
 }
 
 async function sendOnboardingPush(name, businessName, extra) {
   try {
+    if (!process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) return
+    webpush.setVapidDetails(
+      'mailto:jfuentes@accountingpluscrm.com',
+      process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+      process.env.VAPID_PRIVATE_KEY
+    )
     const { data: subs } = await supabase.from('push_subscriptions').select('*')
     if (!subs?.length) return
     const body = extra
