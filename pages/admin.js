@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/router'
 import { supabase } from '../lib/supabase'
+import { COLORS, FONTS, HEADER_H, formatPhone } from '../lib/config'
 
-const gold='#b8975a',black='#0e0e0c',white='#f8f6f1',cream='#f8f6f1',gray='#6b6b67',gl='#e8e5de',ink='#1c1c1a'
-const ff='Inter,ui-sans-serif,system-ui,sans-serif',ffS='Cormorant Garamond,serif'
+const {gold,black,white,cream,gray,gl,ink} = COLORS
+const ff=FONTS.body, ffS=FONTS.heading
 
 const STATUS_COLORS_BOOKINGS = {
   pending:   { label:'Pending',   color:'#e67e22', bg:'rgba(230,126,34,0.1)' },
@@ -2089,7 +2090,14 @@ function AdminBookings(){
   const [weekView,setWeekView]=useState(false)
   const [calDate,setCalDate]=useState(new Date())
   const [calDay,setCalDay]=useState(null)
-  useEffect(()=>{load()},[])
+  useEffect(()=>{
+    load()
+    const channel = supabase
+      .channel('bookings-live')
+      .on('postgres_changes',{event:'*',schema:'public',table:'bookings'},()=>load())
+      .subscribe()
+    return ()=>{ supabase.removeChannel(channel) }
+  },[])
   async function load(){
     setLoading(true)
     const r=await fetch('/api/admin/bookings')
@@ -2266,17 +2274,24 @@ function AdminBookings(){
       })}
       {/* New booking sheet */}
       {showNew&&(
-        <div style={{position:'fixed',inset:0,zIndex:300,background:'rgba(0,0,0,0.5)',display:'flex',alignItems:'flex-end'}} onClick={e=>e.target===e.currentTarget&&setShowNew(false)}>
-          <div style={{background:cream,borderRadius:'20px 20px 0 0',padding:'24px 20px 40px',width:'100%',maxHeight:'92vh',overflowY:'auto',boxSizing:'border-box'}}>
+        <div style={{position:'fixed',top:'calc(52px + env(safe-area-inset-top,0px))',left:0,right:0,bottom:0,zIndex:300,background:'rgba(0,0,0,0.5)',display:'flex',alignItems:'flex-end'}} onClick={e=>e.target===e.currentTarget&&setShowNew(false)}>
+          <div style={{background:cream,borderRadius:'20px 20px 0 0',padding:'24px 20px 40px',width:'100%',maxHeight:'100%',overflowY:'auto',boxSizing:'border-box'}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}}>
               <h2 style={{fontFamily:ffS,fontSize:22,fontWeight:300,color:ink}}>Nueva Cita</h2>
               <button onClick={()=>setShowNew(false)} style={{background:'none',border:'none',fontSize:20,cursor:'pointer',color:gray}}>✕</button>
             </div>
             <form onSubmit={createBooking} style={{display:'flex',flexDirection:'column',gap:12}}>
-              {[{k:'name',l:'Nombre del cliente',t:'text',r:true},{k:'phone',l:'Teléfono (ej: +17875551234)',t:'tel',r:true},{k:'facebook_page',l:'Página de Facebook',t:'text',r:true},{k:'service',l:'Servicio',t:'text'},{k:'date',l:'Fecha',t:'date',r:true},{k:'time',l:'Hora',t:'time',r:true}].map(f=>(
+              {[{k:'name',l:'Nombre del cliente',t:'text',r:true},{k:'phone',l:'Teléfono',t:'tel',r:true},{k:'facebook_page',l:'Página de Facebook',t:'text',r:true},{k:'service',l:'Servicio',t:'text'},{k:'date',l:'Fecha',t:'date',r:true},{k:'time',l:'Hora',t:'time',r:true}].map(f=>(
                 <div key={f.k}>
                   <label style={{fontSize:11,fontWeight:600,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:4}}>{f.l}</label>
-                  <input required={!!f.r} type={f.t} value={form[f.k]} onChange={e=>setForm(p=>({...p,[f.k]:e.target.value}))} style={inp2}/>
+                  <input
+                    required={!!f.r}
+                    type={f.t}
+                    placeholder={f.t==='tel'?'+1 (787) 555-1234':undefined}
+                    value={form[f.k]}
+                    onChange={e=>setForm(p=>({...p,[f.k]:f.t==='tel'?formatPhone(e.target.value):e.target.value}))}
+                    style={inp2}
+                  />
                 </div>
               ))}
               <div>
@@ -2290,8 +2305,8 @@ function AdminBookings(){
       )}
       {/* Buy sheet */}
       {buyModal&&(
-        <div style={{position:'fixed',inset:0,zIndex:300,background:'rgba(0,0,0,0.5)',display:'flex',alignItems:'flex-end'}} onClick={e=>e.target===e.currentTarget&&setBuyModal(null)}>
-          <div style={{background:cream,borderRadius:'20px 20px 0 0',padding:'24px 20px 40px',width:'100%',maxHeight:'92vh',overflowY:'auto',boxSizing:'border-box'}}>
+        <div style={{position:'fixed',top:HEADER_H,left:0,right:0,bottom:0,zIndex:300,background:'rgba(0,0,0,0.5)',display:'flex',alignItems:'flex-end'}} onClick={e=>e.target===e.currentTarget&&setBuyModal(null)}>
+          <div style={{background:cream,borderRadius:'20px 20px 0 0',padding:'24px 20px 40px',width:'100%',maxHeight:'100%',overflowY:'auto',boxSizing:'border-box'}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}}>
               <h2 style={{fontFamily:ffS,fontSize:20,fontWeight:300,color:ink}}>💰 {buyModal.name}</h2>
               <button onClick={()=>setBuyModal(null)} style={{background:'none',border:'none',fontSize:20,cursor:'pointer',color:gray}}>✕</button>
@@ -2432,8 +2447,8 @@ function AdminColdCalling(){
       </div>
       {/* Register lead sheet */}
       {showForm&&(
-        <div style={{position:'fixed',inset:0,zIndex:300,background:'rgba(0,0,0,0.5)',display:'flex',alignItems:'flex-end'}} onClick={e=>e.target===e.currentTarget&&setShowForm(null)}>
-          <div style={{background:cream,borderRadius:'20px 20px 0 0',padding:'24px 20px 40px',width:'100%',maxHeight:'92vh',overflowY:'auto',boxSizing:'border-box'}}>
+        <div style={{position:'fixed',top:HEADER_H,left:0,right:0,bottom:0,zIndex:300,background:'rgba(0,0,0,0.5)',display:'flex',alignItems:'flex-end'}} onClick={e=>e.target===e.currentTarget&&setShowForm(null)}>
+          <div style={{background:cream,borderRadius:'20px 20px 0 0',padding:'24px 20px 40px',width:'100%',maxHeight:'100%',overflowY:'auto',boxSizing:'border-box'}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}}>
               <h2 style={{fontFamily:ffS,fontSize:22,fontWeight:300,color:ink}}>Registrar Lead</h2>
               <button onClick={()=>setShowForm(null)} style={{background:'none',border:'none',fontSize:20,cursor:'pointer',color:gray}}>✕</button>
@@ -2442,7 +2457,14 @@ function AdminColdCalling(){
               {[{k:'business_name',l:'Nombre del negocio',t:'text',r:true},{k:'phone',l:'Teléfono',t:'tel',r:true},{k:'pueblo',l:'Pueblo / Ciudad',t:'text'}].map(f=>(
                 <div key={f.k}>
                   <label style={{fontSize:11,fontWeight:600,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:4}}>{f.l}</label>
-                  <input required={!!f.r} type={f.t} value={form[f.k]} onChange={e=>setForm(p=>({...p,[f.k]:e.target.value}))} style={inp2}/>
+                  <input
+                    required={!!f.r}
+                    type={f.t}
+                    placeholder={f.t==='tel'?'+1 (787) 555-1234':undefined}
+                    value={form[f.k]}
+                    onChange={e=>setForm(p=>({...p,[f.k]:f.t==='tel'?formatPhone(e.target.value):e.target.value}))}
+                    style={inp2}
+                  />
                 </div>
               ))}
               <div>
@@ -2551,8 +2573,22 @@ export default function Admin({session}){
     fetch('/api/auth/check-admin')
       .then(r=>r.json())
       .then(({isAdmin})=>{
-        if(isAdmin){loadAll()}
-        else{router.push('/login')}
+        if(isAdmin){
+          loadAll()
+          // Handle notification action deep-links
+          const params = new URLSearchParams(window.location.search)
+          const confirmId = params.get('confirm')
+          const viewId    = params.get('view')
+          if(confirmId){
+            fetch('/api/admin/bookings',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:confirmId,status:'confirmed'})})
+              .then(()=>{ showToast('✓ Cita confirmada'); setPanel('bookings') })
+              .catch(()=>{})
+            window.history.replaceState({},'','/admin')
+          } else if(viewId){
+            setPanel('bookings')
+            window.history.replaceState({},'','/admin')
+          }
+        } else {router.push('/login')}
       })
       .catch(()=>router.push('/login'))
   },[session])
@@ -2913,7 +2949,7 @@ export default function Admin({session}){
               <div style={{fontSize:'0.58rem',letterSpacing:'0.14em',textTransform:'uppercase',color:gold,marginBottom:'1rem'}}>Create New Client</div>
               <label style={lbl}>Full Name</label><input style={inp} type="text" placeholder="Client name" value={form.new_name||''} onChange={e=>upd('new_name',e.target.value)}/>
               <label style={lbl}>Business Name</label><input style={inp} type="text" placeholder="Business name" value={form.new_business||''} onChange={e=>upd('new_business',e.target.value)}/>
-              <label style={lbl}>Phone</label><input style={inp} type="tel" placeholder="787-000-0000" value={form.new_phone||''} onChange={e=>upd('new_phone',e.target.value)}/>
+              <label style={lbl}>Phone</label><input style={inp} type="tel" placeholder="+1 (787) 555-1234" value={form.new_phone||''} onChange={e=>upd('new_phone',formatPhone(e.target.value))}/>
               <label style={lbl}>Email</label><input style={inp} type="email" placeholder="email@business.com" value={form.new_email||''} onChange={e=>upd('new_email',e.target.value)}/>
               <label style={lbl}>Temporary Password</label><input style={{...inp,marginBottom:0}} type="text" placeholder="min. 6 characters" value={form.new_password||''} onChange={e=>upd('new_password',e.target.value)}/>
               <button onClick={createClient} style={{width:'100%',background:gold,color:white,border:'none',padding:'0.75rem',fontFamily:ff,fontSize:'0.62rem',letterSpacing:'0.12em',textTransform:'uppercase',borderRadius:3,cursor:'pointer',marginTop:'0.85rem'}}>Create Client</button>
@@ -2954,7 +2990,7 @@ export default function Admin({session}){
             </div>
             <label style={lbl}>Full Name</label><input style={inp} type="text" value={editForm.name||''} onChange={e=>setEditForm(f=>({...f,name:e.target.value}))}/>
             <label style={lbl}>Business Name</label><input style={inp} type="text" value={editForm.business||''} onChange={e=>setEditForm(f=>({...f,business:e.target.value}))}/>
-            <label style={lbl}>Phone</label><input style={inp} type="tel" value={editForm.phone||''} onChange={e=>setEditForm(f=>({...f,phone:e.target.value}))}/>
+            <label style={lbl}>Phone</label><input style={inp} type="tel" placeholder="+1 (787) 555-1234" value={editForm.phone||''} onChange={e=>setEditForm(f=>({...f,phone:formatPhone(e.target.value)}))}/>
             <label style={lbl}>New Email (optional)</label><input style={inp} type="email" placeholder="Leave empty to keep current" value={editForm.email||''} onChange={e=>setEditForm(f=>({...f,email:e.target.value}))}/>
             <label style={lbl}>New Password (optional)</label><input style={inp} type="text" placeholder="Leave empty to keep current" value={editForm.password||''} onChange={e=>setEditForm(f=>({...f,password:e.target.value}))}/>
             <div style={{display:'flex',gap:'0.75rem'}}>

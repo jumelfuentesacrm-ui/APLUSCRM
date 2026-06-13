@@ -1,9 +1,10 @@
 import Head from 'next/head'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { formatPhone } from '../lib/config'
 import {
   CalendarCheck, PhoneCall, MessageSquare, Users, CreditCard, Globe,
   Sparkles, Star, ArrowRight, Check, ChevronLeft, ChevronRight,
-  MapPin, Quote, PhoneIncoming, Shield, FileText, Cookie,
+  MapPin, Quote, PhoneIncoming, Shield, FileText, Cookie, Plus, Trash2,
 } from 'lucide-react'
 
 const SERVICES = [
@@ -88,6 +89,7 @@ export default function LandingPage() {
         <FadeIn><AdminPreview /></FadeIn>
         <FadeIn><Showcase /></FadeIn>
         <FadeIn><Reviews /></FadeIn>
+        <FadeIn><OnboardingSection /></FadeIn>
         <FadeIn><Footer /></FadeIn>
         <StickyCTA />
       </main>
@@ -499,10 +501,10 @@ function Booking() {
             <div style={{ marginTop: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
               {[
                 { val: name, set: setName, ph: 'Tu nombre', type: 'text' },
-                { val: phone, set: setPhone, ph: 'WhatsApp o teléfono', type: 'tel' },
+                { val: phone, set: setPhone, ph: '+1 (787) 555-1234', type: 'tel' },
                 { val: business, set: setBusiness, ph: 'Nombre del negocio', type: 'text' },
               ].map(f => (
-                <input key={f.ph} required value={f.val} type={f.type} onChange={e => f.set(e.target.value)} placeholder={f.ph}
+                <input key={f.ph} required value={f.val} type={f.type} onChange={e => f.set(f.type==='tel'?formatPhone(e.target.value):e.target.value)} placeholder={f.ph}
                   style={{ height: 52, width: '100%', boxSizing: 'border-box', borderRadius: 14, border: '1.5px solid rgba(14,14,12,0.12)', padding: '0 16px', fontSize: 16, fontFamily: ff, background: 'rgba(248,246,241,0.5)', color: '#0e0e0c', outline: 'none', WebkitAppearance: 'none' }} />
               ))}
             </div>
@@ -846,6 +848,196 @@ function ReviewCard({ review }) {
         </div>
       </div>
     </article>
+  )
+}
+
+const DURATION_OPTIONS = [
+  { label: '15 min', value: 15 }, { label: '30 min', value: 30 }, { label: '45 min', value: 45 },
+  { label: '1 hora', value: 60 }, { label: '1h 15min', value: 75 }, { label: '1h 30min', value: 90 },
+  { label: '1h 45min', value: 105 }, { label: '2 horas', value: 120 }, { label: '2h 30min', value: 150 },
+  { label: '3 horas', value: 180 }, { label: '4 horas', value: 240 },
+]
+
+function OnboardingSection() {
+  const [form, setForm] = useState({
+    name: '', phone: '', business_name: '', business_type: '',
+    colors: { primary: '#b8975a', accent: '#1c1c1a' },
+    instagram: '', facebook: '',
+  })
+  const [services, setServices] = useState([{ name: '', duration: 60, price: '' }])
+  const [state, setState] = useState('idle') // idle | loading | success | error
+  const [booking, setBooking] = useState(null)
+  const [err, setErr] = useState('')
+
+  function setField(key, val) { setForm(f => ({ ...f, [key]: val })) }
+  function setColor(key, val) { setForm(f => ({ ...f, colors: { ...f.colors, [key]: val } })) }
+
+  function addService() { setServices(s => [...s, { name: '', duration: 60, price: '' }]) }
+  function removeService(i) { setServices(s => s.filter((_, idx) => idx !== i)) }
+  function updateService(i, key, val) {
+    setServices(s => s.map((svc, idx) => idx === i ? { ...svc, [key]: val } : svc))
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    if (!form.name || !form.phone) { setErr('Nombre y teléfono son requeridos.'); return }
+    setState('loading'); setErr('')
+    try {
+      const res = await fetch('/api/public/onboarding', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...form, services }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Error')
+      setBooking(json.booking)
+      setState('success')
+    } catch (ex) {
+      setErr(ex.message || 'Algo salió mal. Intenta de nuevo.')
+      setState('idle')
+    }
+  }
+
+  const inputStyle = { width: '100%', background: 'rgba(255,255,255,0.55)', border: '1px solid rgba(184,151,90,0.25)', borderRadius: 10, padding: '10px 14px', fontSize: 14, color: '#1c1c1a', outline: 'none', fontFamily: 'inherit' }
+  const labelStyle = { display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#6b6b67', marginBottom: 6 }
+
+  return (
+    <section id="comenzar" className="px-4 py-16 md:py-24">
+      <div className="mx-auto max-w-2xl">
+        <div className="mb-10 text-center">
+          <div className="inline-flex items-center gap-2 mb-4">
+            <span className="h-px w-6 bg-gold" />
+            <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.22em', color: '#b8975a' }}>Comenzar</span>
+            <span className="h-px w-6 bg-gold" />
+          </div>
+          <h2 className="font-serif text-ink" style={{ fontSize: 'clamp(28px,5vw,44px)', fontWeight: 500, lineHeight: 1.15 }}>
+            ¿Estás comenzando<br />
+            <em style={{ color: '#b8975a' }}>con nosotros?</em>
+          </h2>
+          <p className="mt-3 text-muted-foreground" style={{ fontSize: 14, lineHeight: 1.65, maxWidth: 440, margin: '12px auto 0' }}>
+            Llena esto y en menos de 24 horas tenemos tu sistema listo. Guardamos tu info para arrancar sin perder tiempo.
+          </p>
+        </div>
+
+        {state === 'success' ? (
+          <div className="glass rounded-3xl p-8 text-center">
+            <div style={{ fontSize: 48, marginBottom: 12 }}>🎉</div>
+            <p className="font-serif text-ink" style={{ fontSize: 24, marginBottom: 8 }}>¡Recibido!</p>
+            <p className="text-muted-foreground" style={{ fontSize: 14, lineHeight: 1.65, marginBottom: 20 }}>
+              Tu información está guardada. Te contactamos pronto para arrancar.
+            </p>
+            {booking ? (
+              <div style={{ background: 'rgba(184,151,90,0.1)', border: '1px solid rgba(184,151,90,0.3)', borderRadius: 12, padding: '14px 18px', fontSize: 13, color: '#1c1c1a', textAlign: 'left' }}>
+                <p style={{ fontWeight: 700, marginBottom: 4 }}>📅 Tu cita encontrada</p>
+                <p style={{ color: '#6b6b67' }}>{booking.service} · {booking.date} {booking.time}</p>
+              </div>
+            ) : (
+              <div style={{ background: 'rgba(255,255,255,0.5)', border: '1px solid rgba(184,151,90,0.2)', borderRadius: 12, padding: '14px 18px', fontSize: 13, color: '#6b6b67', textAlign: 'center' }}>
+                ¿Aún no tienes cita?{' '}
+                <a href="#booking" style={{ color: '#b8975a', fontWeight: 700, textDecoration: 'none' }}>Saca una ahora →</a>
+              </div>
+            )}
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="glass rounded-3xl p-6 md:p-8" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            {/* Nombre + Teléfono */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+              <div>
+                <label style={labelStyle}>Tu nombre</label>
+                <input style={inputStyle} type="text" placeholder="María López" value={form.name} onChange={e => setField('name', e.target.value)} required />
+              </div>
+              <div>
+                <label style={labelStyle}>Teléfono</label>
+                <input style={inputStyle} type="tel" placeholder="+1 (787) 555-1234" value={form.phone} onChange={e => setField('phone', formatPhone(e.target.value))} required />
+              </div>
+            </div>
+
+            {/* Negocio + Tipo */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+              <div>
+                <label style={labelStyle}>Nombre del negocio</label>
+                <input style={inputStyle} type="text" placeholder="Salón Glamour" value={form.business_name} onChange={e => setField('business_name', e.target.value)} />
+              </div>
+              <div>
+                <label style={labelStyle}>Tipo de negocio</label>
+                <select style={inputStyle} value={form.business_type} onChange={e => setField('business_type', e.target.value)}>
+                  <option value="">Selecciona...</option>
+                  <option>Salón / Spa</option>
+                  <option>Barbería</option>
+                  <option>Consultor / Coach</option>
+                  <option>Fotógrafo</option>
+                  <option>Clínica / Salud</option>
+                  <option>Restaurante</option>
+                  <option>Otro</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Colores */}
+            <div>
+              <label style={labelStyle}>Colores de tu marca</label>
+              <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#6b6b67', cursor: 'pointer' }}>
+                  <input type="color" value={form.colors.primary} onChange={e => setColor('primary', e.target.value)} style={{ width: 36, height: 36, borderRadius: 8, border: 'none', cursor: 'pointer', padding: 2, background: 'none' }} />
+                  Color principal
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#6b6b67', cursor: 'pointer' }}>
+                  <input type="color" value={form.colors.accent} onChange={e => setColor('accent', e.target.value)} style={{ width: 36, height: 36, borderRadius: 8, border: 'none', cursor: 'pointer', padding: 2, background: 'none' }} />
+                  Color de acento
+                </label>
+                <div style={{ height: 36, flex: 1, minWidth: 80, borderRadius: 8, background: `linear-gradient(90deg, ${form.colors.primary}, ${form.colors.accent})` }} />
+              </div>
+            </div>
+
+            {/* Servicios */}
+            <div>
+              <label style={labelStyle}>Servicios que ofreces</label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {services.map((svc, i) => (
+                  <div key={i} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: 8, alignItems: 'center' }}>
+                    <input style={inputStyle} type="text" placeholder="Nombre del servicio" value={svc.name} onChange={e => updateService(i, 'name', e.target.value)} />
+                    <select style={inputStyle} value={svc.duration} onChange={e => updateService(i, 'duration', Number(e.target.value))}>
+                      {DURATION_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </select>
+                    <input style={inputStyle} type="number" placeholder="Precio $" min="0" value={svc.price} onChange={e => updateService(i, 'price', e.target.value)} />
+                    {services.length > 1 && (
+                      <button type="button" onClick={() => removeService(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b6b67', padding: 4, display: 'flex' }}>
+                        <Trash2 style={{ width: 16, height: 16 }} />
+                      </button>
+                    )}
+                  </div>
+                ))}
+                <button type="button" onClick={addService} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#b8975a', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', padding: '4px 0' }}>
+                  <Plus style={{ width: 15, height: 15 }} /> Añadir servicio
+                </button>
+              </div>
+            </div>
+
+            {/* Redes sociales */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+              <div>
+                <label style={labelStyle}>Instagram</label>
+                <input style={inputStyle} type="text" placeholder="@tunegocio" value={form.instagram} onChange={e => setField('instagram', e.target.value)} />
+              </div>
+              <div>
+                <label style={labelStyle}>Facebook</label>
+                <input style={inputStyle} type="text" placeholder="facebook.com/tunegocio" value={form.facebook} onChange={e => setField('facebook', e.target.value)} />
+              </div>
+            </div>
+
+            {err && <p style={{ fontSize: 13, color: '#c0392b' }}>{err}</p>}
+
+            <button
+              type="submit"
+              disabled={state === 'loading'}
+              style={{ width: '100%', background: '#b8975a', color: '#fff', border: 'none', borderRadius: 12, padding: '14px 24px', fontSize: 15, fontWeight: 700, cursor: state === 'loading' ? 'wait' : 'pointer', letterSpacing: '0.02em', fontFamily: 'inherit', transition: 'opacity 0.15s', opacity: state === 'loading' ? 0.7 : 1 }}
+            >
+              {state === 'loading' ? 'Enviando...' : 'Enviar información →'}
+            </button>
+          </form>
+        )}
+      </div>
+    </section>
   )
 }
 

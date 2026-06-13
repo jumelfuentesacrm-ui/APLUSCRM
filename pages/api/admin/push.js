@@ -27,16 +27,27 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'POST' && req.query.action === 'send') {
-    const { title, body, url } = req.body
+    const { title, body, url, bookingId, actions } = req.body
     const { data: subs } = await supabaseAdmin.from('push_subscriptions').select('*')
     if (!subs?.length) return res.status(200).json({ sent: 0 })
+
+    const payload = JSON.stringify({
+      title,
+      body,
+      url: url || '/admin',
+      bookingId: bookingId || null,
+      actions: actions || [
+        { action: 'confirm', title: '✓ Confirmar' },
+        { action: 'view',    title: '👁 Ver cita'  }
+      ]
+    })
 
     let sent = 0
     for (const sub of subs) {
       try {
         await webpush.sendNotification(
           { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
-          JSON.stringify({ title, body, url: url || '/admin' })
+          payload
         )
         sent++
       } catch (e) {

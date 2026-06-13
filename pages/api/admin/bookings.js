@@ -1,9 +1,46 @@
 import { createClient } from '@supabase/supabase-js'
+import webpush from 'web-push'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 )
+
+webpush.setVapidDetails(
+  'mailto:jfuentes@accountingpluscrm.com',
+  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+  process.env.VAPID_PRIVATE_KEY
+)
+
+async function sendBookingPush(booking) {
+  try {
+    const { data: subs } = await supabase.from('push_subscriptions').select('*')
+    if (!subs?.length) return
+    const svcLabel = booking.service ? ` · ${booking.service}` : ''
+    const payload = JSON.stringify({
+      title: '📅 Nueva reserva',
+      body: `${booking.name}${svcLabel} — ${booking.date} ${booking.time}`,
+      url: '/admin',
+      bookingId: booking.id,
+      actions: [
+        { action: 'confirm', title: '✓ Confirmar' },
+        { action: 'view',    title: '👁 Ver cita'  }
+      ]
+    })
+    for (const sub of subs) {
+      try {
+        await webpush.sendNotification(
+          { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+          payload
+        )
+      } catch (e) {
+        if (e.statusCode === 410 || e.statusCode === 404) {
+          await supabase.from('push_subscriptions').delete().eq('endpoint', sub.endpoint)
+        }
+      }
+    }
+  } catch (_) {}
+}
 
 export default async function handler(req, res) {
   if (req.method === 'POST') {
@@ -17,6 +54,7 @@ export default async function handler(req, res) {
       .select()
       .single()
     if (error) return res.status(500).json({ error: error.message })
+    sendBookingPush(data) // fire-and-forget, never blocks the response
     return res.status(201).json(data)
   }
 
