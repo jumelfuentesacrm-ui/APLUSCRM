@@ -16,13 +16,16 @@ function normalizePhone(raw = '') {
   return (raw || '').replace(/\D/g, '').slice(-10)
 }
 
-async function sendOnboardingPush(name, businessName) {
+async function sendOnboardingPush(name, businessName, extra) {
   try {
     const { data: subs } = await supabase.from('push_subscriptions').select('*')
     if (!subs?.length) return
+    const body = extra
+      ? `${name} · ${businessName || 'nuevo cliente'} — "${extra.slice(0, 80)}"`
+      : `${name} · ${businessName || 'nuevo cliente'} llenó el formulario`
     const payload = JSON.stringify({
       title: '🎉 Nuevo cliente onboarding',
-      body: `${name} · ${businessName || 'nuevo cliente'} llenó el formulario`,
+      body,
       url: '/admin',
     })
     for (const sub of subs) {
@@ -43,7 +46,7 @@ async function sendOnboardingPush(name, businessName) {
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
 
-  const { name, phone, business_name, business_type, colors, services, instagram, facebook } = req.body
+  const { name, phone, business_name, business_type, colors, services, instagram, facebook, extra } = req.body
   if (!name || !phone) return res.status(400).json({ error: 'Nombre y teléfono son requeridos' })
 
   const phoneDigits = normalizePhone(phone)
@@ -68,6 +71,7 @@ export default async function handler(req, res) {
     services: services || [],
     instagram: instagram || null,
     facebook: facebook || null,
+    extra: extra || null,
     submitted_at: new Date().toISOString(),
   }
 
@@ -82,11 +86,11 @@ export default async function handler(req, res) {
   // If booking found, append onboarding note to booking notes
   if (matchedBooking) {
     const existingNotes = matchedBooking.notes || ''
-    const noteAppend = `\n\n[Onboarding ${new Date().toLocaleDateString('es-PR')}]\nNegocio: ${business_name || '—'} · Tipo: ${business_type || '—'}\nColores: Primario ${colors?.primary || '—'}, Acento ${colors?.accent || '—'}\nIG: ${instagram || '—'} · FB: ${facebook || '—'}\nServicios: ${(services || []).map(s => `${s.name} (${s.duration}min · $${s.price})`).join(', ')}`
+    const noteAppend = `\n\n[Onboarding ${new Date().toLocaleDateString('es-PR')}]\nNegocio: ${business_name || '—'} · Tipo: ${business_type || '—'}\nColores: Primario ${colors?.primary || '—'}, Acento ${colors?.accent || '—'}\nIG: ${instagram || '—'} · FB: ${facebook || '—'}\nServicios: ${(services || []).map(s => `${s.name} (${s.duration}min · $${s.price})`).join(', ')}${extra ? `\nNota: ${extra}` : ''}`
     await supabase.from('bookings').update({ notes: existingNotes + noteAppend }).eq('id', matchedBooking.id)
   }
 
-  sendOnboardingPush(name, business_name) // fire-and-forget
+  sendOnboardingPush(name, business_name, extra) // fire-and-forget
 
   return res.status(200).json({
     ok: true,

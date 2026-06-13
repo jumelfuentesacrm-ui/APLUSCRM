@@ -429,16 +429,25 @@ function Booking() {
   const [error, setError] = useState(null)
   const [confirmed, setConfirmed] = useState({ date: '', time: '', name: '' })
 
-  const dates = useMemo(() => {
-    const arr = [], today = new Date()
-    const dias = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
-    const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
-    for (let i = 1; i <= 14; i++) {
-      const d = new Date(today); d.setDate(today.getDate() + i)
-      arr.push({ label: String(d.getDate()), sub: `${dias[d.getDay()]} · ${meses[d.getMonth()]}`, iso: `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` })
+  const [calMonth, setCalMonth] = useState(() => { const d = new Date(); return { y: d.getFullYear(), m: d.getMonth() } })
+
+  const calDays = useMemo(() => {
+    const { y, m } = calMonth
+    const today = new Date(); today.setHours(0,0,0,0)
+    const first = new Date(y, m, 1)
+    const last  = new Date(y, m + 1, 0)
+    const cells = []
+    // leading blanks
+    for (let i = 0; i < first.getDay(); i++) cells.push(null)
+    for (let d = 1; d <= last.getDate(); d++) {
+      const dt = new Date(y, m, d)
+      const iso = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`
+      cells.push({ d, iso, past: dt <= today })
     }
-    return arr
-  }, [])
+    return cells
+  }, [calMonth])
+
+  const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
 
   const slots = ['9:00 AM', '10:30 AM', '12:00 PM', '2:00 PM', '3:30 PM', '5:00 PM']
 
@@ -471,16 +480,31 @@ function Booking() {
         {step === 'form' ? (
           <form style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(20px) saturate(180%)', WebkitBackdropFilter: 'blur(20px) saturate(180%)', border: '1px solid rgba(255,255,255,0.55)', boxShadow: '0 4px 24px rgba(0,0,0,0.07),inset 0 1px 0 rgba(255,255,255,0.85)', borderRadius: 28, padding: '20px 18px', width: '100%', boxSizing: 'border-box' }} onSubmit={handleSubmit}>
             <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#6b6b67' }}>Elige un día</p>
-            {/* scrollable date strip */}
-            <div style={{ marginLeft: -18, marginRight: -18, paddingLeft: 18, paddingRight: 18, overflowX: 'auto', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', msOverflowStyle: 'none', marginTop: 10, paddingBottom: 4 }}>
-              <div style={{ display: 'flex', gap: 8, width: 'max-content' }}>
-                {dates.map((d) => {
-                  const active = date === d.iso
+            {/* calendar grid */}
+            <div style={{ marginTop: 10, background: 'rgba(248,246,241,0.5)', borderRadius: 18, padding: '12px 8px', border: '1.5px solid rgba(14,14,12,0.08)' }}>
+              {/* month nav */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, paddingInline: 4 }}>
+                <button type="button" onClick={() => setCalMonth(p => { const d = new Date(p.y, p.m - 1); return { y: d.getFullYear(), m: d.getMonth() } })}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: '#6b6b67', lineHeight: 1, padding: '0 4px' }}>‹</button>
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#1c1c1a' }}>{MESES[calMonth.m]} {calMonth.y}</span>
+                <button type="button" onClick={() => setCalMonth(p => { const d = new Date(p.y, p.m + 1); return { y: d.getFullYear(), m: d.getMonth() } })}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: '#6b6b67', lineHeight: 1, padding: '0 4px' }}>›</button>
+              </div>
+              {/* day headers */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', marginBottom: 4 }}>
+                {['D','L','M','M','J','V','S'].map((d,i) => (
+                  <div key={i} style={{ textAlign: 'center', fontSize: 10, fontWeight: 700, color: '#6b6b67', letterSpacing: '0.05em' }}>{d}</div>
+                ))}
+              </div>
+              {/* day cells */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 3 }}>
+                {calDays.map((cell, i) => {
+                  if (!cell) return <div key={i} />
+                  const active = date === cell.iso
                   return (
-                    <button type="button" key={d.iso} onClick={() => setDate(d.iso)}
-                      style={{ width: 56, height: 64, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderRadius: 18, border: '1.5px solid', borderColor: active ? '#0e0e0c' : 'rgba(14,14,12,0.12)', background: active ? '#0e0e0c' : 'rgba(248,246,241,0.5)', cursor: 'pointer', touchAction: 'manipulation' }}>
-                      <span style={{ fontSize: 20, fontWeight: 700, lineHeight: 1, fontFamily: ff, color: active ? '#f8f6f1' : '#0e0e0c' }}>{d.label}</span>
-                      <span style={{ fontSize: 9, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: 3, color: active ? 'rgba(248,246,241,0.6)' : '#6b6b67' }}>{d.sub}</span>
+                    <button type="button" key={cell.iso} disabled={cell.past} onClick={() => setDate(cell.iso)}
+                      style={{ aspectRatio: '1', borderRadius: 10, border: '1.5px solid', borderColor: active ? '#0e0e0c' : 'transparent', background: active ? '#0e0e0c' : 'transparent', color: cell.past ? 'rgba(14,14,12,0.2)' : active ? '#f8f6f1' : '#1c1c1a', fontSize: 13, fontWeight: 600, cursor: cell.past ? 'default' : 'pointer', fontFamily: ff, touchAction: 'manipulation' }}>
+                      {cell.d}
                     </button>
                   )
                 })}
@@ -862,7 +886,7 @@ function OnboardingSection() {
   const [form, setForm] = useState({
     name: '', phone: '', business_name: '', business_type: '',
     colors: { primary: '#b8975a', accent: '#1c1c1a' },
-    instagram: '', facebook: '',
+    instagram: '', facebook: '', extra: '',
   })
   const [services, setServices] = useState([{ name: '', duration: 60, price: '' }])
   const [state, setState] = useState('idle') // idle | loading | success | error
@@ -1025,12 +1049,23 @@ function OnboardingSection() {
               </div>
             </div>
 
+            {/* Algo adicional */}
+            <div>
+              <label style={labelStyle}>Algo que nos quieras compartir</label>
+              <textarea
+                style={{ ...inputStyle, minHeight: 90, resize: 'vertical', lineHeight: 1.6 }}
+                placeholder="Horarios, expectativas, preguntas, lo que sea..."
+                value={form.extra}
+                onChange={e => setField('extra', e.target.value)}
+              />
+            </div>
+
             {err && <p style={{ fontSize: 13, color: '#c0392b' }}>{err}</p>}
 
             <button
               type="submit"
               disabled={state === 'loading'}
-              style={{ width: '100%', background: '#b8975a', color: '#fff', border: 'none', borderRadius: 12, padding: '14px 24px', fontSize: 15, fontWeight: 700, cursor: state === 'loading' ? 'wait' : 'pointer', letterSpacing: '0.02em', fontFamily: 'inherit', transition: 'opacity 0.15s', opacity: state === 'loading' ? 0.7 : 1 }}
+              style={{ width: '100%', background: '#2d8a60', color: '#fff', border: 'none', borderRadius: 12, padding: '14px 24px', fontSize: 15, fontWeight: 700, cursor: state === 'loading' ? 'wait' : 'pointer', letterSpacing: '0.02em', fontFamily: 'inherit', transition: 'opacity 0.15s', opacity: state === 'loading' ? 0.7 : 1 }}
             >
               {state === 'loading' ? 'Enviando...' : 'Enviar información →'}
             </button>
