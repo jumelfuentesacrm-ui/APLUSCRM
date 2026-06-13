@@ -139,22 +139,6 @@ function TopNav() {
 
   function close() { setOpen(false) }
 
-  function handleNavClick(e, href) {
-    e.preventDefault()
-    e.stopPropagation()
-    close()
-    setTimeout(() => {
-      const el = document.querySelector(href)
-      if (el) el.scrollIntoView({ behavior: 'smooth' })
-    }, 320)
-  }
-
-  function onOverlayClick(e) {
-    e.preventDefault()
-    e.stopPropagation()
-    close()
-  }
-
   function onTouchStart(e) { touchStartX.current = e.touches[0].clientX }
   function onTouchEnd(e) {
     if (touchStartX.current === null) return
@@ -201,52 +185,50 @@ function TopNav() {
         </div>
       </header>
 
-      {/* Fullscreen portal: overlay + drawer rendered together, pointer-events off when closed */}
-      <div style={{ position: 'fixed', inset: 0, zIndex: 9990, pointerEvents: open ? 'auto' : 'none' }}>
-        {/* Overlay */}
-        <div
-          onClick={onOverlayClick}
-          style={{ position: 'absolute', inset: 0, background: 'rgba(14,14,12,0.5)', transition: 'opacity 0.28s', opacity: open ? 1 : 0 }}
-        />
-        {/* Drawer */}
-        <div
-          onTouchStart={onTouchStart}
-          onTouchEnd={onTouchEnd}
-          style={{
-            position: 'absolute', top: 0, right: 0, bottom: 0,
-            width: 'min(78vw, 290px)',
-            background: '#f8f6f1',
-            boxShadow: '-8px 0 40px rgba(14,14,12,0.2)',
-            transform: open ? 'translateX(0)' : 'translateX(100%)',
-            transition: 'transform 0.3s cubic-bezier(0.4,0,0.2,1)',
-            display: 'flex', flexDirection: 'column',
-            padding: '72px 28px 40px',
-            overflowY: 'auto',
-          }}
-        >
-          <nav style={{ display: 'flex', flexDirection: 'column' }}>
-            {NAV_LINKS.map(([href, label]) => (
-              <a
-                key={href}
-                href={href}
-                onClick={e => handleNavClick(e, href)}
-                style={{ display: 'block', padding: '15px 0', fontSize: 24, fontFamily: 'Cormorant Garamond, serif', fontWeight: 500, color: '#1c1c1a', borderBottom: '1px solid rgba(184,151,90,0.18)', textDecoration: 'none', cursor: 'pointer' }}
-              >
-                {label}
-              </a>
-            ))}
-          </nav>
-          <div style={{ marginTop: 28 }}>
+      {/* Overlay — solo cuando está abierto */}
+      {open && (
+        <div onClick={close} style={{ position: 'fixed', inset: 0, zIndex: 9989, background: 'rgba(14,14,12,0.5)' }} />
+      )}
+
+      {/* Drawer */}
+      <div
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+        style={{
+          position: 'fixed', top: 0, right: 0, bottom: 0, zIndex: 9990,
+          width: 'min(78vw, 290px)',
+          background: '#f8f6f1',
+          boxShadow: '-8px 0 40px rgba(14,14,12,0.2)',
+          transform: open ? 'translateX(0)' : 'translateX(110%)',
+          transition: 'transform 0.3s cubic-bezier(0.4,0,0.2,1)',
+          display: 'flex', flexDirection: 'column',
+          padding: '72px 28px 40px',
+          overflowY: 'auto',
+          pointerEvents: open ? 'auto' : 'none',
+        }}
+      >
+        <nav style={{ display: 'flex', flexDirection: 'column' }}>
+          {NAV_LINKS.map(([href, label]) => (
             <a
-              href="#booking"
-              onClick={e => handleNavClick(e, '#booking')}
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, height: 50, borderRadius: 99, background: '#1c1c1a', color: '#f8f6f1', fontSize: 14, fontWeight: 700, textDecoration: 'none' }}
+              key={href}
+              href={href}
+              onClick={close}
+              style={{ display: 'block', padding: '15px 0', fontSize: 24, fontFamily: 'Cormorant Garamond, serif', fontWeight: 500, color: '#1c1c1a', borderBottom: '1px solid rgba(184,151,90,0.18)', textDecoration: 'none' }}
             >
-              Agendar demo <ArrowRight style={{ width: 14, height: 14 }} />
+              {label}
             </a>
-          </div>
-          <p style={{ marginTop: 'auto', paddingTop: 32, fontSize: 11, color: '#6b6b67', textAlign: 'center' }}>← desliza para cerrar</p>
+          ))}
+        </nav>
+        <div style={{ marginTop: 28 }}>
+          <a
+            href="#booking"
+            onClick={close}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, height: 50, borderRadius: 99, background: '#1c1c1a', color: '#f8f6f1', fontSize: 14, fontWeight: 700, textDecoration: 'none' }}
+          >
+            Agendar demo <ArrowRight style={{ width: 14, height: 14 }} />
+          </a>
         </div>
+        <p style={{ marginTop: 'auto', paddingTop: 32, fontSize: 11, color: '#6b6b67', textAlign: 'center' }}>← desliza para cerrar</p>
       </div>
     </>
   )
