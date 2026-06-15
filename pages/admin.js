@@ -2283,7 +2283,7 @@ function AdminBookings(){
   return(
     <div style={{padding:'20px 16px 32px',fontFamily:ff}}>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
-        <h1 style={{fontFamily:ffS,fontSize:26,fontWeight:300,color:ink}}>Bookings</h1>
+        <h1 style={{fontFamily:ffS,fontSize:26,fontWeight:300,color:ink}}>Consultas</h1>
         <button onClick={()=>setShowNew(true)} style={{background:ink,color:cream,border:'none',borderRadius:99,padding:'8px 18px',fontSize:13,fontWeight:600,fontFamily:ff,cursor:'pointer',touchAction:'manipulation'}}>+ Nueva</button>
       </div>
       {/* View toggle */}
@@ -2526,16 +2526,29 @@ function AdminColdCalling(){
     }
     await load(); setShowForm(null); setForm({business_name:'',phone:'',pueblo:'',call_status:'no_answer',followup_date:'',notes:''}); setContactQ(''); setSaving(false)
   }
+  const [statSheet,setStatSheet]=useState(null) // {key,label,color,items}
+  const [sortMode,setSortMode]=useState('month') // 'month'|'week'
+  const now=new Date()
+  const monthStr=now.toISOString().slice(0,7)
   const baseStart=getCurrentWeekRange().start
   const ws=new Date(baseStart); ws.setDate(baseStart.getDate()+weekOffset*7)
   const we=new Date(ws); we.setDate(ws.getDate()+6)
+  const wsStr=ws.toISOString().split('T')[0]
+  const weStr=we.toISOString().split('T')[0]
   const weekDays=getWeekDays(ws)
   const byDay={}
   leads.forEach(l=>{ const d=l.created_at?.split('T')[0]; if(!byDay[d])byDay[d]=[]; byDay[d].push(l) })
   const weekLeads=weekDays.flatMap(d=>byDay[d.date]||[])
-  const responded=weekLeads.filter(l=>l.call_status!=='no_answer').length
-  const followups=weekLeads.filter(l=>l.call_status==='follow_up').length
   const isCurrentWeek=weekOffset===0
+  const monthLeads=leads.filter(l=>l.created_at?.startsWith(monthStr))
+  const getByStatus=(status)=>monthLeads.filter(l=>l.call_status===status)
+  const monthStats=[
+    {key:'follow_up',label:'Follow Up',color:gold,items:getByStatus('follow_up')},
+    {key:'no_answer',label:'Non Responsive',color:'#c0392b',items:getByStatus('no_answer')},
+    {key:'caliente',label:'Caliente',color:'#e74c3c',items:getByStatus('caliente')},
+    {key:'tibio',label:'Tibio',color:'#f39c12',items:getByStatus('tibio')},
+    {key:'frio',label:'Frío',color:'#5d8aa8',items:getByStatus('frio')},
+  ]
   const SS={
     no_answer:{label:'No respondió',color:'#c0392b',bg:'rgba(192,57,43,0.08)'},
     responded:{label:'Respondió',color:'#2d8a60',bg:'rgba(45,138,96,0.1)'},
@@ -2550,16 +2563,61 @@ function AdminColdCalling(){
   const inp2={width:'100%',boxSizing:'border-box',height:44,borderRadius:10,border:'1px solid rgba(14,14,12,0.12)',padding:'0 12px',fontSize:14,fontFamily:ff,background:'#fff',outline:'none'}
   return(
     <div style={{padding:'20px 16px 32px',fontFamily:ff}}>
-      <h1 style={{fontFamily:ffS,fontSize:26,fontWeight:300,color:ink,marginBottom:16}}>Cold Calling</h1>
-      {/* Weekly summary */}
-      <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:8,marginBottom:18}}>
-        {[{l:'Total',v:weekLeads.length,c:ink},{l:'Respond.',v:responded,c:'#2d8a60'},{l:'No resp.',v:weekLeads.length-responded,c:'#c0392b'},{l:'Follow-up',v:followups,c:gold}].map(s=>(
-          <div key={s.l} style={{background:'rgba(248,246,241,0.9)',border:'1px solid rgba(14,14,12,0.07)',borderRadius:12,padding:'10px 6px',textAlign:'center'}}>
-            <p style={{fontSize:18,fontWeight:700,fontFamily:ff,color:s.c}}>{s.v}</p>
-            <p style={{fontSize:9,color:gray,textTransform:'uppercase',letterSpacing:'0.06em',marginTop:2}}>{s.l}</p>
-          </div>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:16}}>
+        <h1 style={{fontFamily:ffS,fontSize:26,fontWeight:300,color:ink}}>Cold Calling</h1>
+        <span style={{fontSize:10,color:gray,textTransform:'uppercase',letterSpacing:'0.08em'}}>{now.toLocaleString('es-PR',{month:'long'})}</span>
+      </div>
+      {/* Monthly stat cards */}
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:18}}>
+        {monthStats.map(s=>(
+          <button key={s.key} onClick={()=>{setStatSheet(s);setSortMode('month')}} style={{background:'rgba(248,246,241,0.9)',border:'1px solid rgba(14,14,12,0.07)',borderRadius:12,padding:'12px 10px',textAlign:'left',cursor:'pointer',touchAction:'manipulation',fontFamily:ff}}>
+            <p style={{fontSize:22,fontWeight:700,color:s.color,lineHeight:1}}>{s.items.length}</p>
+            <p style={{fontSize:9,color:gray,textTransform:'uppercase',letterSpacing:'0.06em',marginTop:4}}>{s.label}</p>
+          </button>
         ))}
       </div>
+      {/* Stat sheet */}
+      {statSheet&&(
+        <>
+          <div style={{position:'fixed',inset:0,zIndex:300,background:'rgba(0,0,0,0.3)'}} onClick={()=>setStatSheet(null)}/>
+          <div style={{position:'fixed',bottom:0,left:0,right:0,zIndex:305,background:'rgba(255,255,255,0.97)',backdropFilter:'blur(24px)',borderRadius:'20px 20px 0 0',maxHeight:'78vh',display:'flex',flexDirection:'column'}}>
+            <div style={{padding:'12px 20px 12px',borderBottom:'1px solid rgba(14,14,12,0.07)',flexShrink:0}}>
+              <div style={{width:36,height:4,background:'rgba(14,14,12,0.15)',borderRadius:99,margin:'0 auto 12px'}}/>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
+                <p style={{fontSize:14,fontWeight:700,color:ink}}>{statSheet.label} <span style={{color:statSheet.color}}>({(sortMode==='week'?statSheet.items.filter(l=>{const d=l.created_at?.split('T')[0];return d>=wsStr&&d<=weStr}):statSheet.items).length})</span></p>
+                <button onClick={()=>setStatSheet(null)} style={{background:'none',border:'none',fontSize:18,cursor:'pointer',color:gray}}>✕</button>
+              </div>
+              <div style={{display:'flex',gap:6}}>
+                {['month','week'].map(m=>(
+                  <button key={m} onClick={()=>setSortMode(m)} style={{padding:'6px 14px',borderRadius:99,border:'1px solid',borderColor:sortMode===m?ink:'rgba(14,14,12,0.12)',background:sortMode===m?ink:'transparent',color:sortMode===m?cream:gray,fontSize:11,fontWeight:600,fontFamily:ff,cursor:'pointer',touchAction:'manipulation'}}>
+                    {m==='month'?'Este mes':'Esta semana'}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div style={{overflowY:'auto',padding:'0 20px 20px'}}>
+              {(()=>{
+                const items=sortMode==='week'?statSheet.items.filter(l=>{const d=l.created_at?.split('T')[0];return d>=wsStr&&d<=weStr}):statSheet.items
+                if(!items.length) return <p style={{color:gray,fontSize:13,textAlign:'center',padding:'28px 0'}}>Sin leads</p>
+                return items.map(l=>(
+                  <div key={l.id} style={{padding:'12px 0',borderBottom:'1px solid rgba(14,14,12,0.06)'}}>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
+                      <div>
+                        <p style={{fontSize:14,fontWeight:600,color:ink}}>{l.business_name}</p>
+                        {l.pueblo&&<p style={{fontSize:11,color:gray,marginTop:1}}>{l.pueblo}</p>}
+                        {l.notes&&<p style={{fontSize:11,color:gray,fontStyle:'italic',marginTop:2}}>{l.notes}</p>}
+                      </div>
+                      <p style={{fontSize:10,color:gray,flexShrink:0,marginLeft:8}}>{new Date(l.created_at).toLocaleDateString('es-PR',{day:'numeric',month:'short'})}</p>
+                    </div>
+                    {l.phone&&<a href={`tel:${l.phone}`} style={{fontSize:12,color:'#2d8a60',textDecoration:'none',display:'block',marginTop:4}}>{l.phone}</a>}
+                    {l.followup_date&&<p style={{fontSize:11,color:gold,marginTop:3}}>Follow-up: {l.followup_date}</p>}
+                  </div>
+                ))
+              })()}
+            </div>
+          </div>
+        </>
+      )}
       {/* Weekly card */}
       <div style={{background:'rgba(248,246,241,0.9)',border:'1px solid rgba(14,14,12,0.08)',borderRadius:18,overflow:'hidden'}}>
         {/* Week navigation */}
@@ -3022,7 +3080,7 @@ export default function Admin({session}){
           {activePanel==='dashboard'&&<AdminDashboard sales={sales} bookings={adminBookings} session={session} users={users} onSaleAdded={loadAll} onNavigate={(p)=>{setActivePanel(p);setTab(p)}}/>}
           {activePanel==='bookings'&&<AdminBookings/>}
           {activePanel==='coldcalling'&&<AdminColdCalling/>}
-          {activePanel==='consultas'&&<ConsultasPanel/>}
+
 
           {/* BURGER PANELS */}
           {activePanel==='crm-clients'&&<AdminCRMClients/>}
@@ -3109,7 +3167,7 @@ export default function Admin({session}){
       <nav style={{position:'fixed',bottom:0,left:0,right:0,zIndex:200,height:'calc(60px + env(safe-area-inset-bottom,0px))',paddingBottom:'env(safe-area-inset-bottom,0px)',background:'rgba(255,255,255,0.72)',backdropFilter:'blur(20px) saturate(180%)',WebkitBackdropFilter:'blur(20px) saturate(180%)',borderTop:'1px solid rgba(255,255,255,0.5)',boxShadow:'0 -2px 20px rgba(0,0,0,0.06)',display:'flex',alignItems:'flex-start',paddingTop:8}}>
         {[
           {id:'dashboard',label:'Dashboard',icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>},
-          {id:'bookings',label:'Bookings',icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>},
+          {id:'bookings',label:'Consultas',icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>},
           {id:'coldcalling',label:'Llamadas',icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.65 3.38 2 2 0 0 1 3.62 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.58a16 16 0 0 0 6 6l.96-.87a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.92 16.92z"/></svg>},
         ].map(({id,label,icon})=>{
           const active=activePanel===id
@@ -3140,8 +3198,7 @@ export default function Admin({session}){
             <div style={{width:40,height:4,background:'rgba(14,14,12,0.15)',borderRadius:99,margin:'12px auto 16px'}}/>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,padding:'0 16px 8px'}}>
               {[
-                {id:'consultas',label:'Consultas',icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>},
-                {id:'crm-clients',label:'Clientes CRM',icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>},
+{id:'crm-clients',label:'Clientes CRM',icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>},
                 {id:'loyalty-cards',label:'Loyalty',icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>},
                 {id:'cards',label:'Cards',icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>},
                 {id:'punch',label:'Punch Card',icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>},
