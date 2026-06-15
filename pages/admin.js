@@ -1908,6 +1908,7 @@ function AdminDashboard({sales,bookings,session,users,onSaleAdded}){
   const [incomeSaving,setIncomeSaving]=useState(false)
   const [activeSem,setActiveSem]=useState(null)
   const [followUps,setFollowUps]=useState([])
+  const [fuExpanded,setFuExpanded]=useState(false)
   useEffect(()=>{
     fetch('/api/admin/cold-calls').then(r=>r.json()).then(d=>{
       const tod=new Date().toISOString().split('T')[0]
@@ -2043,8 +2044,8 @@ function AdminDashboard({sales,bookings,session,users,onSaleAdded}){
       {/* Follow-ups card */}
       {followUps.length>0&&(
         <div style={{...glCard,padding:16,marginBottom:14}}>
-          <p style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.1em',color:gold,marginBottom:12}}>📞 Follow-ups Pendientes</p>
-          {followUps.map(f=>{
+          <p style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.1em',color:gold,marginBottom:12}}>Follow-ups Pendientes</p>
+          {(fuExpanded?followUps:followUps.slice(0,3)).map(f=>{
             const fd=new Date(f.followup_date+'T12:00:00')
             const isToday=f.followup_date===new Date().toISOString().split('T')[0]
             return(
@@ -2056,11 +2057,16 @@ function AdminDashboard({sales,bookings,session,users,onSaleAdded}){
                 </div>
                 <div style={{textAlign:'right',flexShrink:0,marginLeft:12}}>
                   <span style={{fontSize:11,fontWeight:700,color:isToday?'#c0392b':gold,background:isToday?'rgba(192,57,43,0.08)':'rgba(184,151,90,0.1)',padding:'3px 9px',borderRadius:99,display:'block',whiteSpace:'nowrap'}}>{isToday?'HOY':fd.toLocaleDateString('es-PR',{day:'numeric',month:'short'})}</span>
-                  {f.phone&&<a href={`tel:${f.phone}`} style={{fontSize:11,color:'#2d8a60',textDecoration:'none',display:'block',marginTop:4}}>📞 Llamar</a>}
+                  {f.phone&&<a href={`tel:${f.phone}`} style={{fontSize:11,color:'#2d8a60',textDecoration:'none',display:'block',marginTop:4}}>Llamar</a>}
                 </div>
               </div>
             )
           })}
+          {followUps.length>3&&(
+            <button onClick={()=>setFuExpanded(p=>!p)} style={{width:'100%',marginTop:10,padding:'8px',background:'none',border:'none',fontFamily:ff,fontSize:12,fontWeight:600,color:gold,cursor:'pointer',textAlign:'center',touchAction:'manipulation'}}>
+              {fuExpanded?'Ver menos ▲':`Ver más (${followUps.length-3} más) ▼`}
+            </button>
+          )}
         </div>
       )}
       {/* Add income bottom sheet */}
@@ -2960,19 +2966,19 @@ export default function Admin({session}){
             <div style={{width:40,height:4,background:'rgba(14,14,12,0.15)',borderRadius:99,margin:'12px auto 16px'}}/>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,padding:'0 16px 8px'}}>
               {[
-                {id:'crm-clients',label:'Clientes CRM',icon:'👥'},
-                {id:'loyalty-cards',label:'Loyalty',icon:'⭐'},
-                {id:'cards',label:'Cards',icon:'🃏'},
-                {id:'punch',label:'Punch Card',icon:'✦'},
-                {id:'notifications',label:'Alertas',icon:'🔔'},
-                {id:'campaigns',label:'Campañas',icon:'📣'},
-                {id:'catalog',label:'Catálogo',icon:'📦'},
-                {id:'supplies',label:'Supplies',icon:'🔧'},
-                {id:'reviews',label:'Reviews',icon:'⭐'},
-                {id:'system',label:'Admin Panel',icon:'⚙️'},
+                {id:'crm-clients',label:'Clientes CRM',icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>},
+                {id:'loyalty-cards',label:'Loyalty',icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>},
+                {id:'cards',label:'Cards',icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>},
+                {id:'punch',label:'Punch Card',icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>},
+                {id:'notifications',label:'Alertas',icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>},
+                {id:'campaigns',label:'Campañas',icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>},
+                {id:'catalog',label:'Catálogo',icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>},
+                {id:'supplies',label:'Supplies',icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>},
+                {id:'reviews',label:'Reviews',icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>},
+                {id:'system',label:'Admin Panel',icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>},
               ].map(({id,label,icon})=>(
                 <button key={id} onClick={()=>{setActivePanel(id);setPanel(id);setBurger(false)}} style={{display:'flex',alignItems:'center',gap:10,padding:'13px 14px',background:activePanel===id?'rgba(14,14,12,0.07)':'rgba(14,14,12,0.03)',border:'1px solid',borderColor:activePanel===id?'rgba(14,14,12,0.15)':'rgba(14,14,12,0.06)',borderRadius:14,fontFamily:ff,fontSize:13,fontWeight:activePanel===id?600:400,color:ink,cursor:'pointer',textAlign:'left',touchAction:'manipulation'}}>
-                  <span style={{fontSize:18}}>{icon}</span>{label}
+                  <span style={{display:'flex',alignItems:'center',color:activePanel===id?ink:gray,flexShrink:0}}>{icon}</span>{label}
                 </button>
               ))}
             </div>
