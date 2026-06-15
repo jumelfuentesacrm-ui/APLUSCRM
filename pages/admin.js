@@ -2171,7 +2171,7 @@ function AdminBookings(){
   }
   const active=bookings.filter(b=>!b.archived)
   const archived=bookings.filter(b=>b.archived)
-  const SC={pending:{label:'Pendiente',color:'#e67e22',bg:'rgba(230,126,34,0.1)'},confirmed:{label:'Confirmada',color:'#2d8a60',bg:'rgba(45,138,96,0.1)'},cancelled:{label:'Cancelada',color:'#c0392b',bg:'rgba(192,57,43,0.1)'},bought:{label:'Compró',color:gold,bg:'rgba(184,151,90,0.12)'},later:{label:'Dijo Luego',color:'#8e44ad',bg:'rgba(142,68,173,0.1)'}}
+  const SC={pending:{label:'Pendiente',color:'#e67e22',bg:'rgba(230,126,34,0.1)'},confirmed:{label:'Confirmada',color:'#2d8a60',bg:'rgba(45,138,96,0.1)'},cancelled:{label:'Cancelada',color:'#c0392b',bg:'rgba(192,57,43,0.1)'},bought:{label:'Compró',color:gold,bg:'rgba(184,151,90,0.12)'},later:{label:'Dijo Luego',color:'#8e44ad',bg:'rgba(142,68,173,0.1)'},no_show:{label:'No Show',color:'#636e72',bg:'rgba(99,110,114,0.1)'}}
   const inp2={width:'100%',boxSizing:'border-box',height:44,borderRadius:10,border:'1px solid rgba(14,14,12,0.12)',padding:'0 12px',fontSize:14,fontFamily:ff,background:'#fff',outline:'none',marginBottom:0}
   const glCard2={background:'rgba(255,255,255,0.7)',backdropFilter:'blur(20px) saturate(180%)',WebkitBackdropFilter:'blur(20px) saturate(180%)',border:'1px solid rgba(255,255,255,0.55)',boxShadow:'0 4px 20px rgba(0,0,0,0.07),inset 0 1px 0 rgba(255,255,255,0.85)',borderRadius:18}
   function BookingCard({b}){
@@ -2184,12 +2184,13 @@ function AdminBookings(){
         </div>
         <p style={{fontSize:16,fontWeight:600,color:ink}}>{b.name}</p>
         <p style={{fontSize:13,color:gray,marginTop:2}}>{b.service||'Consulta'}</p>
-        <p style={{fontSize:12,color:gray,marginTop:4}}>📅 {b.date} · 🕐 {b.time}</p>
+        <p style={{fontSize:12,color:gray,marginTop:4}}>{b.date} · {b.time}</p>
         {b.notes&&<p style={{fontSize:11,color:gray,marginTop:6,fontStyle:'italic'}}>{b.notes}</p>}
         <div style={{display:'flex',gap:7,marginTop:12,flexWrap:'wrap'}}>
-          {b.status!=='confirmed'&&<button onClick={()=>doConfirm(b)} style={{flex:1,minWidth:90,padding:'8px',background:'none',color:'#2d8a60',border:'1.5px solid #2d8a60',borderRadius:10,fontSize:12,fontWeight:600,fontFamily:ff,cursor:'pointer',touchAction:'manipulation'}}>✓ Confirmar</button>}
-          <button onClick={()=>setBuyModal(b)} style={{flex:1,minWidth:70,padding:'8px',background:'none',color:gold,border:'1.5px solid '+gold,borderRadius:10,fontSize:12,fontWeight:600,fontFamily:ff,cursor:'pointer',touchAction:'manipulation'}}>💰 Compró</button>
+          {b.status!=='confirmed'&&<button onClick={()=>doConfirm(b)} style={{flex:1,minWidth:90,padding:'8px',background:'none',color:'#2d8a60',border:'1.5px solid #2d8a60',borderRadius:10,fontSize:12,fontWeight:600,fontFamily:ff,cursor:'pointer',touchAction:'manipulation'}}>Confirmar</button>}
+          <button onClick={()=>setBuyModal(b)} style={{flex:1,minWidth:70,padding:'8px',background:'none',color:gold,border:'1.5px solid '+gold,borderRadius:10,fontSize:12,fontWeight:600,fontFamily:ff,cursor:'pointer',touchAction:'manipulation'}}>Compró</button>
           <button onClick={()=>updateStatus(b.id,'later')} style={{padding:'8px 12px',background:'none',color:'#8e44ad',border:'1.5px solid #8e44ad',borderRadius:10,fontSize:12,fontFamily:ff,cursor:'pointer',touchAction:'manipulation'}}>Dijo Luego</button>
+          <button onClick={()=>updateStatus(b.id,'no_show')} style={{padding:'8px 12px',background:'none',color:'#636e72',border:'1.5px solid #636e72',borderRadius:10,fontSize:12,fontFamily:ff,cursor:'pointer',touchAction:'manipulation'}}>No Show</button>
           <button onClick={()=>updateStatus(b.id,'cancelled')} style={{padding:'8px 12px',background:'none',color:'#c0392b',border:'1.5px solid #c0392b',borderRadius:10,fontSize:12,fontFamily:ff,cursor:'pointer',touchAction:'manipulation'}}>Cancelar</button>
         </div>
       </div>
@@ -2512,13 +2513,14 @@ function AdminColdCalling(){
                         </div>
                         {isUpdating&&(
                           <div style={{marginTop:8,display:'grid',gridTemplateColumns:'1fr 1fr',gap:6}}>
+                            <button onClick={()=>updateLead(l.id,{call_status:'no_answer'})} style={{padding:'8px 6px',borderRadius:8,border:'1px solid rgba(192,57,43,0.3)',background:'rgba(192,57,43,0.07)',color:'#c0392b',fontSize:11,fontWeight:600,fontFamily:ff,cursor:'pointer',textAlign:'center',touchAction:'manipulation'}}>No Answer</button>
                             <button onClick={()=>updateLead(l.id,{call_status:'llamar_luego',llamar_luego_count:(l.llamar_luego_count||0)+1})} style={{padding:'8px 6px',borderRadius:8,border:'1px solid rgba(230,126,34,0.3)',background:'rgba(230,126,34,0.07)',color:'#e67e22',fontSize:11,fontWeight:600,fontFamily:ff,cursor:'pointer',textAlign:'center',touchAction:'manipulation'}}>
                               Llamar luego {(l.llamar_luego_count||0)>0&&<span style={{fontSize:10,opacity:0.8}}>({(l.llamar_luego_count||0)+1}x)</span>}
                             </button>
                             <button onClick={()=>updateLead(l.id,{call_status:'caliente'})} style={{padding:'8px 6px',borderRadius:8,border:'1px solid rgba(231,76,60,0.3)',background:'rgba(231,76,60,0.07)',color:'#e74c3c',fontSize:11,fontWeight:600,fontFamily:ff,cursor:'pointer',textAlign:'center',touchAction:'manipulation'}}>Caliente</button>
                             <button onClick={()=>updateLead(l.id,{call_status:'tibio'})} style={{padding:'8px 6px',borderRadius:8,border:'1px solid rgba(243,156,18,0.3)',background:'rgba(243,156,18,0.07)',color:'#f39c12',fontSize:11,fontWeight:600,fontFamily:ff,cursor:'pointer',textAlign:'center',touchAction:'manipulation'}}>Tibio</button>
                             <button onClick={()=>updateLead(l.id,{call_status:'frio'})} style={{padding:'8px 6px',borderRadius:8,border:'1px solid rgba(93,138,168,0.3)',background:'rgba(93,138,168,0.07)',color:'#5d8aa8',fontSize:11,fontWeight:600,fontFamily:ff,cursor:'pointer',textAlign:'center',touchAction:'manipulation'}}>Frío</button>
-                            <button onClick={()=>{updateLead(l.id,{call_status:'enviar_cita'});window.open(waLink(l.phone,bookingLinkMsg(l.business_name)),'_blank')}} style={{gridColumn:'1/-1',padding:'8px 6px',borderRadius:8,border:'1px solid rgba(142,68,173,0.3)',background:'rgba(142,68,173,0.07)',color:'#8e44ad',fontSize:11,fontWeight:600,fontFamily:ff,cursor:'pointer',textAlign:'center',touchAction:'manipulation'}}>Enviar cita</button>
+                            <button onClick={()=>{updateLead(l.id,{call_status:'enviar_cita'});window.open(waLink(l.phone,bookingLinkMsg(l.business_name)),'_blank')}} style={{gridColumn:'1/-1',padding:'10px 6px',borderRadius:8,border:'none',background:'#2d8a60',color:'#fff',fontSize:11,fontWeight:700,fontFamily:ff,cursor:'pointer',textAlign:'center',touchAction:'manipulation'}}>Enviar cita</button>
                           </div>
                         )}
                       </div>
