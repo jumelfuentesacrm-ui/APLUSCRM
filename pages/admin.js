@@ -1915,23 +1915,38 @@ function AdminDashboard({sales,bookings,session,users,onSaleAdded}){
       setFollowUps((d.leads||[]).filter(l=>l.call_status==='follow_up'&&l.followup_date&&l.followup_date>=tod).sort((a,b)=>a.followup_date.localeCompare(b.followup_date)))
     }).catch(()=>{})
   },[])
+  const [showPrevMonths,setShowPrevMonths]=useState(false)
+  const CITA_MONTH_GOAL=40
+  const CITA_WEEK_GOAL=5
   const now=new Date()
   const monthStr=now.toISOString().slice(0,7)
   const monthSales=sales.filter(s=>s.sale_date?.startsWith(monthStr)&&s.status==='paid')
-  const monthTotal=monthSales.reduce((s,x)=>s+(parseFloat(x.amount)||0),0)
   const {start:ws,end:we}=getCurrentWeekRange()
   const weekDays=getWeekDays(ws)
-  const weekSales=monthSales.filter(s=>{ const d=new Date(s.sale_date); return d>=ws&&d<=we })
-  const weekTotal=weekSales.reduce((s,x)=>s+(parseFloat(x.amount)||0),0)
   const weekNum=getMonthWeekNum(now)
-  const weekGoal=MONTHLY_GOAL/4
   const today=now.toISOString().split('T')[0]
-  const todayB=(bookings||[]).filter(b=>b.date===today&&!b.archived)
-  const pendingB=(bookings||[]).filter(b=>!b.archived&&b.status==='pending')
+  const wsStr=ws.toISOString().split('T')[0]
+  const weStr=we.toISOString().split('T')[0]
+  const allBookings=bookings||[]
+  const monthCitas=allBookings.filter(b=>b.date?.startsWith(monthStr)&&!b.archived).length
+  const weekCitas=allBookings.filter(b=>b.date>=wsStr&&b.date<=weStr&&!b.archived).length
+  const todayB=allBookings.filter(b=>b.date===today&&!b.archived)
+  const pendingB=allBookings.filter(b=>!b.archived&&b.status==='pending')
   const adminName=session?.user?.email?.split('@')[0]||'Admin'
   const hour=now.getHours()
   const greeting=hour<12?'Buenos días':hour<18?'Buenas tardes':'Buenas noches'
-  const pct=Math.min((monthTotal/MONTHLY_GOAL)*100,100)
+  const pct=Math.min((monthCitas/CITA_MONTH_GOAL)*100,100)
+  // Previous months
+  const prevMonths=(()=>{
+    const map={}
+    allBookings.forEach(b=>{
+      if(!b.date||b.archived) return
+      const m=b.date.slice(0,7)
+      if(m===monthStr) return
+      map[m]=(map[m]||0)+1
+    })
+    return Object.entries(map).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,12)
+  })()
   const glCard={background:'rgba(255,255,255,0.7)',backdropFilter:'blur(20px) saturate(180%)',WebkitBackdropFilter:'blur(20px) saturate(180%)',border:'1px solid rgba(255,255,255,0.55)',boxShadow:'0 4px 24px rgba(0,0,0,0.07),inset 0 1px 0 rgba(255,255,255,0.85)',borderRadius:18}
   async function saveIncome(e){
     e.preventDefault(); setIncomeSaving(true)
@@ -1959,44 +1974,73 @@ function AdminDashboard({sales,bookings,session,users,onSaleAdded}){
       <div style={{background:ink,borderRadius:20,padding:'22px 20px',marginBottom:14,color:cream}}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
           <div>
-            <p style={{fontSize:11,opacity:0.55,textTransform:'uppercase',letterSpacing:'0.1em'}}>Meta de {now.toLocaleString('es-PR',{month:'long'})}</p>
-            <p style={{fontSize:34,fontWeight:700,fontFamily:ff,marginTop:4,letterSpacing:'-0.02em'}}>${Math.round(monthTotal).toLocaleString()}</p>
-            <p style={{fontSize:12,opacity:0.45,marginTop:2}}>de ${MONTHLY_GOAL.toLocaleString()} meta</p>
+            <div style={{display:'flex',alignItems:'center',gap:10}}>
+              <p style={{fontSize:11,opacity:0.55,textTransform:'uppercase',letterSpacing:'0.1em'}}>Meta de {now.toLocaleString('es-PR',{month:'long'})}</p>
+              <button onClick={()=>setShowPrevMonths(true)} style={{background:'none',border:'none',fontSize:10,color:gold,cursor:'pointer',padding:0,fontFamily:ff,letterSpacing:'0.04em',opacity:0.85,touchAction:'manipulation'}}>ver anteriores</button>
+            </div>
+            <p style={{fontSize:34,fontWeight:700,fontFamily:ff,marginTop:4,letterSpacing:'-0.02em'}}>{monthCitas} <span style={{fontSize:18,fontWeight:400,opacity:0.6}}>citas</span></p>
+            <p style={{fontSize:12,opacity:0.45,marginTop:2}}>de {CITA_MONTH_GOAL} meta</p>
           </div>
           <div style={{textAlign:'right'}}>
             <p style={{fontSize:11,opacity:0.55,textTransform:'uppercase',letterSpacing:'0.1em'}}>Sem {weekNum}</p>
-            <p style={{fontSize:22,fontWeight:700,fontFamily:ff,marginTop:4,color:gold}}>${Math.round(weekTotal).toLocaleString()}</p>
+            <p style={{fontSize:22,fontWeight:700,fontFamily:ff,marginTop:4,color:gold}}>{weekCitas}</p>
             <p style={{fontSize:11,opacity:0.45}}>esta semana</p>
           </div>
         </div>
         <div style={{marginTop:18,background:'rgba(255,255,255,0.1)',borderRadius:99,height:6,overflow:'hidden'}}>
           <div style={{height:'100%',borderRadius:99,background:gold,width:pct+'%',transition:'width 0.5s'}}/>
         </div>
-        <p style={{fontSize:11,opacity:0.4,marginTop:7}}>{Math.round(pct)}% completado · ${Math.max(0,MONTHLY_GOAL-monthTotal).toLocaleString()} restante</p>
+        <p style={{fontSize:11,opacity:0.4,marginTop:7}}>{Math.round(pct)}% completado · {Math.max(0,CITA_MONTH_GOAL-monthCitas)} citas restantes</p>
       </div>
+      {/* Prev months sheet */}
+      {showPrevMonths&&(
+        <>
+          <div style={{position:'fixed',inset:0,zIndex:300,background:'rgba(0,0,0,0.3)'}} onClick={()=>setShowPrevMonths(false)}/>
+          <div style={{position:'fixed',bottom:0,left:0,right:0,zIndex:305,background:'rgba(255,255,255,0.95)',backdropFilter:'blur(24px)',borderRadius:'20px 20px 0 0',padding:'20px 20px 40px',maxHeight:'70vh',overflowY:'auto'}}>
+            <div style={{width:36,height:4,background:'rgba(14,14,12,0.15)',borderRadius:99,margin:'0 auto 18px'}}/>
+            <p style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.1em',color:gray,marginBottom:14}}>Meses anteriores</p>
+            {prevMonths.length===0&&<p style={{color:gray,fontSize:13,textAlign:'center',padding:'20px 0'}}>Sin datos anteriores</p>}
+            {prevMonths.map(([m,count])=>{
+              const label=new Date(m+'-15').toLocaleString('es-PR',{month:'long',year:'numeric'})
+              const p2=Math.min((count/CITA_MONTH_GOAL)*100,100)
+              return(
+                <div key={m} style={{marginBottom:14}}>
+                  <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
+                    <span style={{fontSize:13,fontWeight:600,color:ink,textTransform:'capitalize'}}>{label}</span>
+                    <span style={{fontSize:13,fontWeight:700,color:count>=CITA_MONTH_GOAL?'#2d8a60':ink}}>{count} / {CITA_MONTH_GOAL}</span>
+                  </div>
+                  <div style={{background:'rgba(14,14,12,0.08)',borderRadius:99,height:5,overflow:'hidden'}}>
+                    <div style={{height:'100%',borderRadius:99,background:count>=CITA_MONTH_GOAL?'#2d8a60':gold,width:p2+'%'}}/>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </>
+      )}
       {/* Esta semana — 4-week grid + expandable days */}
       <div style={{...glCard,padding:16,marginBottom:14}}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
           <p style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.1em',color:gold}}>Esta Semana</p>
-          <p style={{fontSize:12,fontWeight:600,color:ink,fontFamily:ff}}>${Math.round(weekTotal)} <span style={{color:gray,fontWeight:400,fontSize:11}}>/ ${weekGoal}</span></p>
+          <p style={{fontSize:12,fontWeight:600,color:ink,fontFamily:ff}}>{weekCitas} citas <span style={{color:gray,fontWeight:400,fontSize:11}}>/ {CITA_WEEK_GOAL}</span></p>
         </div>
         <div style={{background:'rgba(14,14,12,0.07)',borderRadius:99,height:4,marginBottom:14,overflow:'hidden'}}>
-          <div style={{height:'100%',borderRadius:99,background:gold,width:Math.min((weekTotal/weekGoal)*100,100)+'%',transition:'width 0.5s'}}/>
+          <div style={{height:'100%',borderRadius:99,background:gold,width:Math.min((weekCitas/CITA_WEEK_GOAL)*100,100)+'%',transition:'width 0.5s'}}/>
         </div>
         <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:8,marginBottom:activeSem?12:0}}>
           {[1,2,3,4].map(w=>{
             const wStart=getMonthWeekStart(w,now)
-            const wSales=wStart?monthSales.filter(s=>{
-              const d=new Date(s.sale_date+'T12:00:00')
-              return getMonthWeekNum(d)===w
-            }):[]
-            const wTotal=wSales.reduce((a,x)=>a+(parseFloat(x.amount)||0),0)
+            const wCount=wStart?allBookings.filter(b=>{
+              if(!b.date||b.archived) return false
+              const d=new Date(b.date+'T12:00:00')
+              return b.date.startsWith(monthStr)&&getMonthWeekNum(d)===w
+            }).length:0
             const isActive=w===weekNum
             const isSel=activeSem===w
             return(
               <button key={w} onClick={()=>setActiveSem(isSel?null:w)} style={{background:isSel?gold:isActive?ink:'rgba(14,14,12,0.04)',border:'1px solid',borderColor:isSel?gold:isActive?ink:'rgba(14,14,12,0.08)',borderRadius:12,padding:'10px 6px',textAlign:'center',cursor:'pointer',touchAction:'manipulation',transition:'all 0.15s'}}>
                 <p style={{fontSize:9,textTransform:'uppercase',letterSpacing:'0.07em',color:isSel?ink:isActive?gold:gray}}>Sem {w}</p>
-                <p style={{fontSize:13,fontWeight:700,fontFamily:ff,color:isSel?ink:isActive?cream:ink,marginTop:3}}>{wTotal>0?'$'+Math.round(wTotal):'$0'}</p>
+                <p style={{fontSize:13,fontWeight:700,fontFamily:ff,color:isSel?ink:isActive?cream:ink,marginTop:3}}>{wCount}</p>
               </button>
             )
           })}
@@ -2008,21 +2052,18 @@ function AdminDashboard({sales,bookings,session,users,onSaleAdded}){
           return(
             <div style={{borderTop:'1px solid rgba(14,14,12,0.07)',paddingTop:12}}>
               {semDays.map(day=>{
-                const dayTotal=monthSales.filter(s=>s.sale_date===day.date).reduce((a,x)=>a+(parseFloat(x.amount)||0),0)
+                const dayCitas=allBookings.filter(b=>b.date===day.date&&!b.archived).length
                 const isToday=day.date===today
                 const isWeekend=day.name==='Sábado'||day.name==='Domingo'
                 return(
-                  <button key={day.date} onClick={()=>setAddIncome({date:day.date})} style={{width:'100%',display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 12px',marginBottom:6,background:isToday?'rgba(184,151,90,0.1)':isWeekend?'rgba(14,14,12,0.02)':'rgba(14,14,12,0.03)',border:'1px solid',borderColor:isToday?'rgba(184,151,90,0.3)':'rgba(14,14,12,0.06)',borderRadius:12,cursor:'pointer',fontFamily:ff,touchAction:'manipulation'}}>
+                  <div key={day.date} style={{width:'100%',display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 12px',marginBottom:6,background:isToday?'rgba(184,151,90,0.1)':isWeekend?'rgba(14,14,12,0.02)':'rgba(14,14,12,0.03)',border:'1px solid',borderColor:isToday?'rgba(184,151,90,0.3)':'rgba(14,14,12,0.06)',borderRadius:12,fontFamily:ff}}>
                     <div style={{display:'flex',alignItems:'center',gap:8}}>
                       <span style={{fontSize:13,fontWeight:isToday?700:500,color:isToday?gold:isWeekend?gray:ink}}>{day.name}</span>
                       {isToday&&<span style={{fontSize:9,background:gold,color:ink,borderRadius:99,padding:'1px 6px',fontWeight:700}}>HOY</span>}
                       <span style={{fontSize:10,color:gray}}>{day.dateObj.toLocaleDateString('es-PR',{day:'numeric',month:'short'})}</span>
                     </div>
-                    <div style={{display:'flex',alignItems:'center',gap:8}}>
-                      <span style={{fontSize:13,fontWeight:600,color:dayTotal>0?'#2d8a60':gray}}>{dayTotal>0?'$'+Math.round(dayTotal):'—'}</span>
-                      <span style={{fontSize:18,color:gold,lineHeight:1}}>+</span>
-                    </div>
-                  </button>
+                    <span style={{fontSize:13,fontWeight:600,color:dayCitas>0?'#2d8a60':gray}}>{dayCitas>0?`${dayCitas} cita${dayCitas>1?'s':''}` :'—'}</span>
+                  </div>
                 )
               })}
             </div>
