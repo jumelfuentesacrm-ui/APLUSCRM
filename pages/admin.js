@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/router'
 import { supabase } from '../lib/supabase'
 import { COLORS, FONTS, HEADER_H, formatPhone } from '../lib/config'
@@ -1913,6 +1913,7 @@ function AdminDashboard({sales,bookings,session,users,onSaleAdded,onNavigate}){
     fetch('/api/admin/cold-calls').then(r=>r.json()).then(d=>setColdLeads(d.leads||[])).catch(()=>{})
   },[])
   const [showPrevMonths,setShowPrevMonths]=useState(false)
+  const [darkMode,setDarkMode]=useState(false)
   const CITA_MONTH_GOAL=40
   const CITA_WEEK_GOAL=5
   const now=new Date()
@@ -1967,10 +1968,11 @@ function AdminDashboard({sales,bookings,session,users,onSaleAdded,onNavigate}){
     setIncomeForm({client_id:'',service:'',amount:'',notes:''})
     onSaleAdded?.()
   }
+  const dm=darkMode
   return(
-    <div style={{padding:'12px 16px 32px',fontFamily:ff}}>
-      <p style={{fontSize:13,color:gray}}>{greeting},</p>
-      <h1 style={{fontFamily:ffS,fontSize:28,fontWeight:300,color:ink,marginTop:2,marginBottom:20}}>{adminName}</h1>
+    <div style={{padding:'12px 16px 32px',fontFamily:ff,minHeight:'100vh',background:dm?'#0e0e0c':undefined,transition:'background 0.3s'}}>
+      <p style={{fontSize:13,color:dm?'rgba(255,255,255,0.4)':gray}}>{greeting},</p>
+      <h1 style={{fontFamily:ffS,fontSize:28,fontWeight:300,color:dm?'rgba(255,255,255,0.9)':ink,marginTop:2,marginBottom:20}}>{adminName}</h1>
       {/* Monthly goal card */}
       <div style={{background:ink,borderRadius:20,padding:'22px 20px',marginBottom:14,color:cream}}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
@@ -2031,17 +2033,18 @@ function AdminDashboard({sales,bookings,session,users,onSaleAdded,onNavigate}){
         <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:8,marginBottom:activeSem?12:0}}>
           {[1,2,3,4].map(w=>{
             const wStart=getMonthWeekStart(w,now)
-            const wCount=wStart?allBookings.filter(b=>{
+            const wAll=wStart?allBookings.filter(b=>{
               if(!b.date||b.archived) return false
               const d=new Date(b.date+'T12:00:00')
-              return b.date.startsWith(monthStr)&&getMonthWeekNum(d)===w
-            }).length:0
+              return b.date.startsWith(monthStr)&&getMonthWeekNum(d)===w&&!['cancelled','no_show'].includes(b.status)
+            }):[]
+            const wClosed=wAll.filter(b=>['confirmed','bought'].includes(b.status))
             const isActive=w===weekNum
             const isSel=activeSem===w
             return(
-              <button key={w} onClick={()=>setActiveSem(isSel?null:w)} style={{background:isSel?gold:isActive?ink:'rgba(14,14,12,0.04)',border:'1px solid',borderColor:isSel?gold:isActive?ink:'rgba(14,14,12,0.08)',borderRadius:12,padding:'10px 6px',textAlign:'center',cursor:'pointer',touchAction:'manipulation',transition:'all 0.15s'}}>
-                <p style={{fontSize:9,textTransform:'uppercase',letterSpacing:'0.07em',color:isSel?ink:isActive?gold:gray}}>Sem {w}</p>
-                <p style={{fontSize:13,fontWeight:700,fontFamily:ff,color:isSel?ink:isActive?cream:ink,marginTop:3}}>{wCount}</p>
+              <button key={w} onClick={()=>setActiveSem(isSel?null:w)} style={{background:isSel?gold:isActive?ink:dm?'rgba(255,255,255,0.05)':'rgba(14,14,12,0.04)',border:'1px solid',borderColor:isSel?gold:isActive?ink:dm?'rgba(255,255,255,0.08)':'rgba(14,14,12,0.08)',borderRadius:12,padding:'10px 8px',textAlign:'center',cursor:'pointer',touchAction:'manipulation',transition:'all 0.15s'}}>
+                <p style={{fontSize:9,textTransform:'uppercase',letterSpacing:'0.07em',color:isSel?ink:isActive?gold:dm?'rgba(255,255,255,0.4)':gray,marginBottom:4}}>Sem {w}</p>
+                <p style={{fontSize:14,fontWeight:700,fontFamily:ff,color:isSel?ink:isActive?cream:dm?'rgba(255,255,255,0.85)':ink,lineHeight:1}}>{wClosed.length}<span style={{fontSize:10,fontWeight:400,opacity:0.6}}>/{wAll.length}</span></p>
               </button>
             )
           })}
@@ -2073,64 +2076,91 @@ function AdminDashboard({sales,bookings,session,users,onSaleAdded,onNavigate}){
       </div>
       {/* 5-stat cards */}
       {(()=>{
+        const dm=darkMode
         const stats=[
-          {key:'semana',label:'Consultas Semana',val:weekCitas,color:'#2d8a60',items:allBookings.filter(b=>b.date>=wsStr&&b.date<=weStr&&!b.archived),type:'booking'},
-          {key:'hoy',label:'Consultas Hoy',val:todayB.length,color:ink,items:todayB,type:'booking'},
-          {key:'pendientes',label:'Pendientes',val:pendientesLeads.length,color:'#e67e22',items:pendientesLeads,type:'cold'},
-          {key:'canceladas',label:'Canceladas',val:canceladas.length,color:'#c0392b',items:canceladas,type:'booking'},
-          {key:'followups',label:'Follow Ups',val:followUps.length,color:gold,items:followUps,type:'cold'},
+          {key:'semana',label:'Esta Semana',val:weekCitas,accent:'#2d8a60',items:allBookings.filter(b=>b.date>=wsStr&&b.date<=weStr&&!b.archived),type:'booking'},
+          {key:'hoy',label:'Hoy',val:todayB.length,accent:gold,items:todayB,type:'booking'},
+          {key:'pendientes',label:'Pendientes',val:pendientesLeads.length,accent:'#e67e22',items:pendientesLeads,type:'cold'},
+          {key:'canceladas',label:'Canceladas',val:canceladas.length,accent:'#c0392b',items:canceladas,type:'booking'},
+          {key:'followups',label:'Follow Ups',val:followUps.length,accent:'#8e44ad',items:followUps,type:'cold'},
         ]
+        const sheetBg=dm?'rgba(18,18,16,0.97)':'rgba(255,255,255,0.97)'
+        const sheetText=dm?'rgba(255,255,255,0.9)':ink
+        const sheetSub=dm?'rgba(255,255,255,0.4)':gray
+        const sheetDiv=dm?'rgba(255,255,255,0.06)':'rgba(14,14,12,0.06)'
         return(
           <>
+            <div style={{display:'flex',justifyContent:'flex-end',marginBottom:8}}>
+              <button onClick={()=>setDarkMode(p=>!p)} style={{background:dm?'rgba(255,255,255,0.08)':'rgba(14,14,12,0.05)',border:'none',borderRadius:99,padding:'5px 12px',fontSize:11,fontWeight:600,color:dm?'rgba(255,255,255,0.6)':gray,fontFamily:ff,cursor:'pointer',touchAction:'manipulation',display:'flex',alignItems:'center',gap:5}}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">{dm?<circle cx="12" cy="12" r="5"/>:<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>}</svg>
+                {dm?'Claro':'Oscuro'}
+              </button>
+            </div>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:14}}>
-              {stats.map(s=>(
-                <button key={s.key} onClick={()=>setOpenSheet(s.key)} style={{...glCard,padding:'14px 16px',border:'none',cursor:'pointer',textAlign:'left',touchAction:'manipulation',background:'rgba(255,255,255,0.7)',backdropFilter:'blur(20px) saturate(180%)',WebkitBackdropFilter:'blur(20px) saturate(180%)'}}>
-                  <p style={{fontSize:9,color:gray,textTransform:'uppercase',letterSpacing:'0.09em',fontFamily:ff}}>{s.label}</p>
-                  <p style={{fontSize:28,fontWeight:700,fontFamily:ff,color:s.color,marginTop:4,lineHeight:1}}>{s.val}</p>
+              {stats.map((s,i)=>i===stats.length-1&&stats.length%2!==0?(
+                <button key={s.key} onClick={()=>setOpenSheet(s.key)} style={{gridColumn:'1/-1',padding:'16px 20px',borderRadius:16,border:'none',cursor:'pointer',touchAction:'manipulation',background:dm?'rgba(255,255,255,0.05)':'rgba(255,255,255,0.75)',backdropFilter:'blur(20px)',WebkitBackdropFilter:'blur(20px)',boxShadow:dm?'none':'0 2px 16px rgba(0,0,0,0.06)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                  <div style={{textAlign:'left'}}>
+                    <p style={{fontSize:10,color:dm?'rgba(255,255,255,0.4)':gray,textTransform:'uppercase',letterSpacing:'0.1em',fontFamily:ff,marginBottom:4}}>{s.label}</p>
+                    <p style={{fontSize:32,fontWeight:700,fontFamily:ff,color:s.accent,lineHeight:1}}>{s.val}</p>
+                  </div>
+                  <div style={{width:44,height:44,borderRadius:12,background:s.accent+'18',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={s.accent} strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
+                  </div>
+                </button>
+              ):(
+                <button key={s.key} onClick={()=>setOpenSheet(s.key)} style={{padding:'16px',borderRadius:16,border:'none',cursor:'pointer',touchAction:'manipulation',background:dm?'rgba(255,255,255,0.05)':'rgba(255,255,255,0.75)',backdropFilter:'blur(20px)',WebkitBackdropFilter:'blur(20px)',boxShadow:dm?'none':'0 2px 16px rgba(0,0,0,0.06)',textAlign:'left',position:'relative',overflow:'hidden'}}>
+                  <div style={{position:'absolute',top:-10,right:-10,width:60,height:60,borderRadius:'50%',background:s.accent+'15'}}/>
+                  <p style={{fontSize:9,color:dm?'rgba(255,255,255,0.4)':gray,textTransform:'uppercase',letterSpacing:'0.1em',fontFamily:ff,marginBottom:6}}>{s.label}</p>
+                  <p style={{fontSize:34,fontWeight:700,fontFamily:ff,color:s.accent,lineHeight:1}}>{s.val}</p>
                 </button>
               ))}
             </div>
-            {stats.map(s=>openSheet===s.key&&(
-              <React.Fragment key={s.key}>
-                <div style={{position:'fixed',inset:0,zIndex:300,background:'rgba(0,0,0,0.3)'}} onClick={()=>setOpenSheet(null)}/>
-                <div style={{position:'fixed',bottom:0,left:0,right:0,zIndex:305,background:'rgba(255,255,255,0.96)',backdropFilter:'blur(24px)',borderRadius:'20px 20px 0 0',padding:'0 0 40px',maxHeight:'75vh',display:'flex',flexDirection:'column'}}>
-                  <div style={{padding:'12px 20px 14px',borderBottom:'1px solid rgba(14,14,12,0.07)',flexShrink:0}}>
-                    <div style={{width:36,height:4,background:'rgba(14,14,12,0.15)',borderRadius:99,margin:'0 auto 12px'}}/>
-                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                      <p style={{fontSize:14,fontWeight:700,color:ink}}>{s.label} <span style={{color:s.color}}>({s.val})</span></p>
-                      <button onClick={()=>setOpenSheet(null)} style={{background:'none',border:'none',fontSize:18,cursor:'pointer',color:gray}}>✕</button>
+            {openSheet&&(()=>{
+              const s=stats.find(x=>x.key===openSheet)
+              if(!s) return null
+              return(
+                <>
+                  <div style={{position:'fixed',inset:0,zIndex:300,background:'rgba(0,0,0,0.4)'}} onClick={()=>setOpenSheet(null)}/>
+                  <div style={{position:'fixed',bottom:0,left:0,right:0,zIndex:305,background:sheetBg,backdropFilter:'blur(32px)',WebkitBackdropFilter:'blur(32px)',borderRadius:'22px 22px 0 0',maxHeight:'78vh',display:'flex',flexDirection:'column',boxShadow:'0 -8px 40px rgba(0,0,0,0.2)'}}>
+                    <div style={{padding:'12px 20px 14px',borderBottom:`1px solid ${sheetDiv}`,flexShrink:0}}>
+                      <div style={{width:36,height:4,background:dm?'rgba(255,255,255,0.15)':'rgba(14,14,12,0.15)',borderRadius:99,margin:'0 auto 14px'}}/>
+                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                        <div>
+                          <p style={{fontSize:11,color:sheetSub,textTransform:'uppercase',letterSpacing:'0.1em',fontFamily:ff}}>{s.label}</p>
+                          <p style={{fontSize:24,fontWeight:700,color:s.accent,fontFamily:ff,lineHeight:1.2}}>{s.val}</p>
+                        </div>
+                        <button onClick={()=>setOpenSheet(null)} style={{width:32,height:32,borderRadius:'50%',background:dm?'rgba(255,255,255,0.08)':'rgba(14,14,12,0.06)',border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:sheetSub,fontSize:16}}>✕</button>
+                      </div>
+                    </div>
+                    <div style={{overflowY:'auto',padding:'0 20px 20px'}}>
+                      {s.items.length===0&&<p style={{color:sheetSub,fontSize:13,textAlign:'center',padding:'32px 0'}}>Sin datos</p>}
+                      {s.items.map(item=>s.type==='booking'?(
+                        <button key={item.id} onClick={()=>{setOpenSheet(null);onNavigate('bookings')}} style={{width:'100%',display:'flex',justifyContent:'space-between',alignItems:'center',padding:'13px 0',borderBottom:`1px solid ${sheetDiv}`,background:'none',border:'none',borderBottom:`1px solid ${sheetDiv}`,cursor:'pointer',textAlign:'left',fontFamily:ff}}>
+                          <div>
+                            <p style={{fontSize:14,fontWeight:600,color:sheetText}}>{item.name}</p>
+                            <p style={{fontSize:11,color:sheetSub,marginTop:2}}>{item.business} · {item.date} {item.time}</p>
+                            {item.service&&<p style={{fontSize:11,color:sheetSub}}>{item.service}</p>}
+                          </div>
+                          <span style={{fontSize:9,fontWeight:700,padding:'3px 9px',borderRadius:99,background:item.status==='confirmed'?'rgba(45,138,96,0.15)':item.status==='bought'?'rgba(184,151,90,0.15)':'rgba(14,14,12,0.07)',color:item.status==='confirmed'?'#2d8a60':item.status==='bought'?gold:sheetSub,whiteSpace:'nowrap',marginLeft:10,textTransform:'uppercase',letterSpacing:'0.06em'}}>{item.status==='no_show'?'No Show':item.status==='cancelled'?'Cancelada':item.status==='confirmed'?'Confirmada':item.status==='bought'?'Compró':'Pendiente'}</span>
+                        </button>
+                      ):(
+                        <button key={item.id} onClick={()=>{setOpenSheet(null);onNavigate('coldcalling')}} style={{width:'100%',display:'flex',justifyContent:'space-between',alignItems:'center',padding:'13px 0',background:'none',border:'none',borderBottom:`1px solid ${sheetDiv}`,cursor:'pointer',textAlign:'left',fontFamily:ff}}>
+                          <div>
+                            <p style={{fontSize:14,fontWeight:600,color:sheetText}}>{item.business_name}</p>
+                            {item.pueblo&&<p style={{fontSize:11,color:sheetSub,marginTop:2}}>{item.pueblo}</p>}
+                            {item.notes&&<p style={{fontSize:11,color:sheetSub,fontStyle:'italic',marginTop:1}}>{item.notes}</p>}
+                          </div>
+                          <div style={{textAlign:'right',flexShrink:0,marginLeft:10}}>
+                            {s.key==='followups'&&item.followup_date&&<span style={{fontSize:10,fontWeight:700,color:item.followup_date===tod?'#c0392b':gold,background:item.followup_date===tod?'rgba(192,57,43,0.12)':'rgba(184,151,90,0.12)',padding:'3px 8px',borderRadius:99,whiteSpace:'nowrap',display:'block'}}>{item.followup_date===tod?'HOY':new Date(item.followup_date+'T12:00:00').toLocaleDateString('es-PR',{day:'numeric',month:'short'})}</span>}
+                            {item.phone&&<a href={`tel:${item.phone}`} onClick={e=>e.stopPropagation()} style={{fontSize:11,color:'#2d8a60',textDecoration:'none',display:'block',marginTop:4}}>Llamar</a>}
+                          </div>
+                        </button>
+                      ))}
                     </div>
                   </div>
-                  <div style={{overflowY:'auto',padding:'0 20px'}}>
-                    {s.items.length===0&&<p style={{color:gray,fontSize:13,textAlign:'center',padding:'28px 0'}}>Sin datos</p>}
-                    {s.items.map(item=>s.type==='booking'?(
-                      <button key={item.id} onClick={()=>{setOpenSheet(null);onNavigate('bookings')}} style={{width:'100%',display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 0',borderBottom:'1px solid rgba(14,14,12,0.06)',background:'none',border:'none',borderBottom:'1px solid rgba(14,14,12,0.06)',cursor:'pointer',textAlign:'left',fontFamily:ff}}>
-                        <div>
-                          <p style={{fontSize:14,fontWeight:600,color:ink}}>{item.name}</p>
-                          <p style={{fontSize:11,color:gray,marginTop:2}}>{item.business} · {item.date} {item.time}</p>
-                          {item.service&&<p style={{fontSize:11,color:gray}}>{item.service}</p>}
-                        </div>
-                        <span style={{fontSize:10,fontWeight:700,padding:'3px 8px',borderRadius:99,background:'rgba(14,14,12,0.06)',color:gray,whiteSpace:'nowrap',marginLeft:10}}>{item.status==='no_show'?'No Show':item.status==='cancelled'?'Cancelada':item.status==='confirmed'?'Confirmada':'Pendiente'}</span>
-                      </button>
-                    ):(
-                      <button key={item.id} onClick={()=>{setOpenSheet(null);onNavigate('coldcalling')}} style={{width:'100%',display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 0',background:'none',border:'none',borderBottom:'1px solid rgba(14,14,12,0.06)',cursor:'pointer',textAlign:'left',fontFamily:ff}}>
-                        <div>
-                          <p style={{fontSize:14,fontWeight:600,color:ink}}>{item.business_name}</p>
-                          {item.pueblo&&<p style={{fontSize:11,color:gray,marginTop:2}}>{item.pueblo}</p>}
-                          {item.notes&&<p style={{fontSize:11,color:gray,fontStyle:'italic',marginTop:1}}>{item.notes}</p>}
-                        </div>
-                        <div style={{textAlign:'right',flexShrink:0,marginLeft:10}}>
-                          {s.key==='followups'&&item.followup_date&&<span style={{fontSize:10,fontWeight:700,color:item.followup_date===tod?'#c0392b':gold,background:item.followup_date===tod?'rgba(192,57,43,0.08)':'rgba(184,151,90,0.1)',padding:'3px 8px',borderRadius:99,whiteSpace:'nowrap',display:'block'}}>{item.followup_date===tod?'HOY':new Date(item.followup_date+'T12:00:00').toLocaleDateString('es-PR',{day:'numeric',month:'short'})}</span>}
-                          {item.phone&&<a href={`tel:${item.phone}`} onClick={e=>e.stopPropagation()} style={{fontSize:11,color:'#2d8a60',textDecoration:'none',display:'block',marginTop:4}}>Llamar</a>}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </React.Fragment>
-            ))}
-          </>
-        )
+                </>
+              )
+            })()}
       })()}
       {/* Add income bottom sheet */}
       {addIncome&&(
