@@ -2390,6 +2390,7 @@ function AdminColdCalling(){
   const [weekOffset,setWeekOffset]=useState(0)
   const [form,setForm]=useState({business_name:'',phone:'',pueblo:'',call_status:'no_answer',followup_date:'',notes:''})
   const [saving,setSaving]=useState(false)
+  const [updatingId,setUpdatingId]=useState(null)
   useEffect(()=>{load()},[])
   async function load(){
     setLoading(true)
@@ -2397,6 +2398,11 @@ function AdminColdCalling(){
     const d=await r.json()
     setLeads(d.leads||[])
     setLoading(false)
+  }
+  async function updateLead(id,updates){
+    setLeads(p=>p.map(l=>l.id===id?{...l,...updates}:l))
+    setUpdatingId(null)
+    await fetch('/api/admin/cold-calls',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,...updates})})
   }
   async function saveLead(e){
     e.preventDefault(); setSaving(true)
@@ -2422,7 +2428,17 @@ function AdminColdCalling(){
   const responded=weekLeads.filter(l=>l.call_status!=='no_answer').length
   const followups=weekLeads.filter(l=>l.call_status==='follow_up').length
   const isCurrentWeek=weekOffset===0
-  const SS={no_answer:{label:'No respondió',color:'#c0392b',bg:'rgba(192,57,43,0.08)'},responded:{label:'Respondió',color:'#2d8a60',bg:'rgba(45,138,96,0.1)'},follow_up:{label:'Follow-up',color:gold,bg:'rgba(184,151,90,0.12)'},booked:{label:'Agendó',color:'#5b8dee',bg:'rgba(91,141,238,0.1)'}}
+  const SS={
+    no_answer:{label:'No respondió',color:'#c0392b',bg:'rgba(192,57,43,0.08)'},
+    responded:{label:'Respondió',color:'#2d8a60',bg:'rgba(45,138,96,0.1)'},
+    follow_up:{label:'Follow-up',color:gold,bg:'rgba(184,151,90,0.12)'},
+    booked:{label:'Agendó',color:'#5b8dee',bg:'rgba(91,141,238,0.1)'},
+    llamar_luego:{label:'Llamar luego',color:'#e67e22',bg:'rgba(230,126,34,0.1)'},
+    caliente:{label:'Caliente',color:'#e74c3c',bg:'rgba(231,76,60,0.1)'},
+    tibio:{label:'Tibio',color:'#f39c12',bg:'rgba(243,156,18,0.1)'},
+    frio:{label:'Frío',color:'#5d8aa8',bg:'rgba(93,138,168,0.1)'},
+    enviar_cita:{label:'Enviar cita',color:'#8e44ad',bg:'rgba(142,68,173,0.1)'},
+  }
   const inp2={width:'100%',boxSizing:'border-box',height:44,borderRadius:10,border:'1px solid rgba(14,14,12,0.12)',padding:'0 12px',fontSize:14,fontFamily:ff,background:'#fff',outline:'none'}
   return(
     <div style={{padding:'20px 16px 32px',fontFamily:ff}}>
@@ -2468,6 +2484,7 @@ function AdminColdCalling(){
                 <div style={{padding:'0 16px 16px'}}>
                   {dayLeads.map(l=>{
                     const st=SS[l.call_status]||SS.no_answer
+                    const isUpdating=updatingId===l.id
                     return(
                       <div key={l.id} style={{background:'#fff',borderRadius:12,padding:12,marginBottom:8,border:'1px solid rgba(14,14,12,0.06)'}}>
                         <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
@@ -2475,12 +2492,29 @@ function AdminColdCalling(){
                             <p style={{fontSize:14,fontWeight:600,color:ink}}>{l.business_name}</p>
                             {l.pueblo&&<p style={{fontSize:12,color:gray}}>{l.pueblo}</p>}
                           </div>
-                          <span style={{fontSize:9,fontWeight:700,padding:'3px 8px',borderRadius:99,background:st.bg,color:st.color,textTransform:'uppercase',whiteSpace:'nowrap'}}>{st.label}</span>
+                          <div style={{display:'flex',alignItems:'center',gap:6}}>
+                            {l.call_status==='llamar_luego'&&(l.llamar_luego_count||0)>0&&<span style={{fontSize:10,fontWeight:700,color:'#e67e22',background:'rgba(230,126,34,0.12)',borderRadius:99,padding:'1px 6px'}}>{l.llamar_luego_count}x</span>}
+                            <span style={{fontSize:9,fontWeight:700,padding:'3px 8px',borderRadius:99,background:st.bg,color:st.color,textTransform:'uppercase',whiteSpace:'nowrap'}}>{st.label}</span>
+                          </div>
                         </div>
                         {l.phone&&<a href={`tel:${l.phone}`} style={{fontSize:12,color:'#2d8a60',display:'block',marginTop:6,textDecoration:'none'}}>📞 {l.phone}</a>}
                         {l.followup_date&&<p style={{fontSize:11,color:gold,marginTop:4}}>🔔 Follow-up: {l.followup_date}</p>}
                         {l.notes&&<p style={{fontSize:11,color:gray,marginTop:6,fontStyle:'italic'}}>{l.notes}</p>}
-                        <button onClick={()=>window.open(waLink(l.phone,bookingLinkMsg(l.business_name)),'_blank')} style={{marginTop:10,padding:'6px 14px',background:'rgba(14,14,12,0.05)',border:'none',borderRadius:8,fontSize:11,fontWeight:600,fontFamily:ff,cursor:'pointer',color:ink}}>📎 Enviar link de booking</button>
+                        <div style={{display:'flex',gap:6,marginTop:10}}>
+                          <button onClick={()=>window.open(waLink(l.phone,bookingLinkMsg(l.business_name)),'_blank')} style={{flex:1,padding:'6px 10px',background:'rgba(14,14,12,0.05)',border:'none',borderRadius:8,fontSize:11,fontWeight:600,fontFamily:ff,cursor:'pointer',color:ink,touchAction:'manipulation'}}>Booking</button>
+                          <button onClick={()=>setUpdatingId(isUpdating?null:l.id)} style={{flex:1,padding:'6px 10px',background:isUpdating?ink:'rgba(184,151,90,0.1)',border:'none',borderRadius:8,fontSize:11,fontWeight:600,fontFamily:ff,cursor:'pointer',color:isUpdating?cream:gold,touchAction:'manipulation'}}>Actualizar</button>
+                        </div>
+                        {isUpdating&&(
+                          <div style={{marginTop:8,display:'grid',gridTemplateColumns:'1fr 1fr',gap:6}}>
+                            <button onClick={()=>updateLead(l.id,{call_status:'llamar_luego',llamar_luego_count:(l.llamar_luego_count||0)+1})} style={{padding:'8px 6px',borderRadius:8,border:'1px solid rgba(230,126,34,0.3)',background:'rgba(230,126,34,0.07)',color:'#e67e22',fontSize:11,fontWeight:600,fontFamily:ff,cursor:'pointer',textAlign:'center',touchAction:'manipulation'}}>
+                              Llamar luego {(l.llamar_luego_count||0)>0&&<span style={{fontSize:10,opacity:0.8}}>({(l.llamar_luego_count||0)+1}x)</span>}
+                            </button>
+                            <button onClick={()=>updateLead(l.id,{call_status:'caliente'})} style={{padding:'8px 6px',borderRadius:8,border:'1px solid rgba(231,76,60,0.3)',background:'rgba(231,76,60,0.07)',color:'#e74c3c',fontSize:11,fontWeight:600,fontFamily:ff,cursor:'pointer',textAlign:'center',touchAction:'manipulation'}}>Caliente</button>
+                            <button onClick={()=>updateLead(l.id,{call_status:'tibio'})} style={{padding:'8px 6px',borderRadius:8,border:'1px solid rgba(243,156,18,0.3)',background:'rgba(243,156,18,0.07)',color:'#f39c12',fontSize:11,fontWeight:600,fontFamily:ff,cursor:'pointer',textAlign:'center',touchAction:'manipulation'}}>Tibio</button>
+                            <button onClick={()=>updateLead(l.id,{call_status:'frio'})} style={{padding:'8px 6px',borderRadius:8,border:'1px solid rgba(93,138,168,0.3)',background:'rgba(93,138,168,0.07)',color:'#5d8aa8',fontSize:11,fontWeight:600,fontFamily:ff,cursor:'pointer',textAlign:'center',touchAction:'manipulation'}}>Frío</button>
+                            <button onClick={()=>{updateLead(l.id,{call_status:'enviar_cita'});window.open(waLink(l.phone,bookingLinkMsg(l.business_name)),'_blank')}} style={{gridColumn:'1/-1',padding:'8px 6px',borderRadius:8,border:'1px solid rgba(142,68,173,0.3)',background:'rgba(142,68,173,0.07)',color:'#8e44ad',fontSize:11,fontWeight:600,fontFamily:ff,cursor:'pointer',textAlign:'center',touchAction:'manipulation'}}>Enviar cita</button>
+                          </div>
+                        )}
                       </div>
                     )
                   })}
