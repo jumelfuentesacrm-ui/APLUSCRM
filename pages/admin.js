@@ -1907,6 +1907,13 @@ function AdminDashboard({sales,bookings,session,users,onSaleAdded}){
   const [incomeForm,setIncomeForm]=useState({client_id:'',service:'',amount:'',notes:''})
   const [incomeSaving,setIncomeSaving]=useState(false)
   const [activeSem,setActiveSem]=useState(null)
+  const [followUps,setFollowUps]=useState([])
+  useEffect(()=>{
+    fetch('/api/admin/cold-calls').then(r=>r.json()).then(d=>{
+      const tod=new Date().toISOString().split('T')[0]
+      setFollowUps((d.leads||[]).filter(l=>l.call_status==='follow_up'&&l.followup_date&&l.followup_date>=tod).sort((a,b)=>a.followup_date.localeCompare(b.followup_date)))
+    }).catch(()=>{})
+  },[])
   const now=new Date()
   const monthStr=now.toISOString().slice(0,7)
   const monthSales=sales.filter(s=>s.sale_date?.startsWith(monthStr)&&s.status==='paid')
@@ -2033,6 +2040,29 @@ function AdminDashboard({sales,bookings,session,users,onSaleAdded}){
           </div>
         ))}
       </div>
+      {/* Follow-ups card */}
+      {followUps.length>0&&(
+        <div style={{...glCard,padding:16,marginBottom:14}}>
+          <p style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.1em',color:gold,marginBottom:12}}>📞 Follow-ups Pendientes</p>
+          {followUps.map(f=>{
+            const fd=new Date(f.followup_date+'T12:00:00')
+            const isToday=f.followup_date===new Date().toISOString().split('T')[0]
+            return(
+              <div key={f.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 0',borderBottom:'1px solid rgba(14,14,12,0.06)'}}>
+                <div>
+                  <p style={{fontSize:14,fontWeight:600,color:ink}}>{f.business_name}</p>
+                  {f.pueblo&&<p style={{fontSize:11,color:gray}}>{f.pueblo}</p>}
+                  {f.notes&&<p style={{fontSize:11,color:gray,fontStyle:'italic',marginTop:2}}>{f.notes}</p>}
+                </div>
+                <div style={{textAlign:'right',flexShrink:0,marginLeft:12}}>
+                  <span style={{fontSize:11,fontWeight:700,color:isToday?'#c0392b':gold,background:isToday?'rgba(192,57,43,0.08)':'rgba(184,151,90,0.1)',padding:'3px 9px',borderRadius:99,display:'block',whiteSpace:'nowrap'}}>{isToday?'HOY':fd.toLocaleDateString('es-PR',{day:'numeric',month:'short'})}</span>
+                  {f.phone&&<a href={`tel:${f.phone}`} style={{fontSize:11,color:'#2d8a60',textDecoration:'none',display:'block',marginTop:4}}>📞 Llamar</a>}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
       {/* Add income bottom sheet */}
       {addIncome&&(
         <>
@@ -2351,7 +2381,8 @@ function AdminColdCalling(){
   const [loading,setLoading]=useState(true)
   const [showForm,setShowForm]=useState(null)
   const [expanded,setExpanded]=useState({})
-  const [form,setForm]=useState({business_name:'',phone:'',pueblo:'',responded:false,followup_date:'',notes:''})
+  const [weekOffset,setWeekOffset]=useState(0)
+  const [form,setForm]=useState({business_name:'',phone:'',pueblo:'',call_status:'no_answer',followup_date:'',notes:''})
   const [saving,setSaving]=useState(false)
   useEffect(()=>{load()},[])
   async function load(){
@@ -2363,9 +2394,9 @@ function AdminColdCalling(){
   }
   async function saveLead(e){
     e.preventDefault(); setSaving(true)
-    const call_status=form.responded?(form.followup_date?'follow_up':'responded'):'no_answer'
-    await fetch('/api/admin/cold-calls',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...form,call_status})})
-    if(form.responded&&form.followup_date&&typeof window!=='undefined'&&'Notification' in window){
+    const responded=form.call_status!=='no_answer'
+    await fetch('/api/admin/cold-calls',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...form,responded})})
+    if(form.call_status==='follow_up'&&form.followup_date&&typeof window!=='undefined'&&'Notification' in window){
       Notification.requestPermission().then(p=>{
         if(p==='granted'){
           const d=new Date(form.followup_date+'T09:00:00')
@@ -2373,15 +2404,18 @@ function AdminColdCalling(){
         }
       })
     }
-    await load(); setShowForm(null); setForm({business_name:'',phone:'',pueblo:'',responded:false,followup_date:'',notes:''}); setSaving(false)
+    await load(); setShowForm(null); setForm({business_name:'',phone:'',pueblo:'',call_status:'no_answer',followup_date:'',notes:''}); setSaving(false)
   }
-  const {start:ws,end:we}=getCurrentWeekRange()
+  const baseStart=getCurrentWeekRange().start
+  const ws=new Date(baseStart); ws.setDate(baseStart.getDate()+weekOffset*7)
+  const we=new Date(ws); we.setDate(ws.getDate()+6)
   const weekDays=getWeekDays(ws)
   const byDay={}
   leads.forEach(l=>{ const d=l.created_at?.split('T')[0]; if(!byDay[d])byDay[d]=[]; byDay[d].push(l) })
   const weekLeads=weekDays.flatMap(d=>byDay[d.date]||[])
   const responded=weekLeads.filter(l=>l.call_status!=='no_answer').length
   const followups=weekLeads.filter(l=>l.call_status==='follow_up').length
+  const isCurrentWeek=weekOffset===0
   const SS={no_answer:{label:'No respondió',color:'#c0392b',bg:'rgba(192,57,43,0.08)'},responded:{label:'Respondió',color:'#2d8a60',bg:'rgba(45,138,96,0.1)'},follow_up:{label:'Follow-up',color:gold,bg:'rgba(184,151,90,0.12)'},booked:{label:'Agendó',color:'#5b8dee',bg:'rgba(91,141,238,0.1)'}}
   const inp2={width:'100%',boxSizing:'border-box',height:44,borderRadius:10,border:'1px solid rgba(14,14,12,0.12)',padding:'0 12px',fontSize:14,fontFamily:ff,background:'#fff',outline:'none'}
   return(
@@ -2398,15 +2432,21 @@ function AdminColdCalling(){
       </div>
       {/* Weekly card */}
       <div style={{background:'rgba(248,246,241,0.9)',border:'1px solid rgba(14,14,12,0.08)',borderRadius:18,overflow:'hidden'}}>
-        <div style={{padding:'14px 16px',borderBottom:'1px solid rgba(14,14,12,0.06)'}}>
-          <p style={{fontSize:13,fontWeight:600,color:ink}}>Semana del {ws.toLocaleDateString('es-PR',{day:'numeric',month:'long'})} al {new Date(ws.getTime()+4*86400000).toLocaleDateString('es-PR',{day:'numeric',month:'long'})}</p>
+        {/* Week navigation */}
+        <div style={{padding:'12px 16px',borderBottom:'1px solid rgba(14,14,12,0.06)',display:'flex',alignItems:'center',justifyContent:'space-between',gap:8}}>
+          <button onClick={()=>{setWeekOffset(p=>p-1);setExpanded({})}} style={{background:'none',border:'none',cursor:'pointer',fontSize:22,color:gray,padding:'0 6px',lineHeight:1,touchAction:'manipulation'}}>‹</button>
+          <div style={{textAlign:'center',flex:1}}>
+            <p style={{fontSize:13,fontWeight:600,color:ink}}>{ws.toLocaleDateString('es-PR',{day:'numeric',month:'long'})} — {we.toLocaleDateString('es-PR',{day:'numeric',month:'long'})}</p>
+            {isCurrentWeek&&<span style={{fontSize:9,background:gold,color:ink,borderRadius:99,padding:'2px 8px',fontWeight:700}}>SEMANA ACTUAL</span>}
+          </div>
+          <button onClick={()=>{if(!isCurrentWeek){setWeekOffset(p=>p+1);setExpanded({})}}} style={{background:'none',border:'none',cursor:isCurrentWeek?'default':'pointer',fontSize:22,color:isCurrentWeek?'rgba(14,14,12,0.2)':gray,padding:'0 6px',lineHeight:1,touchAction:'manipulation'}}>›</button>
         </div>
         {weekDays.map((day,i)=>{
           const dayLeads=byDay[day.date]||[]
           const isExp=expanded[day.date]
           const isToday=day.date===new Date().toISOString().split('T')[0]
           return(
-            <div key={day.date} style={{borderBottom:i<4?'1px solid rgba(14,14,12,0.06)':'none'}}>
+            <div key={day.date} style={{borderBottom:i<6?'1px solid rgba(14,14,12,0.06)':'none'}}>
               <button onClick={()=>setExpanded(p=>({...p,[day.date]:!p[day.date]}))} style={{width:'100%',padding:'13px 16px',background:'none',border:'none',cursor:'pointer',display:'flex',justifyContent:'space-between',alignItems:'center',fontFamily:ff}}>
                 <div style={{display:'flex',alignItems:'center',gap:8}}>
                   <span style={{fontSize:14,fontWeight:600,color:isToday?gold:ink}}>{day.name}</span>
@@ -2468,17 +2508,19 @@ function AdminColdCalling(){
                 </div>
               ))}
               <div>
-                <label style={{fontSize:11,fontWeight:600,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:8}}>¿Respondió?</label>
-                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
-                  {[['Sí',true],['No',false]].map(([l,v])=>(
-                    <button type="button" key={l} onClick={()=>setForm(p=>({...p,responded:v}))} style={{padding:'10px',borderRadius:10,border:'1px solid',borderColor:form.responded===v?ink:'rgba(14,14,12,0.12)',background:form.responded===v?ink:'#fff',color:form.responded===v?cream:ink,fontSize:14,fontWeight:600,fontFamily:ff,cursor:'pointer'}}>{l}</button>
+                <label style={{fontSize:11,fontWeight:600,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:8}}>Resultado de la llamada</label>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8}}>
+                  {[['no_answer','No contestó'],['responded','Respondió'],['follow_up','Follow-up']].map(([v,l])=>(
+                    <button type="button" key={v} onClick={()=>setForm(p=>({...p,call_status:v,followup_date:v!=='follow_up'?'':p.followup_date}))} style={{padding:'10px 6px',borderRadius:10,border:'1px solid',borderColor:form.call_status===v?(v==='follow_up'?gold:ink):'rgba(14,14,12,0.12)',background:form.call_status===v?(v==='follow_up'?'rgba(184,151,90,0.12)':ink):'#fff',color:form.call_status===v?(v==='follow_up'?gold:cream):ink,fontSize:12,fontWeight:600,fontFamily:ff,cursor:'pointer',textAlign:'center',touchAction:'manipulation'}}>{l}</button>
                   ))}
                 </div>
               </div>
-              {form.responded&&<div>
-                <label style={{fontSize:11,fontWeight:600,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:4}}>Follow-up ¿cuándo?</label>
-                <input type="date" value={form.followup_date} onChange={e=>setForm(p=>({...p,followup_date:e.target.value}))} style={inp2}/>
-              </div>}
+              {form.call_status==='follow_up'&&(
+                <div>
+                  <label style={{fontSize:11,fontWeight:700,color:gold,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:6}}>📅 ¿Cuándo hacer el follow-up?</label>
+                  <input required type="date" value={form.followup_date} onChange={e=>setForm(p=>({...p,followup_date:e.target.value}))} style={{...inp2,borderColor:gold,borderWidth:2}}/>
+                </div>
+              )}
               <div>
                 <label style={{fontSize:11,fontWeight:600,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:4}}>Notas del cliente</label>
                 <textarea value={form.notes} onChange={e=>setForm(p=>({...p,notes:e.target.value}))} rows={3} placeholder="Contexto para cuando lo llames de vuelta..." style={{...inp2,height:'auto',padding:'10px 12px',resize:'none'}}/>
