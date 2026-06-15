@@ -2391,7 +2391,13 @@ function AdminColdCalling(){
   const [form,setForm]=useState({business_name:'',phone:'',pueblo:'',call_status:'no_answer',followup_date:'',notes:''})
   const [saving,setSaving]=useState(false)
   const [updatingId,setUpdatingId]=useState(null)
-  useEffect(()=>{load()},[])
+  const [contacts,setContacts]=useState([])
+  const [contactQ,setContactQ]=useState('')
+  const [showContacts,setShowContacts]=useState(false)
+  useEffect(()=>{
+    load()
+    fetch('/api/admin/users').then(r=>r.json()).then(d=>setContacts(d.users||[])).catch(()=>{})
+  },[])
   async function load(){
     setLoading(true)
     const r=await fetch('/api/admin/cold-calls')
@@ -2416,7 +2422,7 @@ function AdminColdCalling(){
         }
       })
     }
-    await load(); setShowForm(null); setForm({business_name:'',phone:'',pueblo:'',call_status:'no_answer',followup_date:'',notes:''}); setSaving(false)
+    await load(); setShowForm(null); setForm({business_name:'',phone:'',pueblo:'',call_status:'no_answer',followup_date:'',notes:''}); setContactQ(''); setSaving(false)
   }
   const baseStart=getCurrentWeekRange().start
   const ws=new Date(baseStart); ws.setDate(baseStart.getDate()+weekOffset*7)
@@ -2534,6 +2540,36 @@ function AdminColdCalling(){
               <button onClick={()=>setShowForm(null)} style={{background:'none',border:'none',fontSize:20,cursor:'pointer',color:gray}}>✕</button>
             </div>
             <form onSubmit={saveLead} style={{display:'flex',flexDirection:'column',gap:12}}>
+              {/* Contact picker */}
+              <div style={{position:'relative'}}>
+                <label style={{fontSize:11,fontWeight:600,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:4}}>Buscar en contactos</label>
+                <input
+                  type="text"
+                  placeholder="Nombre o negocio..."
+                  value={contactQ}
+                  onChange={e=>{setContactQ(e.target.value);setShowContacts(true)}}
+                  onFocus={()=>setShowContacts(true)}
+                  style={{...inp2,borderColor:showContacts&&contactQ?gold:'rgba(14,14,12,0.12)'}}
+                />
+                {showContacts&&contactQ.length>0&&(()=>{
+                  const matches=contacts.filter(c=>`${c.business_name||''} ${c.full_name||''}`.toLowerCase().includes(contactQ.toLowerCase())).slice(0,6)
+                  if(!matches.length) return null
+                  return(
+                    <div style={{position:'absolute',top:'100%',left:0,right:0,zIndex:50,background:'#fff',borderRadius:10,border:'1px solid rgba(14,14,12,0.1)',boxShadow:'0 8px 24px rgba(0,0,0,0.1)',overflow:'hidden',marginTop:4}}>
+                      {matches.map(c=>(
+                        <button type="button" key={c.id} onMouseDown={()=>{
+                          setForm(p=>({...p,business_name:c.business_name||c.full_name||'',phone:c.phone||''}))
+                          setContactQ(c.business_name||c.full_name||'')
+                          setShowContacts(false)
+                        }} style={{width:'100%',padding:'10px 14px',background:'none',border:'none',borderBottom:'1px solid rgba(14,14,12,0.06)',textAlign:'left',cursor:'pointer',fontFamily:ff}}>
+                          <p style={{fontSize:13,fontWeight:600,color:ink}}>{c.business_name||c.full_name}</p>
+                          {c.phone&&<p style={{fontSize:11,color:gray,marginTop:1}}>{c.phone}</p>}
+                        </button>
+                      ))}
+                    </div>
+                  )
+                })()}
+              </div>
               {[{k:'business_name',l:'Nombre del negocio',t:'text',r:true},{k:'phone',l:'Teléfono',t:'tel',r:true},{k:'pueblo',l:'Pueblo / Ciudad',t:'text'}].map(f=>(
                 <div key={f.k}>
                   <label style={{fontSize:11,fontWeight:600,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:4}}>{f.l}</label>
