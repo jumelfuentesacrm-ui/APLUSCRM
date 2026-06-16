@@ -1995,6 +1995,13 @@ function AdminSystemPanel({ users, cards, allUsers, loadAll, showToast }) {
                   }} style={{padding:'0.3rem 0.6rem',background:'rgba(45,138,96,0.08)',color:'#2d8a60',border:'1px solid rgba(45,138,96,0.2)',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.54rem',letterSpacing:'0.06em',textTransform:'uppercase'}}>
                     Make Agent
                   </button>}
+                  {!isAdmin&&<button onClick={async()=>{
+                    if(!confirm(`¿Eliminar a ${u.full_name||u.email}? Esta acción no se puede deshacer.`)) return
+                    await fetch('/api/admin/users',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:u.id})})
+                    showToast('Usuario eliminado');loadAll()
+                  }} style={{padding:'0.3rem 0.6rem',background:'rgba(192,57,43,0.08)',color:'#c0392b',border:'1px solid rgba(192,57,43,0.2)',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.54rem',letterSpacing:'0.06em',textTransform:'uppercase'}}>
+                    Borrar
+                  </button>}
                 </div>
               </div>
             )
