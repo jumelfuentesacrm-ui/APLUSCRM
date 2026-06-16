@@ -3203,6 +3203,103 @@ function AdminCRMClients(){
 }
 
 // ─────────────────────────────────────────────
+// EDITAR PERFIL
+// ─────────────────────────────────────────────
+function PerfilPanel({showToast}){
+  const {dm,inkC,grayC,cardBg,cardBorder,inputBg,inputBorder,divider}=useTheme()
+  const ff2=`'Inter',sans-serif`
+  const ffS2=`'Cormorant Garamond',serif`
+  const [form,setForm]=useState({full_name:'',email:'',phone:'',password:'',confirm:''})
+  const [avatar,setAvatar]=useState(null)
+  const [preview,setPreview]=useState(null)
+  const [loading,setLoading]=useState(true)
+  const [saving,setSaving]=useState(false)
+  const [uploadingAvatar,setUploadingAvatar]=useState(false)
+
+  useEffect(()=>{
+    fetch('/api/profile').then(r=>r.json()).then(d=>{
+      setForm(f=>({...f,full_name:d.full_name||'',email:d.email||'',phone:d.phone||''}))
+      if(d.avatar_url) setPreview(d.avatar_url)
+      setLoading(false)
+    })
+  },[])
+
+  async function handleAvatar(e){
+    const file=e.target.files[0]
+    if(!file) return
+    setPreview(URL.createObjectURL(file))
+    setAvatar(file)
+    setUploadingAvatar(true)
+    const fd=new FormData(); fd.append('file',file)
+    const r=await fetch('/api/profile',{method:'POST',body:fd})
+    const d=await r.json()
+    if(r.ok){ setPreview(d.avatar_url); showToast('Foto actualizada') }
+    else showToast('Error al subir foto')
+    setUploadingAvatar(false)
+  }
+
+  async function handleSave(e){
+    e.preventDefault()
+    if(form.password&&form.password!==form.confirm){ showToast('Las contraseñas no coinciden'); return }
+    if(form.password&&form.password.length<6){ showToast('Contraseña mínimo 6 caracteres'); return }
+    setSaving(true)
+    const body={full_name:form.full_name,phone:form.phone,email:form.email}
+    if(form.password) body.password=form.password
+    const r=await fetch('/api/profile',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+    if(r.ok){ showToast('Perfil actualizado'); setForm(f=>({...f,password:'',confirm:''})) }
+    else showToast('Error al guardar')
+    setSaving(false)
+  }
+
+  const inp3={width:'100%',boxSizing:'border-box',height:44,borderRadius:10,border:`1px solid ${inputBorder}`,padding:'0 12px',fontSize:14,fontFamily:ff2,background:inputBg,color:inkC,outline:'none'}
+  const lbl3={fontSize:11,fontWeight:600,color:grayC,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:4}
+
+  return(
+    <div style={{padding:'20px 16px 100px',fontFamily:ff2}}>
+      <h1 style={{fontFamily:ffS2,fontSize:26,fontWeight:300,color:inkC,marginBottom:20}}>Editar Perfil</h1>
+      {loading&&<p style={{textAlign:'center',color:grayC,padding:'40px 0'}}>Cargando...</p>}
+      {!loading&&(
+        <form onSubmit={handleSave} style={{display:'flex',flexDirection:'column',gap:16}}>
+          {/* Avatar */}
+          <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:12,marginBottom:8}}>
+            <label style={{cursor:'pointer',position:'relative'}}>
+              <div style={{width:88,height:88,borderRadius:'50%',overflow:'hidden',border:`3px solid ${gold}`,background:inputBg,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                {preview
+                  ?<img src={preview} alt="avatar" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
+                  :<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke={grayC} strokeWidth="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                }
+              </div>
+              {uploadingAvatar&&<div style={{position:'absolute',inset:0,borderRadius:'50%',background:'rgba(0,0,0,0.45)',display:'flex',alignItems:'center',justifyContent:'center'}}><span style={{color:'#fff',fontSize:11}}>...</span></div>}
+              <input type="file" accept="image/*" style={{display:'none'}} onChange={handleAvatar}/>
+            </label>
+            <span style={{fontSize:12,color:grayC}}>Toca para cambiar foto</span>
+          </div>
+
+          <div style={{background:cardBg,border:`1px solid ${cardBorder}`,borderRadius:14,padding:'16px'}}>
+            <p style={{fontSize:11,fontWeight:700,color:grayC,textTransform:'uppercase',letterSpacing:'0.1em',marginBottom:14}}>Información</p>
+            <div style={{display:'flex',flexDirection:'column',gap:12}}>
+              <div><label style={lbl3}>Nombre</label><input style={inp3} value={form.full_name} onChange={e=>setForm(f=>({...f,full_name:e.target.value}))}/></div>
+              <div><label style={lbl3}>Teléfono</label><input style={inp3} type="tel" value={form.phone} onChange={e=>setForm(f=>({...f,phone:e.target.value}))}/></div>
+              <div><label style={lbl3}>Correo electrónico</label><input style={inp3} type="email" value={form.email} onChange={e=>setForm(f=>({...f,email:e.target.value}))}/></div>
+            </div>
+          </div>
+
+          <div style={{background:cardBg,border:`1px solid ${cardBorder}`,borderRadius:14,padding:'16px'}}>
+            <p style={{fontSize:11,fontWeight:700,color:grayC,textTransform:'uppercase',letterSpacing:'0.1em',marginBottom:14}}>Cambiar contraseña</p>
+            <div style={{display:'flex',flexDirection:'column',gap:12}}>
+              <div><label style={lbl3}>Nueva contraseña</label><input style={inp3} type="password" placeholder="Mínimo 6 caracteres" value={form.password} onChange={e=>setForm(f=>({...f,password:e.target.value}))}/></div>
+              <div><label style={lbl3}>Confirmar contraseña</label><input style={inp3} type="password" placeholder="Repite la contraseña" value={form.confirm} onChange={e=>setForm(f=>({...f,confirm:e.target.value}))}/></div>
+            </div>
+          </div>
+
+          <button type="submit" disabled={saving} style={{height:48,background:gold,color:'#fff',border:'none',borderRadius:12,fontSize:15,fontWeight:700,fontFamily:ff2,cursor:'pointer',letterSpacing:'0.02em'}}>{saving?'Guardando...':'Guardar cambios'}</button>
+        </form>
+      )}
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────
 // MIS CLIENTES — closed bookings + file upload
 // ─────────────────────────────────────────────
 function MisClientesPanel({userRole,agentId,showToast}){
@@ -3760,6 +3857,7 @@ export default function Admin({session}){
           {activePanel==='mapa'&&<LeadMap showToast={showToast} userRole={userRole}/>}
           {activePanel==='mis-clientes'&&<MisClientesPanel userRole={userRole} agentId={agentId} showToast={showToast}/>}
           {activePanel==='documentos'&&<DocumentosPanel userRole={userRole} showToast={showToast}/>}
+          {activePanel==='perfil'&&<PerfilPanel showToast={showToast}/>}
         </div>
       </div>
 
@@ -3817,6 +3915,7 @@ export default function Admin({session}){
               {[
                 {id:'mis-clientes',label:'Mis Clientes',icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>},
                 {id:'documentos',label:'Documentos',icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>},
+                {id:'perfil',label:'Editar Perfil',icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>},
                 ...(userRole==='admin'?[
                   {id:'crm-clients',label:'Clientes CRM',icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>},
                   {id:'loyalty-cards',label:'Loyalty',icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>},
