@@ -2679,8 +2679,8 @@ function AdminBookings({userRole,agentId}){
       })}
       {/* New booking sheet */}
       {showNew&&(
-        <div style={{position:'fixed',inset:0,zIndex:300,background:'rgba(0,0,0,0.5)',display:'flex',alignItems:'flex-end',overflow:'hidden'}} onClick={e=>e.target===e.currentTarget&&setShowNew(false)}>
-          <div style={{background:surfaceBg,borderRadius:'20px 20px 0 0',width:'100%',maxHeight:'90dvh',overflowY:'auto',overflowX:'hidden',boxSizing:'border-box',WebkitOverflowScrolling:'touch',padding:'24px 20px calc(env(safe-area-inset-bottom,0px) + 32px)'}} onClick={e=>e.stopPropagation()}>
+        <div style={{position:'fixed',inset:0,zIndex:300,background:'rgba(0,0,0,0.5)',display:'flex',alignItems:'center',justifyContent:'center',overflowY:'auto',padding:'16px 16px calc(env(safe-area-inset-bottom,0px) + 80px)'}} onClick={e=>e.target===e.currentTarget&&setShowNew(false)}>
+          <div style={{background:surfaceBg,borderRadius:20,width:'100%',maxWidth:480,overflowY:'auto',overflowX:'hidden',boxSizing:'border-box',WebkitOverflowScrolling:'touch',padding:'24px 20px 28px'}} onClick={e=>e.stopPropagation()}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}}>
               <h2 style={{fontFamily:ffS,fontSize:22,fontWeight:300,color:inkC}}>Nueva Consulta</h2>
               <button onClick={()=>setShowNew(false)} style={{background:'none',border:'none',fontSize:20,cursor:'pointer',color:grayC}}>✕</button>
