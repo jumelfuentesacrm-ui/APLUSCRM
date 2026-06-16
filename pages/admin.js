@@ -1990,7 +1990,7 @@ function scheduleLocalNotif(title,body,dateObj){
 }
 
 // ─── ADMIN DASHBOARD ─────────────────────────────────────────────────────────
-function AdminDashboard({sales,bookings,session,users,onSaleAdded,onNavigate}){
+function AdminDashboard({sales,bookings,session,users,onSaleAdded,onNavigate,darkMode}){
   const [addIncome,setAddIncome]=useState(null)
   const [incomeForm,setIncomeForm]=useState({client_id:'',service:'',amount:'',notes:''})
   const [incomeSaving,setIncomeSaving]=useState(false)
@@ -2001,7 +2001,6 @@ function AdminDashboard({sales,bookings,session,users,onSaleAdded,onNavigate}){
     fetch('/api/admin/cold-calls').then(r=>r.json()).then(d=>setColdLeads(d.leads||[])).catch(()=>{})
   },[])
   const [showPrevMonths,setShowPrevMonths]=useState(false)
-  const [darkMode,setDarkMode]=useState(false)
   const CITA_MONTH_GOAL=40
   const CITA_WEEK_GOAL=5
   const now=new Date()
@@ -2174,12 +2173,6 @@ function AdminDashboard({sales,bookings,session,users,onSaleAdded,onNavigate}){
         ]
         return(
           <>
-            <div style={{display:'flex',justifyContent:'flex-end',marginBottom:8}}>
-              <button onClick={()=>setDarkMode(p=>!p)} style={{background:dm?'rgba(255,255,255,0.08)':'rgba(14,14,12,0.05)',border:'none',borderRadius:99,padding:'5px 12px',fontSize:11,fontWeight:600,color:dm?'rgba(255,255,255,0.6)':gray,fontFamily:ff,cursor:'pointer',touchAction:'manipulation',display:'flex',alignItems:'center',gap:5}}>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">{dm?<circle cx="12" cy="12" r="5"/>:<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>}</svg>
-                {dm?'Claro':'Oscuro'}
-              </button>
-            </div>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:14}}>
               {stats.map((s,i)=>i===stats.length-1&&stats.length%2!==0?(
                 <button key={s.key} onClick={()=>setOpenSheet(s.key)} style={{gridColumn:'1/-1',padding:'16px 20px',borderRadius:16,border:'none',cursor:'pointer',touchAction:'manipulation',background:dm?'rgba(255,255,255,0.05)':'rgba(255,255,255,0.75)',backdropFilter:'blur(20px)',WebkitBackdropFilter:'blur(20px)',boxShadow:dm?'none':'0 2px 16px rgba(0,0,0,0.06)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
@@ -3012,10 +3005,15 @@ export default function Admin({session}){
     if(!session){router.push('/login');return}
     fetch('/api/auth/check-role')
       .then(r=>r.json())
-      .then(({role,userId})=>{
+      .then(({role,userId,name})=>{
         if(role==='admin'||role==='agent'){
           setUserRole(role)
           if(userId) setAgentId(userId)
+          if(role==='agent'&&name){
+            setAgentName(name)
+            const key=`aplus_onboarded_${userId}`
+            if(!localStorage.getItem(key)){ setShowOnboarding(true); localStorage.setItem(key,'1') }
+          }
           if(role==='admin'){
             loadAll()
             const params=new URLSearchParams(window.location.search)
@@ -3168,6 +3166,10 @@ export default function Admin({session}){
   const [burger,setBurger]=useState(false)
   const [activePanel,setActivePanel]=useState('dashboard')
   const [adminBookings,setAdminBookings]=useState([])
+  const [darkMode,setDarkMode]=useState(()=>{ try{ return localStorage.getItem('aplus_dark')==='1' }catch{return false} })
+  const [agentName,setAgentName]=useState('')
+  const [showOnboarding,setShowOnboarding]=useState(false)
+  const [onboardStep,setOnboardStep]=useState(0)
   useEffect(()=>{
     fetch('/api/admin/bookings').then(r=>r.json()).then(d=>setAdminBookings(Array.isArray(d)?d:[])).catch(()=>{})
   },[loading])
@@ -3235,16 +3237,24 @@ export default function Admin({session}){
         .blob-3{bottom:0;right:25%;width:280px;height:280px;background:rgba(184,151,90,0.1);filter:blur(60px);animation:float-slow 16s ease-in-out infinite;}
       `}</style>
       {/* ── GLASS HEADER ── */}
-      <header style={{position:'fixed',top:0,left:0,right:0,zIndex:200,height:'calc(52px + env(safe-area-inset-top,0px))',paddingTop:'env(safe-area-inset-top,0px)',background:'rgba(255,255,255,0.72)',backdropFilter:'blur(20px) saturate(180%)',WebkitBackdropFilter:'blur(20px) saturate(180%)',borderBottom:'1px solid rgba(255,255,255,0.5)',boxShadow:'0 2px 20px rgba(0,0,0,0.06)',display:'flex',alignItems:'flex-end',justifyContent:'space-between',paddingLeft:20,paddingRight:20,paddingBottom:10}}>
-        <div style={{fontFamily:ffS,fontSize:'1.2rem',fontWeight:500,color:ink,lineHeight:1}}>A<span style={{color:gold,fontStyle:'italic'}}>+</span> CRM</div>
-        <button onClick={signOut} style={{background:'none',border:'1px solid rgba(14,14,12,0.12)',color:gray,padding:'5px 14px',fontSize:11,letterSpacing:'0.08em',textTransform:'uppercase',cursor:'pointer',borderRadius:20,fontFamily:ff}}>Salir</button>
+      <header style={{position:'fixed',top:0,left:0,right:0,zIndex:200,height:'calc(52px + env(safe-area-inset-top,0px))',paddingTop:'env(safe-area-inset-top,0px)',background:darkMode?'rgba(14,14,12,0.9)':'rgba(255,255,255,0.72)',backdropFilter:'blur(20px) saturate(180%)',WebkitBackdropFilter:'blur(20px) saturate(180%)',borderBottom:darkMode?'1px solid rgba(255,255,255,0.06)':'1px solid rgba(255,255,255,0.5)',boxShadow:'0 2px 20px rgba(0,0,0,0.06)',display:'flex',alignItems:'flex-end',justifyContent:'space-between',paddingLeft:20,paddingRight:20,paddingBottom:10,transition:'background 0.3s'}}>
+        <div style={{fontFamily:ffS,fontSize:'1.2rem',fontWeight:500,color:darkMode?'rgba(255,255,255,0.9)':ink,lineHeight:1}}>A<span style={{color:gold,fontStyle:'italic'}}>+</span> CRM</div>
+        <div style={{display:'flex',alignItems:'center',gap:10}}>
+          <button onClick={()=>{ const n=!darkMode; setDarkMode(n); try{localStorage.setItem('aplus_dark',n?'1':'0')}catch{} }} style={{background:'none',border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:darkMode?'rgba(255,255,255,0.5)':'rgba(14,14,12,0.35)',padding:4,touchAction:'manipulation'}}>
+            {darkMode
+              ?<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+              :<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+            }
+          </button>
+          <button onClick={signOut} style={{background:'none',border:`1px solid ${darkMode?'rgba(255,255,255,0.12)':'rgba(14,14,12,0.12)'}`,color:darkMode?'rgba(255,255,255,0.4)':gray,padding:'5px 14px',fontSize:11,letterSpacing:'0.08em',textTransform:'uppercase',cursor:'pointer',borderRadius:20,fontFamily:ff}}>Salir</button>
+        </div>
       </header>
 
       {/* ── MAIN CONTENT ── */}
-      <div style={{paddingTop:'calc(52px + env(safe-area-inset-top,0px))',paddingBottom:'calc(64px + env(safe-area-inset-bottom,0px))',minHeight:'100vh',background:'#f8f6f1',WebkitOverflowScrolling:'touch',overflowY:'auto'}}>
+      <div style={{paddingTop:'calc(52px + env(safe-area-inset-top,0px))',paddingBottom:'calc(64px + env(safe-area-inset-bottom,0px))',minHeight:'100vh',background:darkMode?'#0e0e0c':'#f8f6f1',WebkitOverflowScrolling:'touch',overflowY:'auto',transition:'background 0.3s'}}>
         <div key={burger?panel:tab} className="panel-animate">
           {/* PRIMARY TABS */}
-          {activePanel==='dashboard'&&<AdminDashboard sales={sales} bookings={adminBookings} session={session} users={users} onSaleAdded={loadAll} onNavigate={(p)=>{setActivePanel(p);setTab(p)}}/>}
+          {activePanel==='dashboard'&&<AdminDashboard sales={sales} bookings={adminBookings} session={session} users={users} onSaleAdded={loadAll} darkMode={darkMode} onNavigate={(p)=>{setActivePanel(p);setTab(p)}}/>}
           {activePanel==='bookings'&&<AdminBookings/>}
           {activePanel==='coldcalling'&&<AdminColdCalling/>}
 
@@ -3388,6 +3398,64 @@ export default function Admin({session}){
           </div>
         </>
       )}
+
+      {/* ── AGENT ONBOARDING ── */}
+      {showOnboarding&&(()=>{
+        const lastName=agentName?agentName.trim().split(' ').pop():''
+        const steps=[
+          {
+            icon:<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={gold} strokeWidth="1.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>,
+            title:'Dashboard',
+            desc:'Aquí verás el resumen de tus consultas de esta semana, hoy, pendientes y follow-ups. Todo es tuyo — solo ves lo que tú registras.',
+          },
+          {
+            icon:<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={gold} strokeWidth="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
+            title:'Consultas',
+            desc:'Crea y gestiona tus consultas aquí. Cada una queda registrada con tu nombre. Puedes confirmar, marcar No Show o archivar.',
+          },
+          {
+            icon:<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={gold} strokeWidth="1.5"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.65 3.38 2 2 0 0 1 3.62 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.58a16 16 0 0 0 6 6l.96-.87a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.92 16.92z"/></svg>,
+            title:'Llamadas',
+            desc:'Ve el pipeline de cold calls para conocer el contexto. Puedes ver los leads pero la gestión de llamadas la maneja el equipo.',
+          },
+        ]
+        const step=steps[onboardStep]
+        const isLast=onboardStep===steps.length-1
+        return(
+          <>
+            <div style={{position:'fixed',inset:0,zIndex:900,background:'rgba(0,0,0,0.65)',backdropFilter:'blur(4px)'}}/>
+            <div style={{position:'fixed',inset:0,zIndex:901,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'flex-end',padding:'0 20px 40px'}}>
+              <div style={{width:'100%',maxWidth:420,background:darkMode?'rgba(18,18,16,0.98)':'rgba(255,255,255,0.98)',borderRadius:28,padding:'36px 28px 28px',boxShadow:'0 24px 80px rgba(0,0,0,0.4)',textAlign:'center',animation:'sheet-up 0.4s cubic-bezier(0.22,1,0.36,1) both'}}>
+                {onboardStep===0&&(
+                  <div style={{marginBottom:20}}>
+                    <p style={{fontSize:11,textTransform:'uppercase',letterSpacing:'0.14em',color:gold,fontFamily:ff,marginBottom:6}}>Bienvenido</p>
+                    <h2 style={{fontFamily:ffS,fontSize:26,fontWeight:400,color:darkMode?'rgba(255,255,255,0.92)':ink,lineHeight:1.2}}>Sr. {lastName}</h2>
+                    <p style={{fontSize:13,color:darkMode?'rgba(255,255,255,0.45)':gray,marginTop:6,fontFamily:ff}}>Te mostramos tu espacio de trabajo</p>
+                  </div>
+                )}
+                <div style={{width:64,height:64,borderRadius:18,background:darkMode?'rgba(184,151,90,0.12)':'rgba(184,151,90,0.08)',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 18px'}}>
+                  {step.icon}
+                </div>
+                <h3 style={{fontFamily:ffS,fontSize:22,fontWeight:400,color:darkMode?'rgba(255,255,255,0.9)':ink,marginBottom:10}}>{step.title}</h3>
+                <p style={{fontSize:14,color:darkMode?'rgba(255,255,255,0.5)':gray,fontFamily:ff,lineHeight:1.6,marginBottom:28}}>{step.desc}</p>
+                {/* Step dots */}
+                <div style={{display:'flex',justifyContent:'center',gap:6,marginBottom:24}}>
+                  {steps.map((_,i)=>(
+                    <div key={i} style={{width:i===onboardStep?20:6,height:6,borderRadius:99,background:i===onboardStep?gold:'rgba(184,151,90,0.25)',transition:'all 0.3s'}}/>
+                  ))}
+                </div>
+                <button
+                  onClick={()=>{ if(isLast){ setShowOnboarding(false) } else { setOnboardStep(s=>s+1) } }}
+                  style={{width:'100%',padding:'14px',background:gold,color:'#fff',border:'none',borderRadius:14,fontSize:15,fontWeight:700,fontFamily:ff,cursor:'pointer',touchAction:'manipulation',letterSpacing:'0.02em'}}
+                >
+                  {isLast?'Comenzar':'Siguiente →'}
+                </button>
+                {onboardStep>0&&<button onClick={()=>setOnboardStep(s=>s-1)} style={{marginTop:10,background:'none',border:'none',fontSize:12,color:darkMode?'rgba(255,255,255,0.3)':gray,fontFamily:ff,cursor:'pointer',padding:'6px'}}>← Atrás</button>}
+              </div>
+            </div>
+          </>
+        )
+      })()}
 
       {/* MODAL: New Card */}
         {modal==='card'&&(<div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:500,display:'flex',alignItems:'flex-end',justifyContent:'center'}} onClick={e=>e.target===e.currentTarget&&setModal(null)}>
