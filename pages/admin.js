@@ -1852,11 +1852,24 @@ function AdminSystemPanel({ users, cards, allUsers, loadAll, showToast }) {
                 </div>
                 <button onClick={()=>removeAgent(u)} style={{fontSize:11,color:'#c0392b',background:'rgba(192,57,43,0.08)',border:'none',borderRadius:8,padding:'5px 10px',cursor:'pointer',fontFamily:ff,fontWeight:600}}>Remover</button>
               </div>
-              <div style={{marginTop:10,background:'rgba(14,14,12,0.03)',borderRadius:8,padding:'8px 10px'}}>
-                <p style={{fontSize:10,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:4}}>Link personal (consultas)</p>
-                <div style={{display:'flex',gap:6,alignItems:'center'}}>
-                  <p style={{fontSize:11,color:ink,flex:1,wordBreak:'break-all',fontFamily:'monospace'}}>{BASE_URL}/?agent={u.id}</p>
-                  <button onClick={()=>{navigator.clipboard.writeText(`${BASE_URL}/?agent=${u.id}`);showToast('Link copiado')}} style={{flexShrink:0,background:gold,color:'#fff',border:'none',borderRadius:6,padding:'5px 10px',fontSize:11,fontWeight:600,fontFamily:ff,cursor:'pointer'}}>Copiar</button>
+              <div style={{marginTop:10,background:'rgba(14,14,12,0.03)',borderRadius:8,padding:'8px 10px',display:'flex',flexDirection:'column',gap:8}}>
+                <div>
+                  <p style={{fontSize:10,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:4}}>Link de citas (clientes)</p>
+                  <div style={{display:'flex',gap:6,alignItems:'center'}}>
+                    <p style={{fontSize:11,color:ink,flex:1,wordBreak:'break-all',fontFamily:'monospace'}}>{BASE_URL}/?agent={u.id}</p>
+                    <button onClick={()=>{navigator.clipboard.writeText(`${BASE_URL}/?agent=${u.id}`);showToast('Link copiado')}} style={{flexShrink:0,background:gold,color:'#fff',border:'none',borderRadius:6,padding:'5px 10px',fontSize:11,fontWeight:600,fontFamily:ff,cursor:'pointer'}}>Copiar</button>
+                  </div>
+                </div>
+                <div>
+                  <p style={{fontSize:10,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:4}}>Link de acceso (agente)</p>
+                  <button onClick={async()=>{
+                    const r=await fetch('/api/admin/magic-link',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:u.email})})
+                    const d=await r.json()
+                    if(d.link){navigator.clipboard.writeText(d.link);showToast('Link de acceso copiado — válido por 1 hora')}
+                    else showToast('Error generando link')
+                  }} style={{width:'100%',background:'rgba(184,151,90,0.12)',color:'#8a6e3a',border:'1px solid rgba(184,151,90,0.3)',borderRadius:6,padding:'6px 10px',fontSize:11,fontWeight:600,fontFamily:ff,cursor:'pointer'}}>
+                    Generar y copiar link de acceso
+                  </button>
                 </div>
               </div>
             </div>
