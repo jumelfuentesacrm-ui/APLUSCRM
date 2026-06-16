@@ -3395,14 +3395,14 @@ export default function Admin({session}){
   }
   const upd=(k,v)=>setForm(f=>({...f,[k]:v}))
   const cardUrl=(card)=>`https://app.accountingpluscrm.com/c/${card?.card_number}`
-  const inp={width:'100%',padding:'0.75rem 0.9rem',border:`1px solid ${darkMode?'rgba(255,255,255,0.12)':'rgba(184,151,90,0.2)'}`,borderRadius:10,background:darkMode?'rgba(255,255,255,0.07)':'rgba(248,246,241,0.7)',fontFamily:ff,fontSize:'0.88rem',outline:'none',color:darkMode?'rgba(255,255,255,0.9)':black,marginBottom:'1rem',boxSizing:'border-box',backdropFilter:'blur(8px)'}
-  const lbl={fontSize:'0.56rem',letterSpacing:'0.13em',textTransform:'uppercase',color:darkMode?'rgba(255,255,255,0.4)':gray,display:'block',marginBottom:'0.35rem'}
 
   const [tab,setTab]=useState('dashboard')
   const [burger,setBurger]=useState(false)
   const [activePanel,setActivePanel]=useState('dashboard')
   const [adminBookings,setAdminBookings]=useState([])
   const [darkMode,setDarkMode]=useState(()=>{ try{ return localStorage.getItem('aplus_dark')==='1' }catch{return false} })
+  const inp={width:'100%',padding:'0.75rem 0.9rem',border:`1px solid ${darkMode?'rgba(255,255,255,0.12)':'rgba(184,151,90,0.2)'}`,borderRadius:10,background:darkMode?'rgba(255,255,255,0.07)':'rgba(248,246,241,0.7)',fontFamily:ff,fontSize:'0.88rem',outline:'none',color:darkMode?'rgba(255,255,255,0.9)':black,marginBottom:'1rem',boxSizing:'border-box',backdropFilter:'blur(8px)'}
+  const lbl={fontSize:'0.56rem',letterSpacing:'0.13em',textTransform:'uppercase',color:darkMode?'rgba(255,255,255,0.4)':gray,display:'block',marginBottom:'0.35rem'}
   const modalBg=darkMode?'#1a1a18':'#ffffff'
   const modalInk=darkMode?'rgba(255,255,255,0.9)':ink
   const modalGray=darkMode?'rgba(255,255,255,0.4)':gray
