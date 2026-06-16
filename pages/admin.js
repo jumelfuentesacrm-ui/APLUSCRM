@@ -1653,7 +1653,7 @@ function AdminSystemPanel({ users, cards, allUsers, loadAll, showToast }) {
   const [sessions, setSessions] = useState([])
   const [sessionsLoading, setSessionsLoading] = useState(false)
   const [agents, setAgents] = useState([])
-  const [agentForm, setAgentForm] = useState({name:'',email:'',password:''})
+  const [agentForm, setAgentForm] = useState({firstName:'',lastName:'',email:'',password:''})
   const [creatingAgent, setCreatingAgent] = useState(false)
   const [showAgentForm, setShowAgentForm] = useState(false)
   const BASE_URL = typeof window!=='undefined'?window.location.origin:''
@@ -1669,9 +1669,10 @@ function AdminSystemPanel({ users, cards, allUsers, loadAll, showToast }) {
     e.preventDefault(); setCreatingAgent(true)
     try {
       // Create user via signup then set role to agent
+      const fullName=`${agentForm.firstName.trim()} ${agentForm.lastName.trim()}`.trim()
       const r = await fetch('/api/auth/signup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
-        full_name: agentForm.name,
-        business_name: agentForm.name,
+        full_name: fullName,
+        business_name: agentForm.lastName.trim()||fullName,
         email: agentForm.email,
         password: agentForm.password,
         role: 'agent'
@@ -1683,7 +1684,7 @@ function AdminSystemPanel({ users, cards, allUsers, loadAll, showToast }) {
         await fetch('/api/admin/users',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:d.id,role:'agent'})})
       }
       showToast('Agente creado')
-      setAgentForm({name:'',email:'',password:''})
+      setAgentForm({firstName:'',lastName:'',email:'',password:''})
       setShowAgentForm(false)
       loadAgents()
     } catch(err){ showToast('Error al crear agente') }
@@ -1806,7 +1807,15 @@ function AdminSystemPanel({ users, cards, allUsers, loadAll, showToast }) {
           {showAgentForm&&(
             <form onSubmit={createAgent} style={{background:'rgba(184,151,90,0.06)',border:'1px solid rgba(184,151,90,0.2)',borderRadius:14,padding:16,marginBottom:16,display:'flex',flexDirection:'column',gap:10}}>
               <p style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.1em',color:gold,marginBottom:2}}>Crear agente</p>
-              {[{k:'name',l:'Nombre',t:'text'},{k:'email',l:'Email',t:'email'},{k:'password',l:'Contraseña temporal',t:'text'}].map(f=>(
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+                {[{k:'firstName',l:'Nombre'},{k:'lastName',l:'Apellido'}].map(f=>(
+                  <div key={f.k}>
+                    <label style={{fontSize:10,fontWeight:600,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:3}}>{f.l}</label>
+                    <input required type="text" value={agentForm[f.k]} onChange={e=>setAgentForm(p=>({...p,[f.k]:e.target.value}))} style={{width:'100%',height:40,borderRadius:8,border:'1px solid rgba(14,14,12,0.12)',padding:'0 12px',fontSize:14,fontFamily:ff,outline:'none',boxSizing:'border-box'}}/>
+                  </div>
+                ))}
+              </div>
+              {[{k:'email',l:'Email',t:'email'},{k:'password',l:'Contraseña temporal',t:'text'}].map(f=>(
                 <div key={f.k}>
                   <label style={{fontSize:10,fontWeight:600,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:3}}>{f.l}</label>
                   <input required type={f.t} value={agentForm[f.k]} onChange={e=>setAgentForm(p=>({...p,[f.k]:e.target.value}))} style={{width:'100%',height:40,borderRadius:8,border:'1px solid rgba(14,14,12,0.12)',padding:'0 12px',fontSize:14,fontFamily:ff,outline:'none',boxSizing:'border-box'}}/>
@@ -2914,17 +2923,36 @@ function AdminColdCalling(){
               <button onClick={()=>setShowForm(null)} style={{background:'none',border:'none',fontSize:20,cursor:'pointer',color:gray}}>✕</button>
             </div>
             <form onSubmit={saveLead} style={{display:'flex',flexDirection:'column',gap:12}}>
-              {/* Contact picker */}
+              {/* Contact picker — native phone contacts first, CRM fallback */}
               <div style={{position:'relative'}}>
                 <label style={{fontSize:11,fontWeight:600,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:4}}>Buscar en contactos</label>
-                <input
-                  type="text"
-                  placeholder="Nombre o negocio..."
-                  value={contactQ}
-                  onChange={e=>{setContactQ(e.target.value);setShowContacts(true)}}
-                  onFocus={()=>setShowContacts(true)}
-                  style={{...inp2,borderColor:showContacts&&contactQ?gold:'rgba(14,14,12,0.12)'}}
-                />
+                <div style={{display:'flex',gap:6}}>
+                  <input
+                    type="text"
+                    placeholder="Nombre o negocio..."
+                    value={contactQ}
+                    onChange={e=>{setContactQ(e.target.value);setShowContacts(true)}}
+                    onFocus={()=>setShowContacts(true)}
+                    style={{...inp2,flex:1,borderColor:showContacts&&contactQ?gold:'rgba(14,14,12,0.12)'}}
+                  />
+                  {typeof navigator!=='undefined'&&'contacts' in navigator&&(
+                    <button type="button" onClick={async()=>{
+                      try{
+                        const results=await navigator.contacts.select(['name','tel'],{multiple:false})
+                        if(results&&results.length>0){
+                          const c=results[0]
+                          const name=(c.name&&c.name[0])||''
+                          const phone=(c.tel&&c.tel[0])||''
+                          setForm(p=>({...p,business_name:name,phone:formatPhone(phone)}))
+                          setContactQ(name)
+                          setShowContacts(false)
+                        }
+                      }catch(e){}
+                    }} style={{flexShrink:0,height:44,width:44,borderRadius:10,border:'1px solid rgba(14,14,12,0.12)',background:'rgba(14,14,12,0.04)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',touchAction:'manipulation'}}>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={gray} strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    </button>
+                  )}
+                </div>
                 {showContacts&&contactQ.length>0&&(()=>{
                   const matches=contacts.filter(c=>`${c.business_name||''} ${c.full_name||''}`.toLowerCase().includes(contactQ.toLowerCase())).slice(0,6)
                   if(!matches.length) return null
@@ -3463,55 +3491,90 @@ export default function Admin({session}){
       {/* ── AGENT ONBOARDING ── */}
       {showOnboarding&&(()=>{
         const lastName=agentName?agentName.trim().split(' ').pop():''
+        // Each step navigates to a panel and shows a tooltip pointing at something
         const steps=[
           {
+            panel:null, // welcome — stay on current
+            title:`Bienvenido, Sr. ${lastName}`,
+            subtitle:'Tu espacio de trabajo personal',
+            desc:'En esta app registras tus consultas, ves tus resultados y llevas el seguimiento de tus clientes. Te guiamos en 3 pasos.',
+            cta:'Empezar tour →',
+            icon:<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={gold} strokeWidth="1.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>,
+            highlight:null,
+          },
+          {
+            panel:'dashboard',
+            title:'Tu Dashboard',
+            desc:'Aquí ves tus números en tiempo real: consultas esta semana, hoy, pendientes y follow-ups. Toca cada tarjeta para ver el detalle.',
+            cta:'Ver Consultas →',
             icon:<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={gold} strokeWidth="1.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>,
-            title:'Dashboard',
-            desc:'Aquí verás el resumen de tus consultas de esta semana, hoy, pendientes y follow-ups. Todo es tuyo — solo ves lo que tú registras.',
+            arrowDir:'up', // cards are in the upper section
           },
           {
+            panel:'bookings',
+            title:'Registrar Consultas',
+            desc:'Toca "+ Nueva" para crear una consulta. Cada una queda a tu nombre. Confirma, cierra o marca No Show según avance.',
+            cta:'Ver Llamadas →',
             icon:<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={gold} strokeWidth="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
-            title:'Consultas',
-            desc:'Crea y gestiona tus consultas aquí. Cada una queda registrada con tu nombre. Puedes confirmar, marcar No Show o archivar.',
+            arrowDir:'up',
           },
           {
+            panel:'coldcalling',
+            title:'Leads Listos',
+            desc:'Aquí ves los leads que ya están listos para una consulta. Toca "Booking" para agendar con ellos directamente.',
+            cta:'¡Listo para trabajar!',
             icon:<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={gold} strokeWidth="1.5"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.65 3.38 2 2 0 0 1 3.62 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.58a16 16 0 0 0 6 6l.96-.87a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.92 16.92z"/></svg>,
-            title:'Llamadas',
-            desc:'Ve el pipeline de cold calls para conocer el contexto. Puedes ver los leads pero la gestión de llamadas la maneja el equipo.',
+            arrowDir:'up',
           },
         ]
         const step=steps[onboardStep]
         const isLast=onboardStep===steps.length-1
+        const cardBg=darkMode?'rgba(18,18,16,0.97)':'rgba(255,255,255,0.97)'
+        const cardText=darkMode?'rgba(255,255,255,0.9)':ink
+        const cardSub=darkMode?'rgba(255,255,255,0.45)':gray
+
+        function advance(){
+          const next=steps[onboardStep+1]
+          if(next?.panel){ setActivePanel(next.panel); setTab(next.panel) }
+          if(isLast){ setShowOnboarding(false) } else { setOnboardStep(s=>s+1) }
+        }
+
         return(
           <>
-            <div style={{position:'fixed',inset:0,zIndex:900,background:'rgba(0,0,0,0.65)',backdropFilter:'blur(4px)'}}/>
-            <div style={{position:'fixed',inset:0,zIndex:901,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'flex-end',padding:'0 20px 40px'}}>
-              <div style={{width:'100%',maxWidth:420,background:darkMode?'rgba(18,18,16,0.98)':'rgba(255,255,255,0.98)',borderRadius:28,padding:'36px 28px 28px',boxShadow:'0 24px 80px rgba(0,0,0,0.4)',textAlign:'center',animation:'sheet-up 0.4s cubic-bezier(0.22,1,0.36,1) both'}}>
-                {onboardStep===0&&(
-                  <div style={{marginBottom:20}}>
-                    <p style={{fontSize:11,textTransform:'uppercase',letterSpacing:'0.14em',color:gold,fontFamily:ff,marginBottom:6}}>Bienvenido</p>
-                    <h2 style={{fontFamily:ffS,fontSize:26,fontWeight:400,color:darkMode?'rgba(255,255,255,0.92)':ink,lineHeight:1.2}}>Sr. {lastName}</h2>
-                    <p style={{fontSize:13,color:darkMode?'rgba(255,255,255,0.45)':gray,marginTop:6,fontFamily:ff}}>Te mostramos tu espacio de trabajo</p>
-                  </div>
-                )}
-                <div style={{width:64,height:64,borderRadius:18,background:darkMode?'rgba(184,151,90,0.12)':'rgba(184,151,90,0.08)',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 18px'}}>
-                  {step.icon}
-                </div>
-                <h3 style={{fontFamily:ffS,fontSize:22,fontWeight:400,color:darkMode?'rgba(255,255,255,0.9)':ink,marginBottom:10}}>{step.title}</h3>
-                <p style={{fontSize:14,color:darkMode?'rgba(255,255,255,0.5)':gray,fontFamily:ff,lineHeight:1.6,marginBottom:28}}>{step.desc}</p>
+            {/* Dimmed overlay — doesn't block taps on the actual app content so user sees it live */}
+            <div style={{position:'fixed',inset:0,zIndex:900,pointerEvents:'none',background:'rgba(0,0,0,0.5)'}}/>
+            {/* Arrow hint pointing up at the content */}
+            {step.arrowDir==='up'&&(
+              <div style={{position:'fixed',top:'calc(52px + env(safe-area-inset-top,0px) + 18px)',left:'50%',transform:'translateX(-50%)',zIndex:901,pointerEvents:'none',animation:'float-slow 2s ease-in-out infinite'}}>
+                <svg width="28" height="40" viewBox="0 0 28 40"><path d="M14 38 L14 4 M4 14 L14 4 L24 14" stroke={gold} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none"/></svg>
+              </div>
+            )}
+            {/* Tooltip card at bottom */}
+            <div style={{position:'fixed',bottom:0,left:0,right:0,zIndex:902,padding:'0 16px calc(env(safe-area-inset-bottom,0px) + 80px)',pointerEvents:'auto'}}>
+              <div key={onboardStep} style={{background:cardBg,borderRadius:24,padding:'24px 22px 22px',boxShadow:'0 -4px 40px rgba(0,0,0,0.25)',animation:'sheet-up 0.35s cubic-bezier(0.22,1,0.36,1) both'}}>
                 {/* Step dots */}
-                <div style={{display:'flex',justifyContent:'center',gap:6,marginBottom:24}}>
+                <div style={{display:'flex',justifyContent:'center',gap:5,marginBottom:16}}>
                   {steps.map((_,i)=>(
-                    <div key={i} style={{width:i===onboardStep?20:6,height:6,borderRadius:99,background:i===onboardStep?gold:'rgba(184,151,90,0.25)',transition:'all 0.3s'}}/>
+                    <div key={i} style={{width:i===onboardStep?18:5,height:5,borderRadius:99,background:i===onboardStep?gold:'rgba(184,151,90,0.2)',transition:'all 0.3s'}}/>
                   ))}
                 </div>
-                <button
-                  onClick={()=>{ if(isLast){ setShowOnboarding(false) } else { setOnboardStep(s=>s+1) } }}
-                  style={{width:'100%',padding:'14px',background:gold,color:'#fff',border:'none',borderRadius:14,fontSize:15,fontWeight:700,fontFamily:ff,cursor:'pointer',touchAction:'manipulation',letterSpacing:'0.02em'}}
-                >
-                  {isLast?'Comenzar':'Siguiente →'}
-                </button>
-                {onboardStep>0&&<button onClick={()=>setOnboardStep(s=>s-1)} style={{marginTop:10,background:'none',border:'none',fontSize:12,color:darkMode?'rgba(255,255,255,0.3)':gray,fontFamily:ff,cursor:'pointer',padding:'6px'}}>← Atrás</button>}
+                <div style={{display:'flex',gap:14,alignItems:'flex-start',marginBottom:12}}>
+                  <div style={{width:48,height:48,borderRadius:14,background:darkMode?'rgba(184,151,90,0.12)':'rgba(184,151,90,0.08)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                    {step.icon}
+                  </div>
+                  <div>
+                    {step.subtitle&&<p style={{fontSize:10,textTransform:'uppercase',letterSpacing:'0.12em',color:gold,fontFamily:ff,marginBottom:3}}>{step.subtitle}</p>}
+                    <h3 style={{fontFamily:ffS,fontSize:20,fontWeight:400,color:cardText,lineHeight:1.2,marginBottom:4}}>{step.title}</h3>
+                    <p style={{fontSize:13,color:cardSub,fontFamily:ff,lineHeight:1.55}}>{step.desc}</p>
+                  </div>
+                </div>
+                <div style={{display:'flex',gap:8,marginTop:4}}>
+                  {onboardStep>0&&<button onClick={()=>setOnboardStep(s=>s-1)} style={{padding:'12px 16px',background:'none',border:`1px solid ${darkMode?'rgba(255,255,255,0.1)':'rgba(14,14,12,0.1)'}`,borderRadius:12,fontSize:13,color:cardSub,fontFamily:ff,cursor:'pointer',touchAction:'manipulation'}}>←</button>}
+                  <button onClick={advance} style={{flex:1,padding:'13px',background:gold,color:'#fff',border:'none',borderRadius:12,fontSize:14,fontWeight:700,fontFamily:ff,cursor:'pointer',touchAction:'manipulation'}}>
+                    {step.cta}
+                  </button>
+                  <button onClick={()=>setShowOnboarding(false)} style={{padding:'12px 14px',background:'none',border:`1px solid ${darkMode?'rgba(255,255,255,0.1)':'rgba(14,14,12,0.1)'}`,borderRadius:12,fontSize:12,color:cardSub,fontFamily:ff,cursor:'pointer',touchAction:'manipulation'}}>Saltar</button>
+                </div>
               </div>
             </div>
           </>
