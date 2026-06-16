@@ -41,7 +41,7 @@ function parseCSV(text) {
   }).filter(r => r.name)
 }
 
-export default function LeadMap({ showToast }) {
+export default function LeadMap({ showToast, userRole }) {
   const router = useRouter()
   const fileRef = useRef()
   const [leads, setLeads] = useState([])
@@ -134,8 +134,9 @@ export default function LeadMap({ showToast }) {
         <span style={{ fontSize: 11, color: '#6b6b67' }}>{leads.length} leads</span>
       </div>
 
-      {/* Import CSV */}
+      {/* Import CSV — admin only */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 18 }}>
+        {userRole !== 'agent' && <>
         <input
           ref={fileRef}
           type="file"
@@ -156,6 +157,7 @@ export default function LeadMap({ showToast }) {
         >
           {importing ? '⏳ Importando...' : '⬆ Importar CSV'}
         </label>
+        </>}
         <button
           onClick={load}
           style={{

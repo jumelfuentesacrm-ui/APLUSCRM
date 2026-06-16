@@ -3757,7 +3757,7 @@ export default function Admin({session}){
           {activePanel==='supplies'&&<SuppliesPanel supplies={supplies} onAdd={()=>{setSupplyForm({name:'',category:'',cost:'',unit:'month',provider:'',renewal_date:'',notes:''});setSupplyModal('add')}} onEdit={(s)=>{setSupplyForm({name:s.name,category:s.category||'',cost:s.cost,unit:s.unit||'month',provider:s.provider||'',renewal_date:s.renewal_date||'',notes:s.notes||''});setSupplyModal(s)}} onDelete={async(id)=>{if(!confirm('Delete?'))return;await fetch('/api/admin/supplies',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})});showToast('Deleted');loadAll()}} showToast={showToast}/>}
           {activePanel==='reviews'&&<ReviewsPanel/>}
           {activePanel==='system'&&<AdminSystemPanel users={users} cards={cards} allUsers={allUsers} loadAll={loadAll} showToast={showToast}/>}
-          {activePanel==='mapa'&&<LeadMap showToast={showToast}/>}
+          {activePanel==='mapa'&&<LeadMap showToast={showToast} userRole={userRole}/>}
           {activePanel==='mis-clientes'&&<MisClientesPanel userRole={userRole} agentId={agentId} showToast={showToast}/>}
           {activePanel==='documentos'&&<DocumentosPanel userRole={userRole} showToast={showToast}/>}
         </div>
