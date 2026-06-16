@@ -2172,10 +2172,6 @@ function AdminDashboard({sales,bookings,session,users,onSaleAdded,onNavigate}){
           {key:'canceladas',label:'Canceladas',val:canceladas.length,accent:'#c0392b',items:canceladas,type:'booking'},
           {key:'followups',label:'Follow Ups',val:followUps.length,accent:'#8e44ad',items:followUps,type:'cold'},
         ]
-        const sheetBg=dm?'rgba(18,18,16,0.97)':'rgba(255,255,255,0.97)'
-        const sheetText=dm?'rgba(255,255,255,0.9)':ink
-        const sheetSub=dm?'rgba(255,255,255,0.4)':gray
-        const sheetDiv=dm?'rgba(255,255,255,0.06)':'rgba(14,14,12,0.06)'
         return(
           <>
             <div style={{display:'flex',justifyContent:'flex-end',marginBottom:8}}>
@@ -2203,52 +2199,67 @@ function AdminDashboard({sales,bookings,session,users,onSaleAdded,onNavigate}){
                 </button>
               ))}
             </div>
-            {openSheet&&(()=>{
-              const s=stats.find(x=>x.key===openSheet)
-              if(!s) return null
-              return(
-                <>
-                  <div style={{position:'fixed',inset:0,zIndex:300,background:'rgba(0,0,0,0.4)'}} onClick={()=>setOpenSheet(null)}/>
-                  <div style={{position:'fixed',bottom:0,left:0,right:0,zIndex:305,background:sheetBg,backdropFilter:'blur(32px)',WebkitBackdropFilter:'blur(32px)',borderRadius:'22px 22px 0 0',maxHeight:'78vh',display:'flex',flexDirection:'column',boxShadow:'0 -8px 40px rgba(0,0,0,0.2)'}}>
-                    <div style={{padding:'12px 20px 14px',borderBottom:`1px solid ${sheetDiv}`,flexShrink:0}}>
-                      <div style={{width:36,height:4,background:dm?'rgba(255,255,255,0.15)':'rgba(14,14,12,0.15)',borderRadius:99,margin:'0 auto 14px'}}/>
-                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                        <div>
-                          <p style={{fontSize:11,color:sheetSub,textTransform:'uppercase',letterSpacing:'0.1em',fontFamily:ff}}>{s.label}</p>
-                          <p style={{fontSize:24,fontWeight:700,color:s.accent,fontFamily:ff,lineHeight:1.2}}>{s.val}</p>
-                        </div>
-                        <button onClick={()=>setOpenSheet(null)} style={{width:32,height:32,borderRadius:'50%',background:dm?'rgba(255,255,255,0.08)':'rgba(14,14,12,0.06)',border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:sheetSub,fontSize:16}}>✕</button>
-                      </div>
-                    </div>
-                    <div style={{overflowY:'auto',padding:'0 20px 20px'}}>
-                      {s.items.length===0&&<p style={{color:sheetSub,fontSize:13,textAlign:'center',padding:'32px 0'}}>Sin datos</p>}
-                      {s.items.map(item=>s.type==='booking'?(
-                        <button key={item.id} onClick={()=>{setOpenSheet(null);onNavigate('bookings')}} style={{width:'100%',display:'flex',justifyContent:'space-between',alignItems:'center',padding:'13px 0',borderBottom:`1px solid ${sheetDiv}`,background:'none',border:'none',borderBottom:`1px solid ${sheetDiv}`,cursor:'pointer',textAlign:'left',fontFamily:ff}}>
-                          <div>
-                            <p style={{fontSize:14,fontWeight:600,color:sheetText}}>{item.name}</p>
-                            <p style={{fontSize:11,color:sheetSub,marginTop:2}}>{item.business} · {item.date} {item.time}</p>
-                            {item.service&&<p style={{fontSize:11,color:sheetSub}}>{item.service}</p>}
-                          </div>
-                          <span style={{fontSize:9,fontWeight:700,padding:'3px 9px',borderRadius:99,background:item.status==='confirmed'?'rgba(45,138,96,0.15)':item.status==='bought'?'rgba(184,151,90,0.15)':'rgba(14,14,12,0.07)',color:item.status==='confirmed'?'#2d8a60':item.status==='bought'?gold:sheetSub,whiteSpace:'nowrap',marginLeft:10,textTransform:'uppercase',letterSpacing:'0.06em'}}>{item.status==='no_show'?'No Show':item.status==='cancelled'?'Cancelada':item.status==='confirmed'?'Confirmada':item.status==='bought'?'Compró':'Pendiente'}</span>
-                        </button>
-                      ):(
-                        <button key={item.id} onClick={()=>{setOpenSheet(null);onNavigate('coldcalling')}} style={{width:'100%',display:'flex',justifyContent:'space-between',alignItems:'center',padding:'13px 0',background:'none',border:'none',borderBottom:`1px solid ${sheetDiv}`,cursor:'pointer',textAlign:'left',fontFamily:ff}}>
-                          <div>
-                            <p style={{fontSize:14,fontWeight:600,color:sheetText}}>{item.business_name}</p>
-                            {item.pueblo&&<p style={{fontSize:11,color:sheetSub,marginTop:2}}>{item.pueblo}</p>}
-                            {item.notes&&<p style={{fontSize:11,color:sheetSub,fontStyle:'italic',marginTop:1}}>{item.notes}</p>}
-                          </div>
-                          <div style={{textAlign:'right',flexShrink:0,marginLeft:10}}>
-                            {s.key==='followups'&&item.followup_date&&<span style={{fontSize:10,fontWeight:700,color:item.followup_date===tod?'#c0392b':gold,background:item.followup_date===tod?'rgba(192,57,43,0.12)':'rgba(184,151,90,0.12)',padding:'3px 8px',borderRadius:99,whiteSpace:'nowrap',display:'block'}}>{item.followup_date===tod?'HOY':new Date(item.followup_date+'T12:00:00').toLocaleDateString('es-PR',{day:'numeric',month:'short'})}</span>}
-                            {item.phone&&<a href={`tel:${item.phone}`} onClick={e=>e.stopPropagation()} style={{fontSize:11,color:'#2d8a60',textDecoration:'none',display:'block',marginTop:4}}>Llamar</a>}
-                          </div>
-                        </button>
-                      ))}
-                    </div>
+          </>
+        )
+      })()}
+      {/* Stat card sheet — rendered separately to avoid nested IIFE JSX issue */}
+      {openSheet&&(()=>{
+        const dm=darkMode
+        const stats=[
+          {key:'semana',label:'Esta Semana',val:weekCitas,accent:'#2d8a60',items:allBookings.filter(b=>b.date>=wsStr&&b.date<=weStr&&!b.archived),type:'booking'},
+          {key:'hoy',label:'Hoy',val:todayB.length,accent:gold,items:todayB,type:'booking'},
+          {key:'pendientes',label:'Pendientes',val:pendientesLeads.length,accent:'#e67e22',items:pendientesLeads,type:'cold'},
+          {key:'canceladas',label:'Canceladas',val:canceladas.length,accent:'#c0392b',items:canceladas,type:'booking'},
+          {key:'followups',label:'Follow Ups',val:followUps.length,accent:'#8e44ad',items:followUps,type:'cold'},
+        ]
+        const s=stats.find(x=>x.key===openSheet)
+        if(!s) return null
+        const sheetBg=dm?'rgba(18,18,16,0.97)':'rgba(255,255,255,0.97)'
+        const sheetText=dm?'rgba(255,255,255,0.9)':ink
+        const sheetSub=dm?'rgba(255,255,255,0.4)':gray
+        const sheetDiv=dm?'rgba(255,255,255,0.06)':'rgba(14,14,12,0.06)'
+        return(
+          <>
+            <div style={{position:'fixed',inset:0,zIndex:300,background:'rgba(0,0,0,0.4)'}} onClick={()=>setOpenSheet(null)}/>
+            <div style={{position:'fixed',bottom:0,left:0,right:0,zIndex:305,background:sheetBg,backdropFilter:'blur(32px)',WebkitBackdropFilter:'blur(32px)',borderRadius:'22px 22px 0 0',maxHeight:'78vh',display:'flex',flexDirection:'column',boxShadow:'0 -8px 40px rgba(0,0,0,0.2)'}}>
+              <div style={{padding:'12px 20px 14px',borderBottom:`1px solid ${sheetDiv}`,flexShrink:0}}>
+                <div style={{width:36,height:4,background:dm?'rgba(255,255,255,0.15)':'rgba(14,14,12,0.15)',borderRadius:99,margin:'0 auto 14px'}}/>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                  <div>
+                    <p style={{fontSize:11,color:sheetSub,textTransform:'uppercase',letterSpacing:'0.1em',fontFamily:ff}}>{s.label}</p>
+                    <p style={{fontSize:24,fontWeight:700,color:s.accent,fontFamily:ff,lineHeight:1.2}}>{s.val}</p>
                   </div>
-                </>
-              )
-            })()}
+                  <button onClick={()=>setOpenSheet(null)} style={{width:32,height:32,borderRadius:'50%',background:dm?'rgba(255,255,255,0.08)':'rgba(14,14,12,0.06)',border:'none',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:sheetSub,fontSize:16}}>✕</button>
+                </div>
+              </div>
+              <div style={{overflowY:'auto',padding:'0 20px 20px'}}>
+                {s.items.length===0&&<p style={{color:sheetSub,fontSize:13,textAlign:'center',padding:'32px 0'}}>Sin datos</p>}
+                {s.items.map(item=>s.type==='booking'?(
+                  <button key={item.id} onClick={()=>{setOpenSheet(null);onNavigate('bookings')}} style={{width:'100%',display:'flex',justifyContent:'space-between',alignItems:'center',padding:'13px 0',background:'none',border:'none',borderBottom:`1px solid ${sheetDiv}`,cursor:'pointer',textAlign:'left',fontFamily:ff}}>
+                    <div>
+                      <p style={{fontSize:14,fontWeight:600,color:sheetText}}>{item.name}</p>
+                      <p style={{fontSize:11,color:sheetSub,marginTop:2}}>{item.business} · {item.date} {item.time}</p>
+                      {item.service&&<p style={{fontSize:11,color:sheetSub}}>{item.service}</p>}
+                    </div>
+                    <span style={{fontSize:9,fontWeight:700,padding:'3px 9px',borderRadius:99,background:item.status==='confirmed'?'rgba(45,138,96,0.15)':item.status==='bought'?'rgba(184,151,90,0.15)':'rgba(14,14,12,0.07)',color:item.status==='confirmed'?'#2d8a60':item.status==='bought'?gold:sheetSub,whiteSpace:'nowrap',marginLeft:10,textTransform:'uppercase',letterSpacing:'0.06em'}}>{item.status==='no_show'?'No Show':item.status==='cancelled'?'Cancelada':item.status==='confirmed'?'Confirmada':item.status==='bought'?'Compró':'Pendiente'}</span>
+                  </button>
+                ):(
+                  <button key={item.id} onClick={()=>{setOpenSheet(null);onNavigate('coldcalling')}} style={{width:'100%',display:'flex',justifyContent:'space-between',alignItems:'center',padding:'13px 0',background:'none',border:'none',borderBottom:`1px solid ${sheetDiv}`,cursor:'pointer',textAlign:'left',fontFamily:ff}}>
+                    <div>
+                      <p style={{fontSize:14,fontWeight:600,color:sheetText}}>{item.business_name}</p>
+                      {item.pueblo&&<p style={{fontSize:11,color:sheetSub,marginTop:2}}>{item.pueblo}</p>}
+                      {item.notes&&<p style={{fontSize:11,color:sheetSub,fontStyle:'italic',marginTop:1}}>{item.notes}</p>}
+                    </div>
+                    <div style={{textAlign:'right',flexShrink:0,marginLeft:10}}>
+                      {s.key==='followups'&&item.followup_date&&<span style={{fontSize:10,fontWeight:700,color:item.followup_date===tod?'#c0392b':gold,background:item.followup_date===tod?'rgba(192,57,43,0.12)':'rgba(184,151,90,0.12)',padding:'3px 8px',borderRadius:99,whiteSpace:'nowrap',display:'block'}}>{item.followup_date===tod?'HOY':new Date(item.followup_date+'T12:00:00').toLocaleDateString('es-PR',{day:'numeric',month:'short'})}</span>}
+                      {item.phone&&<a href={`tel:${item.phone}`} onClick={e=>e.stopPropagation()} style={{fontSize:11,color:'#2d8a60',textDecoration:'none',display:'block',marginTop:4}}>Llamar</a>}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </>
+        )
       })()}
       {/* Add income bottom sheet */}
       {addIncome&&(
