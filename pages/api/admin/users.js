@@ -26,13 +26,14 @@ export default async function handler(req, res) {
     const { data: authList } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 })
     const authMap = {}
     authList?.users?.forEach(u => {
-      authMap[u.id] = { email: u.email, last_sign_in_at: u.last_sign_in_at }
+      authMap[u.id] = { email: u.email, last_sign_in_at: u.last_sign_in_at, banned_until: u.banned_until }
     })
 
     const users = (profiles || []).map(p => ({
       ...p,
       email: authMap[p.id]?.email || null,
       last_sign_in_at: authMap[p.id]?.last_sign_in_at || null,
+      banned: !!authMap[p.id]?.banned_until && authMap[p.id]?.banned_until !== '1970-01-01T00:00:00Z',
     }))
 
     return res.status(200).json({ users })
@@ -55,7 +56,7 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'PATCH') {
-    const { id, full_name, business_name, phone, email, password, role } = req.body
+    const { id, full_name, business_name, phone, email, password, role, ban } = req.body
 
     const profileUpdate = {}
     if (full_name !== undefined) profileUpdate.full_name = full_name
@@ -70,6 +71,12 @@ export default async function handler(req, res) {
     if (email) await supabaseAdmin.auth.admin.updateUserById(id, { email })
     if (password && password.length >= 6) {
       await supabaseAdmin.auth.admin.updateUserById(id, { password })
+    }
+    if (ban === true) {
+      await supabaseAdmin.auth.admin.updateUserById(id, { ban_duration: '876600h' }) // ~100 years
+    }
+    if (ban === false) {
+      await supabaseAdmin.auth.admin.updateUserById(id, { ban_duration: 'none' })
     }
 
     return res.status(200).json({ success: true })

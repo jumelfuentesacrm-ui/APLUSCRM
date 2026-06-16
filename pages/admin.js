@@ -1671,6 +1671,8 @@ function AdminSystemPanel({ users, cards, allUsers, loadAll, showToast }) {
   const [agentForm, setAgentForm] = useState({firstName:'',lastName:'',email:'',password:''})
   const [creatingAgent, setCreatingAgent] = useState(false)
   const [showAgentForm, setShowAgentForm] = useState(false)
+  const [editingAgent, setEditingAgent] = useState(null) // {id, full_name, email, newPassword:''}
+  const [savingAgent, setSavingAgent] = useState(false)
   const BASE_URL = typeof window!=='undefined'?window.location.origin:''
 
   useEffect(()=>{ if(tab==='agents') loadAgents() },[tab])
@@ -1710,6 +1712,25 @@ function AdminSystemPanel({ users, cards, allUsers, loadAll, showToast }) {
     if(!confirm(`¿Cambiar rol de ${u.full_name||u.email} a cliente?`)) return
     await fetch('/api/admin/users',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:u.id,role:'client'})})
     showToast('Rol removido'); loadAgents()
+  }
+
+  async function saveAgent(e){
+    e.preventDefault(); setSavingAgent(true)
+    const body={id:editingAgent.id}
+    const nameParts=editingAgent.full_name.trim().split(' ')
+    body.full_name=editingAgent.full_name.trim()
+    body.business_name=nameParts[nameParts.length-1]||body.full_name
+    if(editingAgent.email) body.email=editingAgent.email
+    if(editingAgent.newPassword&&editingAgent.newPassword.length>=6) body.password=editingAgent.newPassword
+    await fetch('/api/admin/users',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+    showToast('Agente actualizado'); setSavingAgent(false); setEditingAgent(null); loadAgents()
+  }
+
+  async function toggleBan(u){
+    const banning=!u.banned
+    if(banning&&!confirm(`¿Bloquear acceso de ${u.full_name||u.email}?`)) return
+    await fetch('/api/admin/users',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:u.id,ban:banning})})
+    showToast(banning?'Acceso bloqueado':'Acceso restaurado'); loadAgents()
   }
 
   useEffect(() => {
@@ -1844,15 +1865,50 @@ function AdminSystemPanel({ users, cards, allUsers, loadAll, showToast }) {
           )}
           {agents.length===0&&!showAgentForm&&<p style={{color:gray,fontSize:13,textAlign:'center',padding:'24px 0'}}>No hay agentes aún</p>}
           {agents.map(u=>(
-            <div key={u.id} style={{background:'rgba(255,255,255,0.7)',border:'1px solid rgba(14,14,12,0.07)',borderRadius:14,padding:14,marginBottom:10}}>
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
-                <div>
-                  <p style={{fontSize:14,fontWeight:600,color:ink}}>{u.business_name||u.full_name}</p>
+            <div key={u.id} style={{background:'rgba(255,255,255,0.7)',border:`1.5px solid ${u.banned?'rgba(192,57,43,0.3)':'rgba(14,14,12,0.07)'}`,borderRadius:14,padding:14,marginBottom:10}}>
+              {/* Header */}
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:8}}>
+                <div style={{minWidth:0}}>
+                  <div style={{display:'flex',alignItems:'center',gap:6}}>
+                    <p style={{fontSize:14,fontWeight:600,color:u.banned?'#c0392b':ink}}>{u.business_name||u.full_name}</p>
+                    {u.banned&&<span style={{fontSize:10,background:'rgba(192,57,43,0.1)',color:'#c0392b',borderRadius:6,padding:'1px 6px',fontWeight:700}}>BLOQUEADO</span>}
+                  </div>
                   <p style={{fontSize:12,color:gray,marginTop:2}}>{u.email}</p>
+                  {u.last_sign_in_at&&<p style={{fontSize:10,color:gray,marginTop:1}}>Último acceso: {new Date(u.last_sign_in_at).toLocaleDateString('es',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}</p>}
                 </div>
-                <button onClick={()=>removeAgent(u)} style={{fontSize:11,color:'#c0392b',background:'rgba(192,57,43,0.08)',border:'none',borderRadius:8,padding:'5px 10px',cursor:'pointer',fontFamily:ff,fontWeight:600}}>Remover</button>
+                <button onClick={()=>setEditingAgent(editingAgent?.id===u.id?null:{id:u.id,full_name:u.full_name||'',email:u.email||'',newPassword:''})} style={{fontSize:11,color:gold,background:'rgba(184,151,90,0.1)',border:'none',borderRadius:8,padding:'5px 10px',cursor:'pointer',fontFamily:ff,fontWeight:600,flexShrink:0}}>
+                  {editingAgent?.id===u.id?'Cerrar':'Editar'}
+                </button>
               </div>
-              <div style={{marginTop:10,background:'rgba(14,14,12,0.03)',borderRadius:8,padding:'8px 10px',display:'flex',flexDirection:'column',gap:8}}>
+
+              {/* Edit form */}
+              {editingAgent?.id===u.id&&(
+                <form onSubmit={saveAgent} style={{marginTop:12,display:'flex',flexDirection:'column',gap:8}}>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+                    <div>
+                      <p style={{fontSize:10,color:gray,marginBottom:3}}>Nombre completo</p>
+                      <input value={editingAgent.full_name} onChange={e=>setEditingAgent(p=>({...p,full_name:e.target.value}))} style={{width:'100%',boxSizing:'border-box',border:'1px solid rgba(14,14,12,0.15)',borderRadius:8,padding:'7px 10px',fontSize:13,fontFamily:ff,background:'rgba(255,255,255,0.8)',color:ink}}/>
+                    </div>
+                    <div>
+                      <p style={{fontSize:10,color:gray,marginBottom:3}}>Email</p>
+                      <input value={editingAgent.email} onChange={e=>setEditingAgent(p=>({...p,email:e.target.value}))} style={{width:'100%',boxSizing:'border-box',border:'1px solid rgba(14,14,12,0.15)',borderRadius:8,padding:'7px 10px',fontSize:13,fontFamily:ff,background:'rgba(255,255,255,0.8)',color:ink}}/>
+                    </div>
+                  </div>
+                  <div>
+                    <p style={{fontSize:10,color:gray,marginBottom:3}}>Nueva contraseña <span style={{fontStyle:'italic'}}>(dejar vacío para no cambiar)</span></p>
+                    <input type="password" placeholder="mínimo 6 caracteres" value={editingAgent.newPassword} onChange={e=>setEditingAgent(p=>({...p,newPassword:e.target.value}))} style={{width:'100%',boxSizing:'border-box',border:'1px solid rgba(14,14,12,0.15)',borderRadius:8,padding:'7px 10px',fontSize:13,fontFamily:ff,background:'rgba(255,255,255,0.8)',color:ink}}/>
+                  </div>
+                  <div style={{display:'flex',gap:6}}>
+                    <button type="submit" disabled={savingAgent} style={{flex:1,background:gold,color:'#fff',border:'none',borderRadius:8,padding:'8px',fontSize:12,fontWeight:600,fontFamily:ff,cursor:'pointer'}}>{savingAgent?'Guardando...':'Guardar cambios'}</button>
+                    <button type="button" onClick={()=>toggleBan(u)} style={{padding:'8px 12px',background:u.banned?'rgba(39,174,96,0.1)':'rgba(192,57,43,0.08)',color:u.banned?'#27ae60':'#c0392b',border:'none',borderRadius:8,fontSize:12,fontWeight:600,fontFamily:ff,cursor:'pointer'}}>
+                      {u.banned?'Restaurar acceso':'Bloquear acceso'}
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {/* Links */}
+              <div style={{marginTop:12,background:'rgba(14,14,12,0.03)',borderRadius:8,padding:'8px 10px',display:'flex',flexDirection:'column',gap:8}}>
                 <div>
                   <p style={{fontSize:10,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:4}}>Link de citas (clientes)</p>
                   <div style={{display:'flex',gap:6,alignItems:'center'}}>
