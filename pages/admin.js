@@ -85,14 +85,14 @@ function DashboardPanel({ cards, sales, users, session, onSelectClient, onPunch,
       <div style={{marginBottom:'1.25rem'}}>
         <div style={{fontSize:'0.62rem',fontWeight:700,letterSpacing:'0.15em',textTransform:'uppercase',color:gold,marginBottom:'0.2rem'}}>{greeting.toUpperCase()}, {firstName.toUpperCase()}</div>
         <div style={{fontFamily:ffS,fontSize:'1.75rem',fontWeight:500,color:black,lineHeight:1.1}}>
-          Tienes {todayBookings.length} cita{todayBookings.length!==1?'s':''} hoy
+          Tienes {todayBookings.length} consulta{todayBookings.length!==1?'s':''} hoy
         </div>
       </div>
 
       {/* Stats */}
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'0.6rem',marginBottom:'1rem'}}>
         {[
-          {k:'Citas', v: todayBookings.length||bookings.length},
+          {k:'Consultas', v: todayBookings.length||bookings.length},
           {k:'Ingresos', v:'$'+Math.round(monthRevenue).toLocaleString()},
           {k:'Nuevos', v: newClientsMonth||cards.length},
         ].map(m=>(
@@ -119,12 +119,12 @@ function DashboardPanel({ cards, sales, users, session, onSelectClient, onPunch,
         </div>
       </div>
 
-      {/* Próximas citas */}
+      {/* Próximas consultas */}
       <div style={{...glassCard,overflow:'hidden'}}>
         <div style={{padding:'0.85rem 1rem',borderBottom:'1px solid rgba(28,28,26,0.06)'}}>
-          <div style={{fontSize:'0.58rem',fontWeight:700,letterSpacing:'0.15em',textTransform:'uppercase',color:gray}}>Próximas Citas</div>
+          <div style={{fontSize:'0.58rem',fontWeight:700,letterSpacing:'0.15em',textTransform:'uppercase',color:gray}}>Próximas Consultas</div>
         </div>
-        {upcoming.length===0&&<div style={{padding:'1.5rem',textAlign:'center',color:gray,fontSize:'0.78rem'}}>No hay citas próximas.</div>}
+        {upcoming.length===0&&<div style={{padding:'1.5rem',textAlign:'center',color:gray,fontSize:'0.78rem'}}>No hay consultas próximas.</div>}
         {upcoming.map((b,i)=>{
           const isToday=b.date===today
           const st=STATUS_COLORS_BOOKINGS[b.status]||STATUS_COLORS_BOOKINGS.pending
@@ -1910,7 +1910,7 @@ function AdminSystemPanel({ users, cards, allUsers, loadAll, showToast }) {
               {/* Links */}
               <div style={{marginTop:12,background:'rgba(14,14,12,0.03)',borderRadius:8,padding:'8px 10px',display:'flex',flexDirection:'column',gap:8}}>
                 <div>
-                  <p style={{fontSize:10,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:4}}>Link de citas (clientes)</p>
+                  <p style={{fontSize:10,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:4}}>Link de consultas (clientes)</p>
                   <div style={{display:'flex',gap:6,alignItems:'center'}}>
                     <p style={{fontSize:11,color:ink,flex:1,wordBreak:'break-all',fontFamily:'monospace'}}>{BASE_URL}/?agent={u.id}</p>
                     <button onClick={()=>{navigator.clipboard.writeText(`${BASE_URL}/?agent=${u.id}`);showToast('Link copiado')}} style={{flexShrink:0,background:gold,color:'#fff',border:'none',borderRadius:6,padding:'5px 10px',fontSize:11,fontWeight:600,fontFamily:ff,cursor:'pointer'}}>Copiar</button>
@@ -2040,11 +2040,12 @@ function waLink(phone, message) {
   const clean = (phone||'').replace(/[^\d+]/g,'')
   return `https://wa.me/${clean}?text=${encodeURIComponent(message)}`
 }
-function confirmCitaMsg({name,date,time,service,facebook_page}){
-  return `Hola ${name}! 🎉 Tu cita está confirmada.\n📅 Fecha: ${date}\n🕐 Hora: ${time}\n💼 Servicio: ${service||'Consulta'}\n📘 Facebook: ${facebook_page||'N/A'}\n🔗 El link de Google Meet te lo envío el mismo día de la cita.\n¡Nos vemos pronto!`
+function confirmCitaMsg({name,date,time,service,facebook_page,bookingLink}){
+  const link=bookingLink||BOOKING_LINK
+  return `Hola ${name}! 🎉 Tu consulta está confirmada.\n📅 Fecha: ${date}\n🕐 Hora: ${time}\n💼 Servicio: ${service||'Consulta'}\n📘 Facebook: ${facebook_page||'N/A'}\n🔗 El link de Google Meet te lo envío el mismo día de la consulta.\n¡Nos vemos pronto!`
 }
-function bookingLinkMsg(name){
-  return `Hola ${name}! Te comparto el link para agendar tu cita: ${BOOKING_LINK}`
+function bookingLinkMsg(name,link){
+  return `Hola ${name}! Te comparto el link para agendar tu consulta: ${link||BOOKING_LINK}`
 }
 function getCurrentWeekRange(){
   const now=new Date(); const day=now.getDay()
@@ -2392,7 +2393,9 @@ function AdminDashboard({sales,bookings,session,users,onSaleAdded,onNavigate,dar
 }
 
 // ─── ADMIN BOOKINGS ───────────────────────────────────────────────────────────
-function AdminBookings(){
+function AdminBookings({userRole,agentId}){
+  const BASE_URL=typeof window!=='undefined'?window.location.origin:''
+  const myBookingLink=agentId?`${BASE_URL}/?agent=${agentId}`:BOOKING_LINK
   const [bookings,setBookings]=useState([])
   const [loading,setLoading]=useState(true)
   const [showArchived,setShowArchived]=useState(false)
@@ -2467,7 +2470,8 @@ function AdminBookings(){
     setCerrarModal(null); setCerrarCompro(null); setCerrarForm({service:'',documentos:'',payType:'completo',total:'',pago_inicial:'',adeudado:'',tiempo_saldo:''}); setSaving(false)
   }
   function doConfirm(b){
-    window.open(waLink(b.phone,confirmCitaMsg({name:b.name,date:b.date,time:b.time,service:b.service,facebook_page:b.facebook_page})),'_blank')
+    const link=b.agent_id?`${BASE_URL}/?agent=${b.agent_id}`:myBookingLink
+    window.open(waLink(b.phone,confirmCitaMsg({name:b.name,date:b.date,time:b.time,service:b.service,facebook_page:b.facebook_page,bookingLink:link})),'_blank')
     updateStatus(b.id,'confirmed')
   }
   const active=bookings.filter(b=>!b.archived)
@@ -2611,12 +2615,12 @@ function AdminBookings(){
                   <p style={{fontSize:13,fontWeight:700,color:ink,margin:0,textTransform:'capitalize'}}>
                     {new Date(calDay+'T12:00:00').toLocaleDateString('es-PR',{weekday:'long',day:'numeric',month:'long'})}
                   </p>
-                  {calDayBookings.length>0&&<p style={{fontSize:11,color:gold,margin:'2px 0 0'}}>{calDayBookings.length} cita{calDayBookings.length!==1?'s':''}</p>}
+                  {calDayBookings.length>0&&<p style={{fontSize:11,color:gold,margin:'2px 0 0'}}>{calDayBookings.length} consulta{calDayBookings.length!==1?'s':''}</p>}
                 </div>
                 <button onClick={()=>{setForm(f=>({...f,date:calDay}));setShowNew(true)}}
-                  style={{background:ink,color:cream,border:'none',borderRadius:99,padding:'7px 14px',fontSize:12,fontWeight:600,fontFamily:ff,cursor:'pointer',touchAction:'manipulation',whiteSpace:'nowrap'}}>+ Cita</button>
+                  style={{background:ink,color:cream,border:'none',borderRadius:99,padding:'7px 14px',fontSize:12,fontWeight:600,fontFamily:ff,cursor:'pointer',touchAction:'manipulation',whiteSpace:'nowrap'}}>+ Consulta</button>
               </div>
-              {calDayBookings.length===0&&<p style={{textAlign:'center',color:gray,fontSize:13,padding:'16px 0'}}>Sin citas este día</p>}
+              {calDayBookings.length===0&&<p style={{textAlign:'center',color:gray,fontSize:13,padding:'16px 0'}}>Sin consultas este día</p>}
               {calDayBookings.map(b=><BookingCard key={b.id} b={b}/>)}
             </div>
           )}
@@ -2638,10 +2642,10 @@ function AdminBookings(){
       })}
       {/* New booking sheet */}
       {showNew&&(
-        <div style={{position:'fixed',inset:0,zIndex:300,background:'rgba(0,0,0,0.5)',display:'flex',alignItems:'flex-end'}} onClick={e=>e.target===e.currentTarget&&setShowNew(false)}>
-          <div style={{background:cream,borderRadius:'20px 20px 0 0',padding:'24px 20px calc(env(safe-area-inset-bottom,0px) + 28px)',width:'100%',maxHeight:'90dvh',overflowY:'auto',boxSizing:'border-box',WebkitOverflowScrolling:'touch'}}>
+        <div style={{position:'fixed',inset:0,zIndex:300,background:'rgba(0,0,0,0.5)',display:'flex',alignItems:'flex-end',overflow:'hidden'}} onClick={e=>e.target===e.currentTarget&&setShowNew(false)}>
+          <div style={{background:cream,borderRadius:'20px 20px 0 0',width:'100%',maxHeight:'90dvh',overflowY:'auto',overflowX:'hidden',boxSizing:'border-box',WebkitOverflowScrolling:'touch',padding:'24px 20px calc(env(safe-area-inset-bottom,0px) + 32px)'}} onClick={e=>e.stopPropagation()}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}}>
-              <h2 style={{fontFamily:ffS,fontSize:22,fontWeight:300,color:ink}}>Nueva Cita</h2>
+              <h2 style={{fontFamily:ffS,fontSize:22,fontWeight:300,color:ink}}>Nueva Consulta</h2>
               <button onClick={()=>setShowNew(false)} style={{background:'none',border:'none',fontSize:20,cursor:'pointer',color:gray}}>✕</button>
             </div>
             <form onSubmit={createBooking} style={{display:'flex',flexDirection:'column',gap:12}}>
@@ -2662,7 +2666,7 @@ function AdminBookings(){
                 <label style={{fontSize:11,fontWeight:600,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:4}}>Notas</label>
                 <textarea value={form.notes} onChange={e=>setForm(p=>({...p,notes:e.target.value}))} rows={3} style={{...inp2,height:'auto',padding:'10px 12px',resize:'none'}}/>
               </div>
-              <button type="submit" disabled={saving} style={{height:48,background:ink,color:cream,border:'none',borderRadius:12,fontSize:15,fontWeight:600,fontFamily:ff,cursor:'pointer',marginTop:4}}>{saving?'Guardando...':'Crear Cita'}</button>
+              <button type="submit" disabled={saving} style={{height:48,background:ink,color:cream,border:'none',borderRadius:12,fontSize:15,fontWeight:600,fontFamily:ff,cursor:'pointer',marginTop:4}}>{saving?'Guardando...':'Crear Consulta'}</button>
             </form>
           </div>
         </div>
@@ -2772,7 +2776,7 @@ function ConsultasPanel(){
       <h1 style={{fontFamily:ffS,fontSize:26,fontWeight:300,color:ink,marginBottom:6}}>Consultas</h1>
       <p style={{fontSize:12,color:gray,marginBottom:20}}>Registro de consultas enviadas directamente</p>
       {loading&&<p style={{color:gray,fontSize:13,textAlign:'center',padding:'40px 0'}}>Cargando...</p>}
-      {!loading&&leads.length===0&&<div style={{textAlign:'center',padding:'40px 0',color:gray}}><p style={{fontSize:15}}>Sin consultas enviadas</p><p style={{fontSize:12,marginTop:4}}>Usa "Enviar cita" en Cold Calling para registrarlas</p></div>}
+      {!loading&&leads.length===0&&<div style={{textAlign:'center',padding:'40px 0',color:gray}}><p style={{fontSize:15}}>Sin consultas enviadas</p><p style={{fontSize:12,marginTop:4}}>Usa "Enviar consulta" en Cold Calling para registrarlas</p></div>}
       {leads.map(l=>{
         const src=l.source==='website'?SC.website:SC.direct
         const d=new Date(l.created_at)
@@ -2795,7 +2799,9 @@ function ConsultasPanel(){
   )
 }
 
-function AdminColdCalling(){
+function AdminColdCalling({agentId}){
+  const BASE_URL=typeof window!=='undefined'?window.location.origin:''
+  const myBookingLink=agentId?`${BASE_URL}/?agent=${agentId}`:BOOKING_LINK
   const [leads,setLeads]=useState([])
   const [loading,setLoading]=useState(true)
   const [showForm,setShowForm]=useState(null)
@@ -2869,7 +2875,7 @@ function AdminColdCalling(){
     caliente:{label:'Caliente',color:'#e74c3c',bg:'rgba(231,76,60,0.1)'},
     tibio:{label:'Tibio',color:'#f39c12',bg:'rgba(243,156,18,0.1)'},
     frio:{label:'Frío',color:'#5d8aa8',bg:'rgba(93,138,168,0.1)'},
-    enviar_cita:{label:'Enviar cita',color:'#8e44ad',bg:'rgba(142,68,173,0.1)'},
+    enviar_cita:{label:'Enviar consulta',color:'#8e44ad',bg:'rgba(142,68,173,0.1)'},
   }
   const inp2={width:'100%',boxSizing:'border-box',height:44,borderRadius:10,border:'1px solid rgba(14,14,12,0.12)',padding:'0 12px',fontSize:14,fontFamily:ff,background:'#fff',outline:'none'}
   return(
@@ -2985,12 +2991,12 @@ function AdminColdCalling(){
                             {status:'caliente',label:'Caliente',color:'#e74c3c',bg:'rgba(231,76,60,0.08)',border:'rgba(231,76,60,0.25)'},
                             {status:'tibio',label:'Tibio',color:'#f39c12',bg:'rgba(243,156,18,0.08)',border:'rgba(243,156,18,0.25)'},
                             {status:'frio',label:'Frío',color:'#5d8aa8',bg:'rgba(93,138,168,0.08)',border:'rgba(93,138,168,0.25)'},
-                            {status:'enviar_cita',label:'Enviar cita',color:'#fff',bg:'#2d8a60',border:'#2d8a60',bold:true},
+                            {status:'enviar_cita',label:'Enviar consulta',color:'#fff',bg:'#2d8a60',border:'#2d8a60',bold:true},
                           ].map(p=>(
                             <button key={p.status}
                               onClick={()=>{
                                 updateLead(l.id,{call_status:p.status,...(p.extra||{})})
-                                if(p.status==='enviar_cita') window.open(waLink(l.phone,bookingLinkMsg(l.business_name)),'_blank')
+                                if(p.status==='enviar_cita') window.open(waLink(l.phone,bookingLinkMsg(l.business_name,myBookingLink)),'_blank')
                               }}
                               style={{flexShrink:0,padding:'5px 11px',borderRadius:99,border:`1px solid ${p.border}`,background:l.call_status===p.status?p.bg.replace('0.08','0.2'):p.bg,color:p.color,fontSize:11,fontWeight:l.call_status===p.status||p.bold?700:500,fontFamily:ff,cursor:'pointer',touchAction:'manipulation',whiteSpace:'nowrap',outline:l.call_status===p.status?`2px solid ${p.color}`:'none',outlineOffset:1}}>
                               {p.label.trim()}
@@ -3009,8 +3015,8 @@ function AdminColdCalling(){
       </div>
       {/* Register lead sheet */}
       {showForm&&(
-        <div style={{position:'fixed',inset:0,zIndex:300,background:'rgba(0,0,0,0.5)',display:'flex',alignItems:'flex-end'}} onClick={e=>e.target===e.currentTarget&&setShowForm(null)}>
-          <div style={{background:cream,borderRadius:'20px 20px 0 0',padding:'24px 20px calc(env(safe-area-inset-bottom,0px) + 28px)',width:'100%',maxHeight:'90dvh',overflowY:'auto',boxSizing:'border-box',WebkitOverflowScrolling:'touch'}}>
+        <div style={{position:'fixed',inset:0,zIndex:300,background:'rgba(0,0,0,0.5)',display:'flex',alignItems:'flex-end',overflow:'hidden'}} onClick={e=>e.target===e.currentTarget&&setShowForm(null)}>
+          <div style={{background:cream,borderRadius:'20px 20px 0 0',width:'100%',maxHeight:'90dvh',overflowY:'auto',overflowX:'hidden',boxSizing:'border-box',WebkitOverflowScrolling:'touch',padding:'24px 20px calc(env(safe-area-inset-bottom,0px) + 32px)'}} onClick={e=>e.stopPropagation()}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}}>
               <h2 style={{fontFamily:ffS,fontSize:22,fontWeight:300,color:ink}}>Registrar Lead</h2>
               <button onClick={()=>setShowForm(null)} style={{background:'none',border:'none',fontSize:20,cursor:'pointer',color:gray}}>✕</button>
@@ -3203,7 +3209,7 @@ export default function Admin({session}){
             const viewId=params.get('view')
             if(confirmId){
               fetch('/api/admin/bookings',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:confirmId,status:'confirmed'})})
-                .then(()=>{ showToast('✓ Cita confirmada'); setPanel('bookings') })
+                .then(()=>{ showToast('✓ Consulta confirmada'); setPanel('bookings') })
                 .catch(()=>{})
               window.history.replaceState({},'','/admin')
             } else if(viewId){
@@ -3437,8 +3443,8 @@ export default function Admin({session}){
         <div key={burger?panel:tab} className="panel-animate">
           {/* PRIMARY TABS */}
           {activePanel==='dashboard'&&<AdminDashboard sales={sales} bookings={adminBookings} session={session} users={users} onSaleAdded={loadAll} darkMode={darkMode} onNavigate={(p)=>{setActivePanel(p);setTab(p)}}/>}
-          {activePanel==='bookings'&&<AdminBookings/>}
-          {activePanel==='coldcalling'&&<AdminColdCalling/>}
+          {activePanel==='bookings'&&<AdminBookings userRole={userRole} agentId={agentId}/>}
+          {activePanel==='coldcalling'&&<AdminColdCalling agentId={agentId}/>}
 
 
           {/* BURGER PANELS */}
