@@ -8,9 +8,12 @@ const supabaseAdmin = createClient(
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
 
-  const { email, password, full_name, business_name, phone } = req.body
+  const { email, password, full_name, business_name, phone, role } = req.body
   if (!email || !password) return res.status(400).json({ error: 'Email y contraseña requeridos' })
   if (password.length < 6) return res.status(400).json({ error: 'La contraseña debe tener mínimo 6 caracteres' })
+
+  const allowedRoles = ['client', 'agent', 'admin']
+  const assignedRole = allowedRoles.includes(role) ? role : 'client'
 
   const { data, error } = await supabaseAdmin.auth.admin.createUser({
     email,
@@ -21,8 +24,11 @@ export default async function handler(req, res) {
   if (error) return res.status(400).json({ error: error.message })
 
   await supabaseAdmin.from('profiles').update({
-    full_name, business_name, phone, role: 'client'
+    full_name: full_name || email,
+    business_name: business_name || full_name || email,
+    phone,
+    role: assignedRole
   }).eq('id', data.user.id)
 
-  return res.status(200).json({ success: true })
+  return res.status(200).json({ success: true, id: data.user.id })
 }

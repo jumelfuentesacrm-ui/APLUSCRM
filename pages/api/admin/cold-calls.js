@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import { requireAdmin } from '../../../lib/requireAdmin'
+import { requireAdminOrAgent } from '../../../lib/requireAdmin'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -7,8 +7,10 @@ const supabaseAdmin = createClient(
 )
 
 export default async function handler(req, res) {
-  const user = await requireAdmin(req, res)
+  const user = await requireAdminOrAgent(req, res)
   if (!user) return
+  // Agents: read-only
+  if (user.role === 'agent' && req.method !== 'GET') return res.status(403).json({ error: 'Read-only' })
 
   if (req.method === 'GET') {
     const { data, error } = await supabaseAdmin

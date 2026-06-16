@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { requireAdminOrAgent } from '../../../lib/requireAdmin'
 import webpush from 'web-push'
 
 const supabase = createClient(
@@ -43,28 +44,42 @@ async function sendBookingPush(booking) {
 }
 
 export default async function handler(req, res) {
+  const user = await requireAdminOrAgent(req, res)
+  if (!user) return
+
+  const isAgent = user.role === 'agent'
+
   if (req.method === 'POST') {
-    const { name, phone, business, facebook_page, service, date, time, notes } = req.body
+    const { name, phone, business, facebook_page, service, date, time, notes, source } = req.body
     if (!name || !phone || !date || !time) {
       return res.status(400).json({ error: 'Missing required fields' })
     }
     const { data, error } = await supabase
       .from('bookings')
-      .insert([{ name, phone, business: business || name, facebook_page, service, date, time, notes, status: 'pending', archived: false }])
+      .insert([{
+        name, phone,
+        business: business || name,
+        facebook_page, service, date, time, notes,
+        status: 'pending',
+        archived: false,
+        source: source || (isAgent ? 'agent' : 'direct'),
+        agent_id: isAgent ? user.id : null,
+      }])
       .select()
       .single()
     if (error) return res.status(500).json({ error: error.message })
-    sendBookingPush(data) // fire-and-forget, never blocks the response
+    sendBookingPush(data)
     return res.status(201).json(data)
   }
 
   if (req.method === 'GET') {
-    const { from, to, status, archived } = req.query
+    const { from, to, status } = req.query
     let query = supabase.from('bookings').select('*').order('date', { ascending: true }).order('time', { ascending: true })
+    // Agents only see their own bookings
+    if (isAgent) query = query.eq('agent_id', user.id)
     if (from) query = query.gte('date', from)
     if (to) query = query.lte('date', to)
     if (status) query = query.eq('status', status)
-    // By default return all (active + archived) — client filters
     const { data, error } = await query
     if (error) return res.status(500).json({ error: error.message })
     return res.status(200).json(data)
@@ -73,6 +88,13 @@ export default async function handler(req, res) {
   if (req.method === 'PATCH') {
     const { id, status, notes, archived, archived_reason, buy_service, buy_amount, buy_type, buy_monthly, buy_total, buy_installments, buy_notes } = req.body
     if (!id) return res.status(400).json({ error: 'Missing id' })
+
+    // Agents can only update their own bookings
+    if (isAgent) {
+      const { data: existing } = await supabase.from('bookings').select('agent_id').eq('id', id).single()
+      if (existing?.agent_id !== user.id) return res.status(403).json({ error: 'Not your booking' })
+    }
+
     const update = {}
     if (status !== undefined) update.status = status
     if (notes !== undefined) update.notes = notes

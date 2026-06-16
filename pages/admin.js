@@ -1645,13 +1645,56 @@ function BookingsPanel() {
 
 
 function AdminSystemPanel({ users, cards, allUsers, loadAll, showToast }) {
-  const [tab, setTab] = useState('users')
+  const [tab, setTab] = useState('agents')
   const [search, setSearch] = useState('')
   const [roleChanging, setRoleChanging] = useState(null)
   const [log, setLog] = useState([])
   const [logLoading, setLogLoading] = useState(false)
   const [sessions, setSessions] = useState([])
   const [sessionsLoading, setSessionsLoading] = useState(false)
+  const [agents, setAgents] = useState([])
+  const [agentForm, setAgentForm] = useState({name:'',email:'',password:''})
+  const [creatingAgent, setCreatingAgent] = useState(false)
+  const [showAgentForm, setShowAgentForm] = useState(false)
+  const BASE_URL = typeof window!=='undefined'?window.location.origin:''
+
+  useEffect(()=>{ if(tab==='agents') loadAgents() },[tab])
+
+  async function loadAgents(){
+    const r = await fetch('/api/admin/users?all=1').then(r=>r.json()).catch(()=>({}))
+    setAgents((r.users||[]).filter(u=>u.role==='agent'))
+  }
+
+  async function createAgent(e){
+    e.preventDefault(); setCreatingAgent(true)
+    try {
+      // Create user via signup then set role to agent
+      const r = await fetch('/api/auth/signup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+        full_name: agentForm.name,
+        business_name: agentForm.name,
+        email: agentForm.email,
+        password: agentForm.password,
+        role: 'agent'
+      })})
+      const d = await r.json()
+      if(!r.ok) { showToast('Error: '+(d.error||'No se pudo crear')); setCreatingAgent(false); return }
+      // Also set role in profiles via users API
+      if(d.id) {
+        await fetch('/api/admin/users',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:d.id,role:'agent'})})
+      }
+      showToast('Agente creado')
+      setAgentForm({name:'',email:'',password:''})
+      setShowAgentForm(false)
+      loadAgents()
+    } catch(err){ showToast('Error al crear agente') }
+    setCreatingAgent(false)
+  }
+
+  async function removeAgent(u){
+    if(!confirm(`¿Cambiar rol de ${u.full_name||u.email} a cliente?`)) return
+    await fetch('/api/admin/users',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:u.id,role:'client'})})
+    showToast('Rol removido'); loadAgents()
+  }
 
   useEffect(() => {
     if (tab === 'log') loadLog()
@@ -1746,11 +1789,56 @@ function AdminSystemPanel({ users, cards, allUsers, loadAll, showToast }) {
       <input type="text" placeholder="Search users, actions, targets..." value={search} onChange={e=>setSearch(e.target.value)}
         style={{width:'100%',padding:'0.7rem 1rem',border:'1px solid '+gl,borderRadius:3,fontFamily:ff,fontSize:'0.82rem',outline:'none',marginBottom:'1.25rem',boxSizing:'border-box',background:white}}/>
 
-      <div style={{display:'flex',gap:'0.5rem',marginBottom:'1.5rem'}}>
+      <div style={{display:'flex',gap:'0.5rem',marginBottom:'1.5rem',flexWrap:'wrap'}}>
+        <button style={tabStyle('agents')} onClick={()=>setTab('agents')}>Agentes</button>
         <button style={tabStyle('users')} onClick={()=>setTab('users')}>Users & Roles</button>
         <button style={tabStyle('log')} onClick={()=>setTab('log')}>Activity Log</button>
         <button style={tabStyle('sessions')} onClick={()=>setTab('sessions')}>Sessions</button>
       </div>
+
+      {/* AGENTS TAB */}
+      {tab==='agents'&&(
+        <div>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
+            <p style={{fontSize:12,color:gray}}>{agents.length} agente(s) activo(s)</p>
+            <button onClick={()=>setShowAgentForm(o=>!o)} style={{background:ink,color:'#fff',border:'none',borderRadius:99,padding:'7px 16px',fontSize:12,fontWeight:600,fontFamily:ff,cursor:'pointer'}}>+ Nuevo agente</button>
+          </div>
+          {showAgentForm&&(
+            <form onSubmit={createAgent} style={{background:'rgba(184,151,90,0.06)',border:'1px solid rgba(184,151,90,0.2)',borderRadius:14,padding:16,marginBottom:16,display:'flex',flexDirection:'column',gap:10}}>
+              <p style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.1em',color:gold,marginBottom:2}}>Crear agente</p>
+              {[{k:'name',l:'Nombre',t:'text'},{k:'email',l:'Email',t:'email'},{k:'password',l:'Contraseña temporal',t:'text'}].map(f=>(
+                <div key={f.k}>
+                  <label style={{fontSize:10,fontWeight:600,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:3}}>{f.l}</label>
+                  <input required type={f.t} value={agentForm[f.k]} onChange={e=>setAgentForm(p=>({...p,[f.k]:e.target.value}))} style={{width:'100%',height:40,borderRadius:8,border:'1px solid rgba(14,14,12,0.12)',padding:'0 12px',fontSize:14,fontFamily:ff,outline:'none',boxSizing:'border-box'}}/>
+                </div>
+              ))}
+              <div style={{display:'flex',gap:8,marginTop:4}}>
+                <button type="submit" disabled={creatingAgent} style={{flex:1,background:gold,color:'#fff',border:'none',borderRadius:8,padding:'10px',fontSize:13,fontWeight:600,fontFamily:ff,cursor:'pointer'}}>{creatingAgent?'Creando...':'Crear'}</button>
+                <button type="button" onClick={()=>setShowAgentForm(false)} style={{padding:'10px 16px',background:'none',border:'1px solid rgba(14,14,12,0.12)',borderRadius:8,fontSize:13,fontFamily:ff,cursor:'pointer',color:gray}}>Cancelar</button>
+              </div>
+            </form>
+          )}
+          {agents.length===0&&!showAgentForm&&<p style={{color:gray,fontSize:13,textAlign:'center',padding:'24px 0'}}>No hay agentes aún</p>}
+          {agents.map(u=>(
+            <div key={u.id} style={{background:'rgba(255,255,255,0.7)',border:'1px solid rgba(14,14,12,0.07)',borderRadius:14,padding:14,marginBottom:10}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
+                <div>
+                  <p style={{fontSize:14,fontWeight:600,color:ink}}>{u.business_name||u.full_name}</p>
+                  <p style={{fontSize:12,color:gray,marginTop:2}}>{u.email}</p>
+                </div>
+                <button onClick={()=>removeAgent(u)} style={{fontSize:11,color:'#c0392b',background:'rgba(192,57,43,0.08)',border:'none',borderRadius:8,padding:'5px 10px',cursor:'pointer',fontFamily:ff,fontWeight:600}}>Remover</button>
+              </div>
+              <div style={{marginTop:10,background:'rgba(14,14,12,0.03)',borderRadius:8,padding:'8px 10px'}}>
+                <p style={{fontSize:10,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:4}}>Link personal (consultas)</p>
+                <div style={{display:'flex',gap:6,alignItems:'center'}}>
+                  <p style={{fontSize:11,color:ink,flex:1,wordBreak:'break-all',fontFamily:'monospace'}}>{BASE_URL}/admin?agent={u.id}</p>
+                  <button onClick={()=>{navigator.clipboard.writeText(`${BASE_URL}/admin?agent=${u.id}`);showToast('Link copiado')}} style={{flexShrink:0,background:gold,color:'#fff',border:'none',borderRadius:6,padding:'5px 10px',fontSize:11,fontWeight:600,fontFamily:ff,cursor:'pointer'}}>Copiar</button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* USERS & ROLES */}
       {tab==='users'&&(
@@ -2874,6 +2962,8 @@ export default function Admin({session}){
   const router=useRouter()
   const [panel,setPanel]=useState('dashboard')
   const [hamburgerOpen,setHamburgerOpen]=useState(false)
+  const [userRole,setUserRole]=useState(null) // 'admin' | 'agent'
+  const [agentId,setAgentId]=useState(null)
   const [cards,setCards]=useState([])
   const [users,setUsers]=useState([])
   const [rewards,setRewards]=useState([])
@@ -2909,23 +2999,29 @@ export default function Admin({session}){
 
   useEffect(()=>{
     if(!session){router.push('/login');return}
-    fetch('/api/auth/check-admin')
+    fetch('/api/auth/check-role')
       .then(r=>r.json())
-      .then(({isAdmin})=>{
-        if(isAdmin){
-          loadAll()
-          // Handle notification action deep-links
-          const params = new URLSearchParams(window.location.search)
-          const confirmId = params.get('confirm')
-          const viewId    = params.get('view')
-          if(confirmId){
-            fetch('/api/admin/bookings',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:confirmId,status:'confirmed'})})
-              .then(()=>{ showToast('✓ Cita confirmada'); setPanel('bookings') })
-              .catch(()=>{})
-            window.history.replaceState({},'','/admin')
-          } else if(viewId){
-            setPanel('bookings')
-            window.history.replaceState({},'','/admin')
+      .then(({role,userId})=>{
+        if(role==='admin'||role==='agent'){
+          setUserRole(role)
+          if(userId) setAgentId(userId)
+          if(role==='admin'){
+            loadAll()
+            const params=new URLSearchParams(window.location.search)
+            const confirmId=params.get('confirm')
+            const viewId=params.get('view')
+            if(confirmId){
+              fetch('/api/admin/bookings',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:confirmId,status:'confirmed'})})
+                .then(()=>{ showToast('✓ Cita confirmada'); setPanel('bookings') })
+                .catch(()=>{})
+              window.history.replaceState({},'','/admin')
+            } else if(viewId){
+              setPanel('bookings')
+              window.history.replaceState({},'','/admin')
+            }
+          } else {
+            // Agent: minimal load
+            setLoading(false)
           }
         } else {router.push('/login')}
       })
@@ -3238,8 +3334,8 @@ export default function Admin({session}){
             </button>
           )
         })}
-        {/* Burger */}
-        <button onClick={()=>setBurger(o=>!o)} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:3,border:'none',background:'none',cursor:'pointer',padding:'4px 0'}}>
+        {/* Burger — admin only */}
+        {userRole==='admin'&&<button onClick={()=>setBurger(o=>!o)} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:3,border:'none',background:'none',cursor:'pointer',padding:'4px 0'}}>
           <span style={{color:burger?ink:'rgba(14,14,12,0.3)',transition:'color 0.15s'}}>
             {burger
               ?<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -3247,7 +3343,7 @@ export default function Admin({session}){
             }
           </span>
           <span style={{fontSize:10,fontFamily:ff,fontWeight:burger?700:400,color:burger?ink:'rgba(14,14,12,0.35)',letterSpacing:'0.02em',borderBottom:burger?'2px solid '+ink:'2px solid transparent',paddingBottom:1}}>Más</span>
-        </button>
+        </button>}
       </nav>
 
       {/* ── BURGER BOTTOM SHEET ── */}
