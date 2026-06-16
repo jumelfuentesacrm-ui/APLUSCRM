@@ -2120,18 +2120,18 @@ function AdminDashboard({sales,bookings,session,users,onSaleAdded,onNavigate,dar
         <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:8,marginBottom:activeSem?12:0}}>
           {[1,2,3,4].map(w=>{
             const wStart=getMonthWeekStart(w,now)
-            const wAll=wStart?allBookings.filter(b=>{
+            const wAtendidas=wStart?allBookings.filter(b=>{
               if(!b.date||b.archived) return false
               const d=new Date(b.date+'T12:00:00')
-              return b.date.startsWith(monthStr)&&getMonthWeekNum(d)===w&&!['cancelled','no_show'].includes(b.status)
+              return b.date.startsWith(monthStr)&&getMonthWeekNum(d)===w&&['confirmed','bought'].includes(b.status)
             }):[]
-            const wClosed=wAll.filter(b=>['confirmed','bought'].includes(b.status))
+            const wClosed=wAtendidas.filter(b=>b.status==='bought')
             const isActive=w===weekNum
             const isSel=activeSem===w
             return(
               <button key={w} onClick={()=>setActiveSem(isSel?null:w)} style={{background:isSel?gold:isActive?ink:dm?'rgba(255,255,255,0.05)':'rgba(14,14,12,0.04)',border:'1px solid',borderColor:isSel?gold:isActive?ink:dm?'rgba(255,255,255,0.08)':'rgba(14,14,12,0.08)',borderRadius:12,padding:'10px 8px',textAlign:'center',cursor:'pointer',touchAction:'manipulation',transition:'all 0.15s'}}>
                 <p style={{fontSize:9,textTransform:'uppercase',letterSpacing:'0.07em',color:isSel?ink:isActive?gold:dm?'rgba(255,255,255,0.4)':gray,marginBottom:4}}>Sem {w}</p>
-                <p style={{fontSize:14,fontWeight:700,fontFamily:ff,color:isSel?ink:isActive?cream:dm?'rgba(255,255,255,0.85)':ink,lineHeight:1}}>{wClosed.length}<span style={{fontSize:10,fontWeight:400,opacity:0.6}}>/{wAll.length}</span></p>
+                <p style={{fontSize:14,fontWeight:700,fontFamily:ff,color:isSel?ink:isActive?cream:dm?'rgba(255,255,255,0.85)':ink,lineHeight:1}}>{wClosed.length}<span style={{fontSize:10,fontWeight:400,opacity:0.6}}>/{wAtendidas.length}</span></p>
               </button>
             )
           })}
@@ -2304,13 +2304,14 @@ function AdminBookings(){
   const [loading,setLoading]=useState(true)
   const [showArchived,setShowArchived]=useState(false)
   const [showNew,setShowNew]=useState(false)
-  const [buyModal,setBuyModal]=useState(null)
   const [form,setForm]=useState({name:'',phone:'',facebook_page:'',service:'',date:'',time:'',notes:''})
-  const [buyForm,setBuyForm]=useState({service:'',amount:'',type:'once',monthly:'',total:'',installments:'',notes:''})
   const [saving,setSaving]=useState(false)
   const [weekView,setWeekView]=useState(false)
   const [calDate,setCalDate]=useState(new Date())
   const [calDay,setCalDay]=useState(null)
+  const [cerrarModal,setCerrarModal]=useState(null) // booking | null
+  const [cerrarCompro,setCerrarCompro]=useState(null) // null | true | false
+  const [cerrarForm,setCerrarForm]=useState({service:'',documentos:'',payType:'completo',total:'',pago_inicial:'',adeudado:'',tiempo_saldo:''})
   useEffect(()=>{
     load()
     const channel = supabase
@@ -2336,19 +2337,32 @@ function AdminBookings(){
     await fetch('/api/admin/bookings',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,status,archived,...extra})})
     await load()
   }
-  async function confirmBuy(e){
+  async function confirmCerrar(e){
     e.preventDefault(); setSaving(true)
+    const b=cerrarModal
+    const f=cerrarForm
+    const total=parseFloat(f.total)||0
+    const pago_inicial=parseFloat(f.pago_inicial)||0
+    const adeudado=parseFloat(f.adeudado)||0
     await fetch('/api/admin/crm-clients',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
-      name:buyModal.name,phone:buyModal.phone,facebook_page:buyModal.facebook_page,
-      service_acquired:buyForm.service,amount_paid:parseFloat(buyForm.amount)||0,
-      payment_type:buyForm.type,
-      monthly_amount:buyForm.monthly?parseFloat(buyForm.monthly):null,
-      total_amount:buyForm.total?parseFloat(buyForm.total):null,
-      installments:buyForm.installments?parseInt(buyForm.installments):null,
-      notes:buyForm.notes,booking_id:buyModal.id,
+      name:b.name,phone:b.phone,facebook_page:b.facebook_page,
+      service_acquired:f.service||b.service,
+      amount_paid:f.payType==='completo'?total:pago_inicial,
+      payment_type:f.payType==='completo'?'once':'partial',
+      total_amount:total,
+      notes:f.documentos,booking_id:b.id,
     })})
-    await updateStatus(buyModal.id,'bought',{buy_service:buyForm.service,buy_amount:parseFloat(buyForm.amount)||0,buy_type:buyForm.type,buy_notes:buyForm.notes})
-    setBuyModal(null); setBuyForm({service:'',amount:'',type:'once',monthly:'',total:'',installments:'',notes:''}); setSaving(false)
+    await updateStatus(b.id,'bought',{
+      buy_service:f.service||b.service,
+      buy_amount:f.payType==='completo'?total:pago_inicial,
+      buy_type:f.payType,
+      buy_notes:[
+        f.documentos,
+        f.payType==='financiado'?`Adeudado: $${adeudado}`:null,
+        f.payType==='financiado'&&f.tiempo_saldo?`Saldo en: ${f.tiempo_saldo}`:null,
+      ].filter(Boolean).join(' · '),
+    })
+    setCerrarModal(null); setCerrarCompro(null); setCerrarForm({service:'',documentos:'',payType:'completo',total:'',pago_inicial:'',adeudado:'',tiempo_saldo:''}); setSaving(false)
   }
   function doConfirm(b){
     window.open(waLink(b.phone,confirmCitaMsg({name:b.name,date:b.date,time:b.time,service:b.service,facebook_page:b.facebook_page})),'_blank')
@@ -2356,7 +2370,7 @@ function AdminBookings(){
   }
   const active=bookings.filter(b=>!b.archived)
   const archived=bookings.filter(b=>b.archived)
-  const SC={pending:{label:'Pendiente',color:'#e67e22',bg:'rgba(230,126,34,0.1)'},confirmed:{label:'Confirmada',color:'#2d8a60',bg:'rgba(45,138,96,0.1)'},cancelled:{label:'Cancelada',color:'#c0392b',bg:'rgba(192,57,43,0.1)'},bought:{label:'Compró',color:gold,bg:'rgba(184,151,90,0.12)'},later:{label:'Dijo Luego',color:'#8e44ad',bg:'rgba(142,68,173,0.1)'},no_show:{label:'No Show',color:'#636e72',bg:'rgba(99,110,114,0.1)'}}
+  const SC={pending:{label:'Pendiente',color:'#e67e22',bg:'rgba(230,126,34,0.1)'},confirmed:{label:'Confirmada',color:'#2d8a60',bg:'rgba(45,138,96,0.1)'},cancelled:{label:'Cancelada',color:'#c0392b',bg:'rgba(192,57,43,0.1)'},bought:{label:'Cerrado',color:gold,bg:'rgba(184,151,90,0.12)'},later:{label:'Dijo Luego',color:'#8e44ad',bg:'rgba(142,68,173,0.1)'},no_show:{label:'No Show',color:'#636e72',bg:'rgba(99,110,114,0.1)'}}
   const inp2={width:'100%',boxSizing:'border-box',height:44,borderRadius:10,border:'1px solid rgba(14,14,12,0.12)',padding:'0 12px',fontSize:14,fontFamily:ff,background:'#fff',outline:'none',marginBottom:0}
   const glCard2={background:'rgba(255,255,255,0.7)',backdropFilter:'blur(20px) saturate(180%)',WebkitBackdropFilter:'blur(20px) saturate(180%)',border:'1px solid rgba(255,255,255,0.55)',boxShadow:'0 4px 20px rgba(0,0,0,0.07),inset 0 1px 0 rgba(255,255,255,0.85)',borderRadius:18}
   function BookingCard({b}){
@@ -2373,7 +2387,7 @@ function AdminBookings(){
         {b.notes&&<p style={{fontSize:11,color:gray,marginTop:6,fontStyle:'italic'}}>{b.notes}</p>}
         <div style={{display:'flex',gap:7,marginTop:12,flexWrap:'wrap'}}>
           {b.status!=='confirmed'&&<button onClick={()=>doConfirm(b)} style={{flex:1,minWidth:90,padding:'8px',background:'none',color:'#2d8a60',border:'1.5px solid #2d8a60',borderRadius:10,fontSize:12,fontWeight:600,fontFamily:ff,cursor:'pointer',touchAction:'manipulation'}}>Confirmar</button>}
-          <button onClick={()=>setBuyModal(b)} style={{flex:1,minWidth:70,padding:'8px',background:'none',color:gold,border:'1.5px solid '+gold,borderRadius:10,fontSize:12,fontWeight:600,fontFamily:ff,cursor:'pointer',touchAction:'manipulation'}}>Compró</button>
+          <button onClick={()=>{setCerrarModal(b);setCerrarCompro(null);setCerrarForm({service:b.service||'',documentos:'',payType:'completo',total:'',pago_inicial:'',adeudado:'',tiempo_saldo:''})}} style={{flex:1,minWidth:70,padding:'8px',background:ink,color:'#fff',border:'none',borderRadius:10,fontSize:12,fontWeight:700,fontFamily:ff,cursor:'pointer',touchAction:'manipulation'}}>Cerrar</button>
           <button onClick={()=>updateStatus(b.id,'later')} style={{padding:'8px 12px',background:'none',color:'#8e44ad',border:'1.5px solid #8e44ad',borderRadius:10,fontSize:12,fontFamily:ff,cursor:'pointer',touchAction:'manipulation'}}>Dijo Luego</button>
           <button onClick={()=>updateStatus(b.id,'no_show')} style={{padding:'8px 12px',background:'none',color:'#636e72',border:'1.5px solid #636e72',borderRadius:10,fontSize:12,fontFamily:ff,cursor:'pointer',touchAction:'manipulation'}}>No Show</button>
           <button onClick={()=>updateStatus(b.id,'cancelled')} style={{padding:'8px 12px',background:'none',color:'#c0392b',border:'1.5px solid #c0392b',borderRadius:10,fontSize:12,fontFamily:ff,cursor:'pointer',touchAction:'manipulation'}}>Cancelar</button>
@@ -2552,40 +2566,87 @@ function AdminBookings(){
         </div>
       )}
       {/* Buy sheet */}
-      {buyModal&&(
-        <div style={{position:'fixed',top:HEADER_H,left:0,right:0,bottom:0,zIndex:300,background:'rgba(0,0,0,0.5)',display:'flex',alignItems:'flex-end'}} onClick={e=>e.target===e.currentTarget&&setBuyModal(null)}>
-          <div style={{background:cream,borderRadius:'20px 20px 0 0',padding:'24px 20px 40px',width:'100%',maxHeight:'100%',overflowY:'auto',boxSizing:'border-box'}}>
-            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}}>
-              <h2 style={{fontFamily:ffS,fontSize:20,fontWeight:300,color:ink}}>💰 {buyModal.name}</h2>
-              <button onClick={()=>setBuyModal(null)} style={{background:'none',border:'none',fontSize:20,cursor:'pointer',color:gray}}>✕</button>
-            </div>
-            <form onSubmit={confirmBuy} style={{display:'flex',flexDirection:'column',gap:12}}>
-              <div>
-                <label style={{fontSize:11,fontWeight:600,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:4}}>Servicio adquirido</label>
-                <input required value={buyForm.service} onChange={e=>setBuyForm(p=>({...p,service:e.target.value}))} style={inp2}/>
-              </div>
-              <div>
-                <label style={{fontSize:11,fontWeight:600,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:4}}>Cantidad pagada ($)</label>
-                <input required type="number" min="0" step="0.01" value={buyForm.amount} onChange={e=>setBuyForm(p=>({...p,amount:e.target.value}))} style={inp2}/>
-              </div>
-              <div>
-                <label style={{fontSize:11,fontWeight:600,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:8}}>Tipo de pago</label>
-                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8}}>
-                  {[['once','Pago único'],['subscription','Suscripción'],['installments','Cuotas']].map(([v,l])=>(
-                    <button type="button" key={v} onClick={()=>setBuyForm(p=>({...p,type:v}))} style={{padding:'10px 4px',borderRadius:10,border:'1px solid',borderColor:buyForm.type===v?ink:'rgba(14,14,12,0.12)',background:buyForm.type===v?ink:'#fff',color:buyForm.type===v?cream:ink,fontSize:11,fontFamily:ff,cursor:'pointer',textAlign:'center'}}>{l}</button>
-                  ))}
+      {cerrarModal&&(
+        <div style={{position:'fixed',inset:0,zIndex:300,background:'rgba(0,0,0,0.55)',backdropFilter:'blur(4px)',display:'flex',alignItems:'flex-end'}} onClick={e=>e.target===e.currentTarget&&(setCerrarModal(null),setCerrarCompro(null))}>
+          <div style={{background:cream,borderRadius:'24px 24px 0 0',width:'100%',maxHeight:'92vh',overflowY:'auto',boxSizing:'border-box',padding:'8px 0 40px',boxShadow:'0 -8px 40px rgba(0,0,0,0.2)'}}>
+            <div style={{width:36,height:4,background:'rgba(14,14,12,0.15)',borderRadius:99,margin:'12px auto 20px'}}/>
+            {/* Step 1 — ¿Compró? */}
+            {cerrarCompro===null&&(
+              <div style={{padding:'0 24px'}}>
+                <p style={{fontSize:11,textTransform:'uppercase',letterSpacing:'0.1em',color:gray,fontFamily:ff,marginBottom:4}}>Cerrar consulta</p>
+                <h2 style={{fontFamily:ffS,fontSize:22,fontWeight:400,color:ink,marginBottom:4}}>{cerrarModal.name}</h2>
+                <p style={{fontSize:13,color:gray,marginBottom:28}}>{cerrarModal.service||'Consulta'} · {cerrarModal.date}</p>
+                <p style={{fontSize:15,fontWeight:600,color:ink,fontFamily:ff,marginBottom:16,textAlign:'center'}}>¿El cliente compró?</p>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+                  <button onClick={()=>setCerrarCompro(true)} style={{padding:'18px 12px',borderRadius:16,border:'2px solid #2d8a60',background:'rgba(45,138,96,0.06)',color:'#2d8a60',fontSize:15,fontWeight:700,fontFamily:ff,cursor:'pointer',touchAction:'manipulation'}}>
+                    Sí ✓
+                  </button>
+                  <button onClick={()=>{updateStatus(cerrarModal.id,'confirmed');setCerrarModal(null);setCerrarCompro(null)}} style={{padding:'18px 12px',borderRadius:16,border:'2px solid rgba(14,14,12,0.15)',background:'rgba(14,14,12,0.04)',color:gray,fontSize:15,fontWeight:600,fontFamily:ff,cursor:'pointer',touchAction:'manipulation'}}>
+                    No
+                  </button>
                 </div>
               </div>
-              {buyForm.type==='subscription'&&<div><label style={{fontSize:11,fontWeight:600,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:4}}>Monto mensual ($)</label><input type="number" min="0" step="0.01" value={buyForm.monthly} onChange={e=>setBuyForm(p=>({...p,monthly:e.target.value}))} style={inp2}/></div>}
-              {buyForm.type==='installments'&&<><div><label style={{fontSize:11,fontWeight:600,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:4}}>Total a saldar ($)</label><input type="number" min="0" step="0.01" value={buyForm.total} onChange={e=>setBuyForm(p=>({...p,total:e.target.value}))} style={inp2}/></div><div><label style={{fontSize:11,fontWeight:600,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:4}}>Número de cuotas</label><input type="number" min="1" value={buyForm.installments} onChange={e=>setBuyForm(p=>({...p,installments:e.target.value}))} style={inp2}/></div></>}
-              <div>
-                <label style={{fontSize:11,fontWeight:600,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:4}}>Notas</label>
-                <textarea value={buyForm.notes} onChange={e=>setBuyForm(p=>({...p,notes:e.target.value}))} rows={3} style={{...inp2,height:'auto',padding:'10px 12px',resize:'none'}}/>
-              </div>
-              <button type="submit" disabled={saving} style={{height:48,background:gold,color:ink,border:'none',borderRadius:12,fontSize:14,fontWeight:600,fontFamily:ff,cursor:'pointer'}}>
-                {saving?'Guardando...':'✓ Confirmar compra → Crear cliente'}
-              </button>
-            </form>
+            )}
+            {/* Step 2 — Formulario de cierre */}
+            {cerrarCompro===true&&(
+              <form onSubmit={confirmCerrar} style={{padding:'0 24px',display:'flex',flexDirection:'column',gap:14}}>
+                <div>
+                  <p style={{fontSize:11,textTransform:'uppercase',letterSpacing:'0.1em',color:'#2d8a60',fontFamily:ff,marginBottom:2}}>Cierre exitoso</p>
+                  <h2 style={{fontFamily:ffS,fontSize:20,fontWeight:400,color:ink,marginBottom:0}}>{cerrarModal.name}</h2>
+                </div>
+                {/* Servicio */}
+                <div>
+                  <label style={{fontSize:11,fontWeight:600,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:4}}>Servicio</label>
+                  <input value={cerrarForm.service} onChange={e=>setCerrarForm(p=>({...p,service:e.target.value}))} placeholder="Servicio adquirido" style={inp2}/>
+                </div>
+                {/* Documentos */}
+                <div>
+                  <label style={{fontSize:11,fontWeight:600,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:4}}>Documentos / notas del cierre</label>
+                  <textarea value={cerrarForm.documentos} onChange={e=>setCerrarForm(p=>({...p,documentos:e.target.value}))} rows={2} placeholder="Contrato firmado, propuesta enviada…" style={{...inp2,height:'auto',padding:'10px 12px',resize:'none'}}/>
+                </div>
+                {/* Tipo de pago */}
+                <div>
+                  <label style={{fontSize:11,fontWeight:600,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:8}}>Total</label>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:12}}>
+                    {[['completo','Pago Completo'],['financiado','Financiado']].map(([v,l])=>(
+                      <button type="button" key={v} onClick={()=>setCerrarForm(p=>({...p,payType:v}))} style={{padding:'12px 8px',borderRadius:12,border:'1.5px solid',borderColor:cerrarForm.payType===v?ink:'rgba(14,14,12,0.12)',background:cerrarForm.payType===v?ink:'#fff',color:cerrarForm.payType===v?cream:ink,fontSize:13,fontWeight:cerrarForm.payType===v?700:400,fontFamily:ff,cursor:'pointer',textAlign:'center',touchAction:'manipulation'}}>{l}</button>
+                    ))}
+                  </div>
+                  {/* Pago Completo */}
+                  {cerrarForm.payType==='completo'&&(
+                    <div>
+                      <label style={{fontSize:11,fontWeight:600,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:4}}>Total ($)</label>
+                      <input required type="number" min="0" step="0.01" placeholder="0.00" value={cerrarForm.total} onChange={e=>setCerrarForm(p=>({...p,total:e.target.value}))} style={inp2}/>
+                    </div>
+                  )}
+                  {/* Financiado */}
+                  {cerrarForm.payType==='financiado'&&(
+                    <div style={{display:'flex',flexDirection:'column',gap:10}}>
+                      <div>
+                        <label style={{fontSize:11,fontWeight:600,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:4}}>Total del servicio ($)</label>
+                        <input required type="number" min="0" step="0.01" placeholder="0.00" value={cerrarForm.total} onChange={e=>setCerrarForm(p=>({...p,total:e.target.value}))} style={inp2}/>
+                      </div>
+                      <div>
+                        <label style={{fontSize:11,fontWeight:600,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:4}}>Pago inicial ($)</label>
+                        <input required type="number" min="0" step="0.01" placeholder="0.00" value={cerrarForm.pago_inicial} onChange={e=>setCerrarForm(p=>({...p,pago_inicial:e.target.value}))} style={inp2}/>
+                      </div>
+                      <div>
+                        <label style={{fontSize:11,fontWeight:600,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:4}}>Cantidad adeudada ($)</label>
+                        <input required type="number" min="0" step="0.01" placeholder="0.00" value={cerrarForm.adeudado} onChange={e=>setCerrarForm(p=>({...p,adeudado:e.target.value}))} style={inp2}/>
+                      </div>
+                      <div>
+                        <label style={{fontSize:11,fontWeight:600,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:4}}>Tiempo estimado de saldo</label>
+                        <input placeholder="ej. 3 meses, 60 días…" value={cerrarForm.tiempo_saldo} onChange={e=>setCerrarForm(p=>({...p,tiempo_saldo:e.target.value}))} style={inp2}/>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <button type="submit" disabled={saving} style={{height:52,background:'#2d8a60',color:'#fff',border:'none',borderRadius:14,fontSize:15,fontWeight:700,fontFamily:ff,cursor:'pointer',marginTop:4}}>
+                  {saving?'Guardando…':'Registrar cierre →'}
+                </button>
+                <button type="button" onClick={()=>setCerrarCompro(null)} style={{height:40,background:'none',border:'none',fontSize:13,color:gray,fontFamily:ff,cursor:'pointer'}}>← Atrás</button>
+              </form>
+            )}
           </div>
         </div>
       )}
