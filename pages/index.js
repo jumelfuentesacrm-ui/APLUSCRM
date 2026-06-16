@@ -1,5 +1,7 @@
 import Head from 'next/head'
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
+import { useRouter } from 'next/router'
+import { supabase } from '../lib/supabase'
 import { formatPhone } from '../lib/config'
 import {
   CalendarCheck, PhoneCall, MessageSquare, Users, CreditCard, Globe,
@@ -44,6 +46,14 @@ const REVIEWS = [
 ]
 
 export default function LandingPage() {
+  const router = useRouter()
+  useEffect(() => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!session) return
+      const { data } = await supabase.from('profiles').select('role').eq('id', session.user.id).single()
+      if (data?.role === 'admin' || data?.role === 'agent') router.replace('/admin')
+    })
+  }, [])
   return (
     <>
       <Head>

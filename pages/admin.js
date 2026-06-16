@@ -1986,12 +1986,13 @@ function AdminSystemPanel({ users, cards, allUsers, loadAll, showToast }) {
                       borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.54rem',letterSpacing:'0.06em',textTransform:'uppercase',opacity:roleChanging===u.id?0.5:1}}>
                     {roleChanging===u.id?'Saving…':isAdmin?'Revoke Admin':'Make Admin'}
                   </button>
-                  <button onClick={()=>window.open('/card','_blank')}
-                    style={{padding:'0.3rem 0.6rem',background:'rgba(91,141,238,0.08)',color:'#5b8dee',
-                      border:'1px solid rgba(91,141,238,0.2)',borderRadius:3,cursor:'pointer',
-                      fontFamily:ff,fontSize:'0.54rem',letterSpacing:'0.06em',textTransform:'uppercase'}}>
-                    View
-                  </button>
+                  {!isAdmin&&<button onClick={async()=>{
+                    if(!confirm(`¿Convertir a ${u.full_name||u.email} en agente?`)) return
+                    await fetch('/api/admin/users',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:u.id,role:'agent'})})
+                    showToast('Rol actualizado a agente');loadAll()
+                  }} style={{padding:'0.3rem 0.6rem',background:'rgba(45,138,96,0.08)',color:'#2d8a60',border:'1px solid rgba(45,138,96,0.2)',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.54rem',letterSpacing:'0.06em',textTransform:'uppercase'}}>
+                    Make Agent
+                  </button>}
                 </div>
               </div>
             )
