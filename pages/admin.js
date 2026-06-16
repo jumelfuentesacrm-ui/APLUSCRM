@@ -2515,8 +2515,10 @@ function AdminBookings({userRole,agentId}){
           {b.facebook_page&&<span style={{fontSize:11,color:'#1877f2'}}>📘 {b.facebook_page}</span>}
         </div>
         <p style={{fontSize:16,fontWeight:600,color:inkC}}>{b.name}</p>
-        <p style={{fontSize:13,color:grayC,marginTop:2}}>{b.service||'Consulta'}</p>
-        <p style={{fontSize:12,color:grayC,marginTop:4}}>{b.date} · {b.time}</p>
+        {b.business&&b.business!==b.name&&<p style={{fontSize:12,color:grayC,marginTop:1}}>{b.business}</p>}
+        {b.phone&&<a href={`tel:${b.phone}`} style={{fontSize:13,color:'#2d8a60',textDecoration:'none',display:'block',marginTop:3,fontWeight:500}}>{b.phone}</a>}
+        <p style={{fontSize:13,color:grayC,marginTop:4}}>{b.service||'Consulta'}</p>
+        <p style={{fontSize:12,color:grayC,marginTop:2}}>{b.date} · {b.time}</p>
         {b.notes&&<p style={{fontSize:11,color:grayC,marginTop:6,fontStyle:'italic'}}>{b.notes}</p>}
         <div style={{display:'flex',gap:7,marginTop:12,flexWrap:'wrap'}}>
           {b.status!=='confirmed'&&<button onClick={()=>doConfirm(b)} style={{flex:1,minWidth:90,padding:'8px',background:'none',color:'#2d8a60',border:'1.5px solid #2d8a60',borderRadius:10,fontSize:12,fontWeight:600,fontFamily:ff,cursor:'pointer',touchAction:'manipulation'}}>Confirmar</button>}
@@ -2662,6 +2664,7 @@ function AdminBookings({userRole,agentId}){
               <p style={{fontSize:14,fontWeight:600,color:inkC}}>{b.name}</p>
               <span style={{fontSize:10,fontWeight:700,padding:'3px 8px',borderRadius:99,background:st.bg,color:st.color}}>{st.label}</span>
             </div>
+            {b.phone&&<a href={`tel:${b.phone}`} style={{fontSize:12,color:'#2d8a60',textDecoration:'none',display:'block',marginTop:2}}>{b.phone}</a>}
             <p style={{fontSize:12,color:grayC,marginTop:4}}>{b.date} · {b.service||'Consulta'}</p>
             {b.buy_service&&<p style={{fontSize:11,color:gold,marginTop:4}}>💰 {b.buy_service} · ${b.buy_amount}</p>}
           </div>
