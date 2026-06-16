@@ -2324,12 +2324,38 @@ function AdminBookings(){
       </div>
       {loading&&<p style={{color:gray,textAlign:'center',padding:'40px 0',fontSize:13}}>Cargando...</p>}
       {/* ── LISTA VIEW ── */}
-      {!weekView&&(
-        <>
-          {!loading&&active.length===0&&<div style={{textAlign:'center',padding:'40px 0',color:gray}}><p style={{fontSize:15}}>No hay citas activas</p><p style={{fontSize:12,marginTop:4}}>Toca "+ Nueva" para crear una</p></div>}
-          {active.map(b=><BookingCard key={b.id} b={b}/>)}
-        </>
-      )}
+      {!weekView&&(()=>{
+        if(loading) return null
+        // Group active bookings by ISO week (Mon–Sun)
+        function isoWeekKey(dateStr){
+          if(!dateStr) return 'sin-fecha'
+          const d=new Date(dateStr+'T12:00:00')
+          const tmp=new Date(d); tmp.setDate(d.getDate()-((d.getDay()+6)%7)) // Monday
+          return tmp.toISOString().split('T')[0]
+        }
+        function weekLabel(monStr){
+          if(monStr==='sin-fecha') return 'Sin fecha'
+          const mon=new Date(monStr+'T12:00:00')
+          const sun=new Date(mon); sun.setDate(mon.getDate()+6)
+          const fmt=d=>d.toLocaleDateString('es-PR',{day:'numeric',month:'short'})
+          return `${fmt(mon)} – ${fmt(sun)}`
+        }
+        // Build ordered weeks map
+        const weekMap={}
+        ;[...active].sort((a,b)=>new Date(b.date||'9999')-new Date(a.date||'9999')).forEach(b=>{
+          const k=isoWeekKey(b.date)
+          if(!weekMap[k]) weekMap[k]=[]
+          weekMap[k].push(b)
+        })
+        const weeks=Object.entries(weekMap)
+        if(weeks.length===0) return <div style={{textAlign:'center',padding:'40px 0',color:gray}}><p style={{fontSize:15}}>No hay consultas activas</p><p style={{fontSize:12,marginTop:4}}>Toca "+ Nueva" para crear una</p></div>
+        return weeks.map(([wk,bks])=>(
+          <div key={wk} style={{marginBottom:20}}>
+            <p style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.1em',color:gray,marginBottom:8,paddingLeft:2}}>{weekLabel(wk)} <span style={{fontWeight:400,opacity:0.6}}>· {bks.length}</span></p>
+            {bks.map(b=><BookingCard key={b.id} b={b}/>)}
+          </div>
+        ))
+      })()}
       {/* ── CALENDARIO VIEW ── */}
       {weekView&&(
         <div style={{...glCard2,padding:'16px 12px 12px'}}>
@@ -2696,22 +2722,26 @@ function AdminColdCalling(){
                         {l.phone&&<a href={`tel:${l.phone}`} style={{fontSize:12,color:'#2d8a60',display:'block',marginTop:6,textDecoration:'none'}}>📞 {l.phone}</a>}
                         {l.followup_date&&<p style={{fontSize:11,color:gold,marginTop:4}}>🔔 Follow-up: {l.followup_date}</p>}
                         {l.notes&&<p style={{fontSize:11,color:gray,marginTop:6,fontStyle:'italic'}}>{l.notes}</p>}
-                        <div style={{display:'flex',gap:6,marginTop:10}}>
-                          <button onClick={()=>window.open(waLink(l.phone,bookingLinkMsg(l.business_name)),'_blank')} style={{flex:1,padding:'6px 10px',background:'rgba(14,14,12,0.05)',border:'none',borderRadius:8,fontSize:11,fontWeight:600,fontFamily:ff,cursor:'pointer',color:ink,touchAction:'manipulation'}}>Booking</button>
-                          <button onClick={()=>setUpdatingId(isUpdating?null:l.id)} style={{flex:1,padding:'6px 10px',background:isUpdating?ink:'rgba(184,151,90,0.1)',border:'none',borderRadius:8,fontSize:11,fontWeight:600,fontFamily:ff,cursor:'pointer',color:isUpdating?cream:gold,touchAction:'manipulation'}}>Actualizar</button>
-                        </div>
-                        {isUpdating&&(
-                          <div style={{marginTop:8,display:'grid',gridTemplateColumns:'1fr 1fr',gap:6}}>
-                            <button onClick={()=>updateLead(l.id,{call_status:'no_answer'})} style={{padding:'8px 6px',borderRadius:8,border:'1px solid rgba(192,57,43,0.3)',background:'rgba(192,57,43,0.07)',color:'#c0392b',fontSize:11,fontWeight:600,fontFamily:ff,cursor:'pointer',textAlign:'center',touchAction:'manipulation'}}>No Answer</button>
-                            <button onClick={()=>updateLead(l.id,{call_status:'llamar_luego',llamar_luego_count:(l.llamar_luego_count||0)+1})} style={{padding:'8px 6px',borderRadius:8,border:'1px solid rgba(230,126,34,0.3)',background:'rgba(230,126,34,0.07)',color:'#e67e22',fontSize:11,fontWeight:600,fontFamily:ff,cursor:'pointer',textAlign:'center',touchAction:'manipulation'}}>
-                              Llamar luego {(l.llamar_luego_count||0)>0&&<span style={{fontSize:10,opacity:0.8}}>({(l.llamar_luego_count||0)+1}x)</span>}
+                        {/* Horizontal pill strip */}
+                        <div style={{display:'flex',gap:5,marginTop:10,overflowX:'auto',paddingBottom:2,WebkitOverflowScrolling:'touch'}}>
+                          {[
+                            {status:'no_answer',label:'No Answer',color:'#c0392b',bg:'rgba(192,57,43,0.08)',border:'rgba(192,57,43,0.25)'},
+                            {status:'llamar_luego',label:'Llamar luego'+(( l.llamar_luego_count||0)>0?` (${(l.llamar_luego_count||0)+1}x)`:' '),color:'#e67e22',bg:'rgba(230,126,34,0.08)',border:'rgba(230,126,34,0.25)',extra:{llamar_luego_count:(l.llamar_luego_count||0)+1}},
+                            {status:'caliente',label:'Caliente',color:'#e74c3c',bg:'rgba(231,76,60,0.08)',border:'rgba(231,76,60,0.25)'},
+                            {status:'tibio',label:'Tibio',color:'#f39c12',bg:'rgba(243,156,18,0.08)',border:'rgba(243,156,18,0.25)'},
+                            {status:'frio',label:'Frío',color:'#5d8aa8',bg:'rgba(93,138,168,0.08)',border:'rgba(93,138,168,0.25)'},
+                            {status:'enviar_cita',label:'Enviar cita',color:'#fff',bg:'#2d8a60',border:'#2d8a60',bold:true},
+                          ].map(p=>(
+                            <button key={p.status}
+                              onClick={()=>{
+                                updateLead(l.id,{call_status:p.status,...(p.extra||{})})
+                                if(p.status==='enviar_cita') window.open(waLink(l.phone,bookingLinkMsg(l.business_name)),'_blank')
+                              }}
+                              style={{flexShrink:0,padding:'5px 11px',borderRadius:99,border:`1px solid ${p.border}`,background:l.call_status===p.status?p.bg.replace('0.08','0.2'):p.bg,color:p.color,fontSize:11,fontWeight:l.call_status===p.status||p.bold?700:500,fontFamily:ff,cursor:'pointer',touchAction:'manipulation',whiteSpace:'nowrap',outline:l.call_status===p.status?`2px solid ${p.color}`:'none',outlineOffset:1}}>
+                              {p.label.trim()}
                             </button>
-                            <button onClick={()=>updateLead(l.id,{call_status:'caliente'})} style={{padding:'8px 6px',borderRadius:8,border:'1px solid rgba(231,76,60,0.3)',background:'rgba(231,76,60,0.07)',color:'#e74c3c',fontSize:11,fontWeight:600,fontFamily:ff,cursor:'pointer',textAlign:'center',touchAction:'manipulation'}}>Caliente</button>
-                            <button onClick={()=>updateLead(l.id,{call_status:'tibio'})} style={{padding:'8px 6px',borderRadius:8,border:'1px solid rgba(243,156,18,0.3)',background:'rgba(243,156,18,0.07)',color:'#f39c12',fontSize:11,fontWeight:600,fontFamily:ff,cursor:'pointer',textAlign:'center',touchAction:'manipulation'}}>Tibio</button>
-                            <button onClick={()=>updateLead(l.id,{call_status:'frio'})} style={{padding:'8px 6px',borderRadius:8,border:'1px solid rgba(93,138,168,0.3)',background:'rgba(93,138,168,0.07)',color:'#5d8aa8',fontSize:11,fontWeight:600,fontFamily:ff,cursor:'pointer',textAlign:'center',touchAction:'manipulation'}}>Frío</button>
-                            <button onClick={()=>{updateLead(l.id,{call_status:'enviar_cita'});window.open(waLink(l.phone,bookingLinkMsg(l.business_name)),'_blank')}} style={{gridColumn:'1/-1',padding:'10px 6px',borderRadius:8,border:'none',background:'#2d8a60',color:'#fff',fontSize:11,fontWeight:700,fontFamily:ff,cursor:'pointer',textAlign:'center',touchAction:'manipulation'}}>Enviar cita</button>
-                          </div>
-                        )}
+                          ))}
+                        </div>
                       </div>
                     )
                   })}
