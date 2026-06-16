@@ -1436,6 +1436,18 @@ function BookingsPanel() {
   const [selected, setSelected] = useState(null)
   const [notesDraft, setNotesDraft] = useState('')
   const [saving, setSaving] = useState(false)
+  const [agentMap, setAgentMap] = useState({})
+
+  useEffect(()=>{
+    fetch('/api/admin/users?all=1').then(r=>r.json()).then(d=>{
+      const map={}
+      ;(d.users||[]).filter(u=>u.role==='agent').forEach(u=>{
+        const parts=(u.full_name||u.email||'').trim().split(' ')
+        map[u.id]=parts[parts.length-1]||u.email
+      })
+      setAgentMap(map)
+    }).catch(()=>{})
+  },[])
 
   useEffect(() => { fetchBookings() }, [currentDate, view])
 
@@ -1629,7 +1641,10 @@ function BookingsPanel() {
                       <span style={{fontSize:'0.82rem',fontWeight:500,color:black,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{b.name}</span>
                       <span style={{fontSize:'0.56rem',padding:'0.15rem 0.55rem',borderRadius:20,background:st.bg,color:st.color,whiteSpace:'nowrap',flexShrink:0}}>{st.label}</span>
                     </div>
-                    <div style={{fontSize:'0.65rem',color:gray}}>{b.business} · {b.time}</div>
+                    <div style={{fontSize:'0.65rem',color:gray,display:'flex',alignItems:'center',gap:'0.4rem',flexWrap:'wrap'}}>
+                      <span>{b.business} · {b.time}</span>
+                      {b.agent_id&&agentMap[b.agent_id]&&<span style={{background:'rgba(184,151,90,0.15)',color:'#8a6e3a',borderRadius:8,padding:'0.05rem 0.4rem',fontSize:'0.58rem',fontWeight:600,whiteSpace:'nowrap'}}>Ag. {agentMap[b.agent_id]}</span>}
+                    </div>
                     {b.notes&&<div style={{fontSize:'0.62rem',color:gray,marginTop:'0.15rem',fontStyle:'italic',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{b.notes}</div>}
                   </div>
                   <div style={{color:gray,fontSize:'0.75rem',flexShrink:0}}>›</div>
@@ -1840,8 +1855,8 @@ function AdminSystemPanel({ users, cards, allUsers, loadAll, showToast }) {
               <div style={{marginTop:10,background:'rgba(14,14,12,0.03)',borderRadius:8,padding:'8px 10px'}}>
                 <p style={{fontSize:10,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:4}}>Link personal (consultas)</p>
                 <div style={{display:'flex',gap:6,alignItems:'center'}}>
-                  <p style={{fontSize:11,color:ink,flex:1,wordBreak:'break-all',fontFamily:'monospace'}}>{BASE_URL}/admin?agent={u.id}</p>
-                  <button onClick={()=>{navigator.clipboard.writeText(`${BASE_URL}/admin?agent=${u.id}`);showToast('Link copiado')}} style={{flexShrink:0,background:gold,color:'#fff',border:'none',borderRadius:6,padding:'5px 10px',fontSize:11,fontWeight:600,fontFamily:ff,cursor:'pointer'}}>Copiar</button>
+                  <p style={{fontSize:11,color:ink,flex:1,wordBreak:'break-all',fontFamily:'monospace'}}>{BASE_URL}/?agent={u.id}</p>
+                  <button onClick={()=>{navigator.clipboard.writeText(`${BASE_URL}/?agent=${u.id}`);showToast('Link copiado')}} style={{flexShrink:0,background:gold,color:'#fff',border:'none',borderRadius:6,padding:'5px 10px',fontSize:11,fontWeight:600,fontFamily:ff,cursor:'pointer'}}>Copiar</button>
                 </div>
               </div>
             </div>
@@ -2321,7 +2336,16 @@ function AdminBookings(){
   const [cerrarModal,setCerrarModal]=useState(null) // booking | null
   const [cerrarCompro,setCerrarCompro]=useState(null) // null | true | false
   const [cerrarForm,setCerrarForm]=useState({service:'',documentos:'',payType:'completo',total:'',pago_inicial:'',adeudado:'',tiempo_saldo:''})
+  const [agentMap,setAgentMap]=useState({}) // id -> last name
   useEffect(()=>{
+    fetch('/api/admin/users?all=1').then(r=>r.json()).then(d=>{
+      const map={}
+      ;(d.users||[]).filter(u=>u.role==='agent').forEach(u=>{
+        const parts=(u.full_name||u.email||'').trim().split(' ')
+        map[u.id]=parts[parts.length-1]||u.email
+      })
+      setAgentMap(map)
+    }).catch(()=>{})
     load()
     const channel = supabase
       .channel('bookings-live')

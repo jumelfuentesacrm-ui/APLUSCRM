@@ -506,6 +506,13 @@ function Booking() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [confirmed, setConfirmed] = useState({ date: '', time: '', name: '' })
+  const [agentId, setAgentId] = useState(null)
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const a = params.get('agent')
+    if (a) setAgentId(a)
+  }, [])
 
   const [calMonth, setCalMonth] = useState(() => { const d = new Date(); return { y: d.getFullYear(), m: d.getMonth() } })
 
@@ -532,7 +539,7 @@ function Booking() {
   async function handleSubmit(e) {
     e.preventDefault(); setLoading(true); setError(null)
     try {
-      const res = await fetch('/api/admin/bookings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, phone, business, date, time }) })
+      const res = await fetch('/api/public/booking', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, phone, business, date, time, ...(agentId ? { agent_id: agentId } : {}) }) })
       if (!res.ok) throw new Error()
       setConfirmed({ date, time, name })
       setStep('done')
