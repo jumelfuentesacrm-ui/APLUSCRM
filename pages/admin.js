@@ -1,4 +1,6 @@
 import React, { useEffect, useRef, useState, useContext, createContext } from 'react'
+import dynamic from 'next/dynamic'
+const LeadMap = dynamic(() => import('../components/LeadMap'), { ssr: false })
 const DarkCtx = createContext(false)
 function useDark() { return useContext(DarkCtx) }
 // Dark-mode token helper — call inside any component
@@ -2843,6 +2845,18 @@ function AdminColdCalling({agentId}){
   useEffect(()=>{
     load()
     fetch('/api/admin/users').then(r=>r.json()).then(d=>setContacts(d.users||[])).catch(()=>{})
+    // Prefill from Lead Map "Llamar" button
+    if(typeof window!=='undefined'){
+      const raw=sessionStorage.getItem('llamada_prefill')
+      if(raw){
+        try{
+          const p=JSON.parse(raw)
+          setForm(f=>({...f,business_name:p.business_name||'',phone:p.phone||'',pueblo:p.town||''}))
+          setShowForm('new')
+        }catch(_){}
+        sessionStorage.removeItem('llamada_prefill')
+      }
+    }
   },[])
   async function load(){
     setLoading(true)
@@ -3232,6 +3246,9 @@ export default function Admin({session}){
           }
           if(role==='admin'){
             loadAll()
+            // Handle redirect from LeadMap "Llamar" button
+            const gotoPanel=typeof window!=='undefined'&&sessionStorage.getItem('aplus_goto_panel')
+            if(gotoPanel){ setActivePanel(gotoPanel); sessionStorage.removeItem('aplus_goto_panel') }
             const params=new URLSearchParams(window.location.search)
             const confirmId=params.get('confirm')
             const viewId=params.get('view')
@@ -3561,6 +3578,7 @@ export default function Admin({session}){
           {activePanel==='supplies'&&<SuppliesPanel supplies={supplies} onAdd={()=>{setSupplyForm({name:'',category:'',cost:'',unit:'month',provider:'',renewal_date:'',notes:''});setSupplyModal('add')}} onEdit={(s)=>{setSupplyForm({name:s.name,category:s.category||'',cost:s.cost,unit:s.unit||'month',provider:s.provider||'',renewal_date:s.renewal_date||'',notes:s.notes||''});setSupplyModal(s)}} onDelete={async(id)=>{if(!confirm('Delete?'))return;await fetch('/api/admin/supplies',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})});showToast('Deleted');loadAll()}} showToast={showToast}/>}
           {activePanel==='reviews'&&<ReviewsPanel/>}
           {activePanel==='system'&&<AdminSystemPanel users={users} cards={cards} allUsers={allUsers} loadAll={loadAll} showToast={showToast}/>}
+          {activePanel==='mapa'&&<LeadMap showToast={showToast}/>}
         </div>
       </div>
 
@@ -3608,6 +3626,7 @@ export default function Admin({session}){
                 {id:'catalog',label:'Catálogo',icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>},
                 {id:'supplies',label:'Supplies',icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>},
                 {id:'reviews',label:'Reviews',icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>},
+                {id:'mapa',label:'Mapa Leads',icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>},
                 {id:'system',label:'Admin Panel',icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>},
               ].map(({id,label,icon})=>(
                 <button key={id} onClick={()=>{setActivePanel(id);setPanel(id);setBurger(false)}} style={{display:'flex',alignItems:'center',gap:10,padding:'13px 14px',background:activePanel===id?'rgba(14,14,12,0.07)':'rgba(14,14,12,0.03)',border:'1px solid',borderColor:activePanel===id?'rgba(14,14,12,0.15)':'rgba(14,14,12,0.06)',borderRadius:14,fontFamily:ff,fontSize:13,fontWeight:activePanel===id?600:400,color:ink,cursor:'pointer',textAlign:'left',touchAction:'manipulation'}}>
