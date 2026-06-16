@@ -2545,8 +2545,8 @@ function AdminBookings(){
       })}
       {/* New booking sheet */}
       {showNew&&(
-        <div style={{position:'fixed',top:'calc(52px + env(safe-area-inset-top,0px))',left:0,right:0,bottom:0,zIndex:300,background:'rgba(0,0,0,0.5)',display:'flex',alignItems:'flex-end'}} onClick={e=>e.target===e.currentTarget&&setShowNew(false)}>
-          <div style={{background:cream,borderRadius:'20px 20px 0 0',padding:'24px 20px 40px',width:'100%',maxHeight:'100%',overflowY:'auto',boxSizing:'border-box'}}>
+        <div style={{position:'fixed',inset:0,zIndex:300,background:'rgba(0,0,0,0.5)',display:'flex',alignItems:'flex-end'}} onClick={e=>e.target===e.currentTarget&&setShowNew(false)}>
+          <div style={{background:cream,borderRadius:'20px 20px 0 0',padding:'24px 20px calc(env(safe-area-inset-bottom,0px) + 28px)',width:'100%',maxHeight:'90dvh',overflowY:'auto',boxSizing:'border-box',WebkitOverflowScrolling:'touch'}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}}>
               <h2 style={{fontFamily:ffS,fontSize:22,fontWeight:300,color:ink}}>Nueva Cita</h2>
               <button onClick={()=>setShowNew(false)} style={{background:'none',border:'none',fontSize:20,cursor:'pointer',color:gray}}>✕</button>
@@ -2916,8 +2916,8 @@ function AdminColdCalling(){
       </div>
       {/* Register lead sheet */}
       {showForm&&(
-        <div style={{position:'fixed',top:HEADER_H,left:0,right:0,bottom:0,zIndex:300,background:'rgba(0,0,0,0.5)',display:'flex',alignItems:'flex-end'}} onClick={e=>e.target===e.currentTarget&&setShowForm(null)}>
-          <div style={{background:cream,borderRadius:'20px 20px 0 0',padding:'24px 20px 40px',width:'100%',maxHeight:'100%',overflowY:'auto',boxSizing:'border-box'}}>
+        <div style={{position:'fixed',inset:0,zIndex:300,background:'rgba(0,0,0,0.5)',display:'flex',alignItems:'flex-end'}} onClick={e=>e.target===e.currentTarget&&setShowForm(null)}>
+          <div style={{background:cream,borderRadius:'20px 20px 0 0',padding:'24px 20px calc(env(safe-area-inset-bottom,0px) + 28px)',width:'100%',maxHeight:'90dvh',overflowY:'auto',boxSizing:'border-box',WebkitOverflowScrolling:'touch'}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}}>
               <h2 style={{fontFamily:ffS,fontSize:22,fontWeight:300,color:ink}}>Registrar Lead</h2>
               <button onClick={()=>setShowForm(null)} style={{background:'none',border:'none',fontSize:20,cursor:'pointer',color:gray}}>✕</button>
