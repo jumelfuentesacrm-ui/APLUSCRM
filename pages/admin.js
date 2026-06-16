@@ -3877,13 +3877,13 @@ export default function Admin({session}){
             <span style={{fontSize:10,fontFamily:ff,fontWeight:active?700:400,color:active?gold:darkMode?'rgba(255,255,255,0.35)':'rgba(14,14,12,0.35)',letterSpacing:'0.02em',borderBottom:active?`2px solid ${gold}`:'2px solid transparent',paddingBottom:1}}>Consultas</span>
           </button>
         )})()}
-        {/* Encontrar — center, gold outline */}
+        {/* Encontrar — center FAB, pops above nav */}
         {(()=>{const id='mapa';const active=activePanel===id;return(
-          <button key={id} onClick={()=>{setActivePanel(id);setTab(id);setBurger(false)}} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:3,border:'none',background:'none',cursor:'pointer',padding:'2px 0',touchAction:'manipulation',position:'relative'}}>
-            <span style={{display:'flex',alignItems:'center',justifyContent:'center',width:44,height:44,borderRadius:'50%',border:`2px solid ${gold}`,background:active?gold:'transparent',transition:'all 0.18s',boxShadow:active?`0 2px 12px ${gold}55`:'none',marginTop:-10}}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={active?'#fff':gold} strokeWidth="2.2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <button key={id} onClick={()=>{setActivePanel(id);setTab(id);setBurger(false)}} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'flex-end',gap:4,border:'none',background:'none',cursor:'pointer',padding:'0 0 6px',touchAction:'manipulation',position:'relative'}}>
+            <span style={{position:'absolute',top:-22,display:'flex',alignItems:'center',justifyContent:'center',width:52,height:52,borderRadius:'50%',background:gold,boxShadow:active?`0 4px 20px ${gold}99`:`0 2px 12px ${gold}55`,transition:'box-shadow 0.18s'}}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.4"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             </span>
-            <span style={{fontSize:10,fontFamily:ff,fontWeight:700,color:gold,letterSpacing:'0.02em',marginTop:1}}>Encontrar</span>
+            <span style={{fontSize:10,fontFamily:ff,fontWeight:700,color:gold,letterSpacing:'0.02em',marginTop:32}}>Encontrar</span>
           </button>
         )})()}
         {/* Llamadas */}
