@@ -23,12 +23,14 @@ export default async function handler(req, res) {
   })
   if (error) return res.status(400).json({ error: error.message })
 
-  await supabaseAdmin.from('profiles').update({
+  // Use upsert so it works whether the trigger has created the row yet or not
+  await supabaseAdmin.from('profiles').upsert({
+    id: data.user.id,
     full_name: full_name || email,
     business_name: business_name || full_name || email,
     phone,
     role: assignedRole
-  }).eq('id', data.user.id)
+  }, { onConflict: 'id' })
 
   return res.status(200).json({ success: true, id: data.user.id })
 }
