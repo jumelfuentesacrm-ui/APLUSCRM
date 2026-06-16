@@ -1,4 +1,25 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState, useContext, createContext } from 'react'
+const DarkCtx = createContext(false)
+function useDark() { return useContext(DarkCtx) }
+// Dark-mode token helper — call inside any component
+function useTheme() {
+  const dm = useDark()
+  return {
+    dm,
+    bg:          dm ? '#0e0e0c'                        : '#f8f6f1',
+    cardBg:      dm ? 'rgba(255,255,255,0.05)'         : 'rgba(248,246,241,0.65)',
+    cardBorder:  dm ? 'rgba(255,255,255,0.08)'         : 'rgba(255,255,255,0.75)',
+    cardShadow:  dm ? '0 4px 20px rgba(0,0,0,0.5)'    : 'inset 0 1px 0 rgba(255,255,255,0.85),0 4px 20px -4px rgba(28,28,26,0.08)',
+    surfaceBg:   dm ? '#1a1a18'                        : cream,
+    inkC:        dm ? 'rgba(255,255,255,0.9)'          : ink,
+    grayC:       dm ? 'rgba(255,255,255,0.4)'          : gray,
+    inputBg:     dm ? 'rgba(255,255,255,0.07)'         : '#fff',
+    inputBorder: dm ? 'rgba(255,255,255,0.12)'         : 'rgba(14,14,12,0.12)',
+    subtleBg:    dm ? 'rgba(255,255,255,0.05)'         : 'rgba(14,14,12,0.03)',
+    divider:     dm ? 'rgba(255,255,255,0.07)'         : 'rgba(14,14,12,0.06)',
+    glassCard:   { background: dm?'rgba(255,255,255,0.05)':'rgba(248,246,241,0.65)', backdropFilter:'blur(20px) saturate(160%)', WebkitBackdropFilter:'blur(20px) saturate(160%)', border:`1px solid ${dm?'rgba(255,255,255,0.08)':'rgba(255,255,255,0.75)'}`, boxShadow: dm?'0 4px 20px rgba(0,0,0,0.5)':'inset 0 1px 0 rgba(255,255,255,0.85),0 4px 20px -4px rgba(28,28,26,0.08)' },
+  }
+}
 import { useRouter } from 'next/router'
 import { supabase } from '../lib/supabase'
 import { COLORS, FONTS, HEADER_H, formatPhone } from '../lib/config'
@@ -966,25 +987,25 @@ function FinancialCard({ sales }) {
       {/* SALES HISTORY MODAL */}
       {salesHistoryOpen&&(
         <div style={{position:'fixed',inset:0,background:'rgba(14,14,12,0.6)',zIndex:400,display:'flex',alignItems:'flex-end',justifyContent:'center'}} onClick={e=>e.target===e.currentTarget&&setSalesHistoryOpen(false)}>
-          <div style={{background:white,borderRadius:'14px 14px 0 0',width:'100%',maxWidth:640,maxHeight:'85vh',display:'flex',flexDirection:'column',boxShadow:'0 -8px 40px rgba(0,0,0,0.15)'}}>
-            <div style={{padding:'1.25rem 1.5rem',borderBottom:'1px solid rgba(14,14,12,0.06)',display:'flex',justifyContent:'space-between',alignItems:'center',flexShrink:0}}>
+          <div style={{background:modalBg,borderRadius:'14px 14px 0 0',width:'100%',maxWidth:640,maxHeight:'85vh',display:'flex',flexDirection:'column',boxShadow:'0 -8px 40px rgba(0,0,0,0.15)'}}>
+            <div style={{padding:'1.25rem 1.5rem',borderBottom:`1px solid ${modalDivider}`,display:'flex',justifyContent:'space-between',alignItems:'center',flexShrink:0}}>
               <div>
-                <div style={{fontFamily:ffS,fontSize:'1.2rem',fontWeight:300}}>All Transactions</div>
-                <div style={{fontSize:'0.6rem',color:gray,marginTop:'0.15rem'}}>{(sales||[]).length} records · tap Void to cancel</div>
+                <div style={{fontFamily:ffS,fontSize:'1.2rem',fontWeight:300,color:modalInk}}>All Transactions</div>
+                <div style={{fontSize:'0.6rem',color:modalGray,marginTop:'0.15rem'}}>{(sales||[]).length} records · tap Void to cancel</div>
               </div>
-              <button onClick={()=>setSalesHistoryOpen(false)} style={{background:'none',border:'none',fontSize:'1.1rem',color:gray,cursor:'pointer'}}>✕</button>
+              <button onClick={()=>setSalesHistoryOpen(false)} style={{background:'none',border:'none',fontSize:'1.1rem',color:modalGray,cursor:'pointer'}}>✕</button>
             </div>
             <div style={{flex:1,overflowY:'auto',padding:'0 1.5rem'}}>
-              {(sales||[]).length===0&&<div style={{textAlign:'center',color:gray,fontSize:'0.78rem',padding:'2rem'}}>No transactions yet.</div>}
+              {(sales||[]).length===0&&<div style={{textAlign:'center',color:modalGray,fontSize:'0.78rem',padding:'2rem'}}>No transactions yet.</div>}
               {[...(sales||[])].sort((a,b)=>new Date(b.sale_date)-new Date(a.sale_date)).map((s,i)=>{
                 const isVoided = s.status==='voided'
                 const isRefunded = s.status==='refunded'
                 return(
-                  <div key={s.id} style={{display:'flex',alignItems:'center',gap:'0.75rem',padding:'0.85rem 0',borderBottom:'1px solid rgba(14,14,12,0.05)',opacity:isVoided?0.45:1}}>
+                  <div key={s.id} style={{display:'flex',alignItems:'center',gap:'0.75rem',padding:'0.85rem 0',borderBottom:`1px solid ${modalDivider}`,opacity:isVoided?0.45:1}}>
                     <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontSize:'0.75rem',color:black,fontWeight:500,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{s.customer_name||s.customer_email||'—'}</div>
-                      <div style={{fontSize:'0.62rem',color:gray,marginTop:'0.1rem',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{s.product_name||'—'}</div>
-                      <div style={{fontSize:'0.58rem',color:'rgba(14,14,12,0.35)',marginTop:'0.1rem'}}>{s.sale_date?new Date(s.sale_date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):''} · {s.type||'stripe'}</div>
+                      <div style={{fontSize:'0.75rem',color:modalInk,fontWeight:500,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{s.customer_name||s.customer_email||'—'}</div>
+                      <div style={{fontSize:'0.62rem',color:modalGray,marginTop:'0.1rem',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{s.product_name||'—'}</div>
+                      <div style={{fontSize:'0.58rem',color:modalGray,marginTop:'0.1rem'}}>{s.sale_date?new Date(s.sale_date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):''} · {s.type||'stripe'}</div>
                     </div>
                     <div style={{textAlign:'right',flexShrink:0}}>
                       <div style={{fontSize:'0.85rem',fontWeight:600,fontFamily:ffS,color:isVoided?gray:isRefunded?'#c0392b':'#2d8a60'}}>{isRefunded?'-':''}${Math.abs(parseFloat(s.amount||0)).toFixed(2)}</div>
@@ -1003,14 +1024,14 @@ function FinancialCard({ sales }) {
       {/* Chart Modal */}
       {activeChart && activeChartDef && (
         <div style={{position:'fixed',inset:0,background:'rgba(14,14,12,0.55)',zIndex:300,display:'flex',alignItems:'center',justifyContent:'center',padding:'1rem'}} onClick={e=>e.target===e.currentTarget&&openChart(activeChart)}>
-          <div style={{background:white,borderRadius:14,width:'100%',maxWidth:640,maxHeight:'88vh',overflowY:'auto',boxShadow:'0 24px 60px rgba(0,0,0,0.18)',transition:'opacity 0.22s',opacity:chartVisible?1:0}}>
+          <div style={{background:modalBg,borderRadius:14,width:'100%',maxWidth:640,maxHeight:'88vh',overflowY:'auto',boxShadow:'0 24px 60px rgba(0,0,0,0.18)',transition:'opacity 0.22s',opacity:chartVisible?1:0}}>
             {/* Modal header */}
-            <div style={{padding:'1.25rem 1.5rem',borderBottom:'1px solid rgba(14,14,12,0.07)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+            <div style={{padding:'1.25rem 1.5rem',borderBottom:`1px solid ${modalDivider}`,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
               <div>
-                <div style={{fontFamily:ffS,fontSize:'1.15rem',fontWeight:300,color:black}}>{activeChartDef.label}</div>
-                <div style={{fontSize:'0.58rem',color:gray,marginTop:'0.2rem'}}>{activeChartDef.desc}</div>
+                <div style={{fontFamily:ffS,fontSize:'1.15rem',fontWeight:300,color:modalInk}}>{activeChartDef.label}</div>
+                <div style={{fontSize:'0.58rem',color:modalGray,marginTop:'0.2rem'}}>{activeChartDef.desc}</div>
               </div>
-              <button onClick={()=>openChart(activeChart)} style={{background:'none',border:'none',fontSize:'1.1rem',color:gray,cursor:'pointer',padding:'0.25rem 0.5rem'}}>✕</button>
+              <button onClick={()=>openChart(activeChart)} style={{background:'none',border:'none',fontSize:'1.1rem',color:modalGray,cursor:'pointer',padding:'0.25rem 0.5rem'}}>✕</button>
             </div>
 
             {/* Period selector + chart switcher */}
@@ -1428,6 +1449,7 @@ function ReviewsPanel() {
 }
 
 function BookingsPanel() {
+  const {dm,inkC,grayC,inputBg,inputBorder,subtleBg,cardBg,cardBorder,surfaceBg,divider,glassCard}=useTheme()
   const [bookings, setBookings] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -1528,7 +1550,7 @@ function BookingsPanel() {
     const st = STATUS_COLORS[selected.status] || STATUS_COLORS.pending
     return (
       <div>
-        <button onClick={()=>setSelected(null)} style={{display:'flex',alignItems:'center',gap:'0.5rem',background:'none',border:'none',cursor:'pointer',color:gray,fontFamily:ff,fontSize:'0.65rem',letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:'1.5rem',padding:0}}>← Back to Bookings</button>
+        <button onClick={()=>setSelected(null)} style={{display:'flex',alignItems:'center',gap:'0.5rem',background:'none',border:'none',cursor:'pointer',color:grayC,fontFamily:ff,fontSize:'0.65rem',letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:'1.5rem',padding:0}}>← Back to Bookings</button>
         <div style={{background:black,borderRadius:12,padding:'1.75rem',marginBottom:'1.25rem',position:'relative',overflow:'hidden'}}>
           <div style={{position:'absolute',inset:0,background:'radial-gradient(ellipse 60% 50% at 0% 50%,rgba(184,151,90,0.08) 0%,transparent 70%)'}}/>
           <div style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300,color:white,marginBottom:'0.2rem'}}>{selected.name}</div>
@@ -1542,17 +1564,17 @@ function BookingsPanel() {
             ))}
           </div>
         </div>
-        <div style={{background:'rgba(248,246,241,0.6)',backdropFilter:'blur(20px) saturate(160%)',borderRadius:14,border:'1px solid rgba(255,255,255,0.7)',boxShadow:'inset 0 1px 0 rgba(255,255,255,0.8),0 8px 32px -8px rgba(28,28,26,0.1)',padding:'1.25rem',marginBottom:'1rem'}}>
-          <div style={{fontSize:'0.62rem',letterSpacing:'0.1em',textTransform:'uppercase',color:gray,marginBottom:'0.75rem'}}>Status</div>
+        <div style={{...glassCard,borderRadius:14,padding:'1.25rem',marginBottom:'1rem'}}>
+          <div style={{fontSize:'0.62rem',letterSpacing:'0.1em',textTransform:'uppercase',color:grayC,marginBottom:'0.75rem'}}>Status</div>
           <div style={{display:'flex',gap:'0.5rem',flexWrap:'wrap'}}>
             {Object.entries(STATUS_COLORS).map(([key,val])=>(
-              <button key={key} onClick={()=>updateStatus(selected.id,key)} style={{padding:'0.35rem 0.85rem',borderRadius:20,border:'none',cursor:'pointer',fontFamily:ff,fontSize:'0.6rem',letterSpacing:'0.08em',textTransform:'uppercase',background:selected.status===key?val.bg:'rgba(14,14,12,0.05)',color:selected.status===key?val.color:gray,fontWeight:selected.status===key?700:400}}>{val.label}</button>
+              <button key={key} onClick={()=>updateStatus(selected.id,key)} style={{padding:'0.35rem 0.85rem',borderRadius:20,border:'none',cursor:'pointer',fontFamily:ff,fontSize:'0.6rem',letterSpacing:'0.08em',textTransform:'uppercase',background:selected.status===key?val.bg:subtleBg,color:selected.status===key?val.color:grayC,fontWeight:selected.status===key?700:400}}>{val.label}</button>
             ))}
           </div>
         </div>
-        <div style={{background:'rgba(248,246,241,0.6)',backdropFilter:'blur(20px) saturate(160%)',borderRadius:14,border:'1px solid rgba(255,255,255,0.7)',boxShadow:'inset 0 1px 0 rgba(255,255,255,0.8),0 8px 32px -8px rgba(28,28,26,0.1)',padding:'1.25rem'}}>
-          <div style={{fontSize:'0.62rem',letterSpacing:'0.1em',textTransform:'uppercase',color:gray,marginBottom:'0.5rem'}}>Notes</div>
-          <textarea value={notesDraft} onChange={e=>setNotesDraft(e.target.value)} placeholder="Add notes about this booking..." rows={3} style={{width:'100%',border:'1px solid rgba(14,14,12,0.1)',borderRadius:6,padding:'0.6rem',fontFamily:ff,fontSize:'0.78rem',outline:'none',resize:'vertical',boxSizing:'border-box'}}/>
+        <div style={{...glassCard,borderRadius:14,padding:'1.25rem'}}>
+          <div style={{fontSize:'0.62rem',letterSpacing:'0.1em',textTransform:'uppercase',color:grayC,marginBottom:'0.5rem'}}>Notes</div>
+          <textarea value={notesDraft} onChange={e=>setNotesDraft(e.target.value)} placeholder="Add notes about this booking..." rows={3} style={{width:'100%',border:`1px solid ${inputBorder}`,borderRadius:6,padding:'0.6rem',fontFamily:ff,fontSize:'0.78rem',outline:'none',resize:'vertical',boxSizing:'border-box',background:inputBg,color:inkC}}/>
           <button onClick={()=>saveNotes(selected.id)} disabled={saving} style={{marginTop:'0.5rem',background:black,color:white,border:'none',padding:'0.5rem 1.1rem',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.6rem',letterSpacing:'0.1em',textTransform:'uppercase',opacity:saving?0.6:1}}>{saving?'Saving…':'Save Notes'}</button>
         </div>
       </div>
@@ -1562,39 +1584,39 @@ function BookingsPanel() {
   return (
     <div>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1.25rem',flexWrap:'wrap',gap:'0.75rem'}}>
-        <h2 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300}}>Bookings</h2>
+        <h2 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300,color:inkC}}>Bookings</h2>
         <div style={{display:'flex',gap:'0.5rem',alignItems:'center',flexWrap:'wrap'}}>
-          <button onClick={navPrev} style={{background:'none',border:'1px solid rgba(14,14,12,0.1)',borderRadius:20,padding:'0.3rem 0.75rem',cursor:'pointer',fontFamily:ff,fontSize:'0.72rem',color:gray}}>‹</button>
-          <span style={{fontSize:'0.72rem',color:black,fontWeight:500,minWidth:140,textAlign:'center'}}>{navLabel}</span>
-          <button onClick={navNext} style={{background:'none',border:'1px solid rgba(14,14,12,0.1)',borderRadius:20,padding:'0.3rem 0.75rem',cursor:'pointer',fontFamily:ff,fontSize:'0.72rem',color:gray}}>›</button>
+          <button onClick={navPrev} style={{background:'none',border:`1px solid ${inputBorder}`,borderRadius:20,padding:'0.3rem 0.75rem',cursor:'pointer',fontFamily:ff,fontSize:'0.72rem',color:grayC}}>‹</button>
+          <span style={{fontSize:'0.72rem',color:inkC,fontWeight:500,minWidth:140,textAlign:'center'}}>{navLabel}</span>
+          <button onClick={navNext} style={{background:'none',border:`1px solid ${inputBorder}`,borderRadius:20,padding:'0.3rem 0.75rem',cursor:'pointer',fontFamily:ff,fontSize:'0.72rem',color:grayC}}>›</button>
           <div style={{display:'flex',gap:'0.3rem'}}>
             {[['month','Month'],['week','Week'],['agenda','Agenda']].map(([v,l])=>(
-              <button key={v} onClick={()=>setView(v)} style={{padding:'0.35rem 0.75rem',borderRadius:20,border:'none',cursor:'pointer',fontFamily:ff,fontSize:'0.6rem',letterSpacing:'0.08em',textTransform:'uppercase',background:view===v?black:'rgba(14,14,12,0.06)',color:view===v?white:gray,transition:'all 0.15s'}}>{l}</button>
+              <button key={v} onClick={()=>setView(v)} style={{padding:'0.35rem 0.75rem',borderRadius:20,border:'none',cursor:'pointer',fontFamily:ff,fontSize:'0.6rem',letterSpacing:'0.08em',textTransform:'uppercase',background:view===v?black:subtleBg,color:view===v?white:grayC,transition:'all 0.15s'}}>{l}</button>
             ))}
           </div>
-          <button onClick={fetchBookings} style={{background:'none',border:'1px solid rgba(14,14,12,0.08)',borderRadius:20,padding:'0.3rem 0.65rem',cursor:'pointer',fontFamily:ff,fontSize:'0.6rem',color:gray}}>↺</button>
+          <button onClick={fetchBookings} style={{background:'none',border:`1px solid ${inputBorder}`,borderRadius:20,padding:'0.3rem 0.65rem',cursor:'pointer',fontFamily:ff,fontSize:'0.6rem',color:grayC}}>↺</button>
         </div>
       </div>
 
-      <div style={{background:'rgba(248,246,241,0.6)',backdropFilter:'blur(20px) saturate(160%)',borderRadius:14,border:'1px solid rgba(255,255,255,0.7)',boxShadow:'inset 0 1px 0 rgba(255,255,255,0.8),0 8px 32px -8px rgba(28,28,26,0.1)',overflow:'hidden'}}>
-        {loading&&<div style={{padding:'3rem',textAlign:'center',color:gray,fontSize:'0.78rem'}}>Loading...</div>}
+      <div style={{...glassCard,borderRadius:14,overflow:'hidden'}}>
+        {loading&&<div style={{padding:'3rem',textAlign:'center',color:grayC,fontSize:'0.78rem'}}>Loading...</div>}
         {error&&<div style={{padding:'3rem',textAlign:'center',color:'#c0392b',fontSize:'0.78rem'}}>{error}<br/><button onClick={fetchBookings} style={{marginTop:'0.75rem',background:black,color:white,border:'none',padding:'0.5rem 1rem',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.62rem'}}>Retry</button></div>}
 
         {/* MONTH */}
         {!loading&&!error&&view==='month'&&(
           <div>
-            <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',borderBottom:'1px solid rgba(14,14,12,0.06)'}}>
-              {weekDayNames.map(d=><div key={d} style={{padding:'0.5rem',textAlign:'center',fontSize:'0.52rem',letterSpacing:'0.1em',textTransform:'uppercase',color:gray}}>{d}</div>)}
+            <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',borderBottom:`1px solid ${divider}`}}>
+              {weekDayNames.map(d=><div key={d} style={{padding:'0.5rem',textAlign:'center',fontSize:'0.52rem',letterSpacing:'0.1em',textTransform:'uppercase',color:grayC}}>{d}</div>)}
             </div>
             <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)'}}>
               {getMonthDays().map((date,i)=>{
                 const dayBs=getBookingsForDay(date)
                 const today=date&&date.toDateString()===new Date().toDateString()
                 return(
-                  <div key={i} style={{minHeight:80,padding:'0.4rem',borderRight:'1px solid rgba(14,14,12,0.04)',borderBottom:'1px solid rgba(14,14,12,0.04)',background:today?'rgba(184,151,90,0.04)':'transparent'}}>
-                    {date&&<div style={{fontSize:'0.65rem',fontWeight:today?700:400,color:today?gold:black,width:22,height:22,borderRadius:'50%',background:today?'rgba(184,151,90,0.15)':'transparent',display:'flex',alignItems:'center',justifyContent:'center',marginBottom:'0.25rem'}}>{date.getDate()}</div>}
+                  <div key={i} style={{minHeight:80,padding:'0.4rem',borderRight:`1px solid ${divider}`,borderBottom:`1px solid ${divider}`,background:today?'rgba(184,151,90,0.04)':'transparent'}}>
+                    {date&&<div style={{fontSize:'0.65rem',fontWeight:today?700:400,color:today?gold:inkC,width:22,height:22,borderRadius:'50%',background:today?'rgba(184,151,90,0.15)':'transparent',display:'flex',alignItems:'center',justifyContent:'center',marginBottom:'0.25rem'}}>{date.getDate()}</div>}
                     {dayBs.slice(0,2).map((b,j)=><div key={j} onClick={()=>{setSelected(b);setNotesDraft(b.notes||'')}} title={b.name} style={{fontSize:'0.52rem',background:'rgba(184,151,90,0.12)',color:gold,borderRadius:3,padding:'0.15rem 0.35rem',marginBottom:'0.15rem',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',cursor:'pointer'}}>{b.name}</div>)}
-                    {dayBs.length>2&&<div style={{fontSize:'0.5rem',color:gray}}>+{dayBs.length-2}</div>}
+                    {dayBs.length>2&&<div style={{fontSize:'0.5rem',color:grayC}}>+{dayBs.length-2}</div>}
                   </div>
                 )
               })}
@@ -1612,9 +1634,9 @@ function BookingsPanel() {
                 const today=d.toDateString()===new Date().toDateString()
                 const dayBs=getBookingsForDay(d)
                 return(
-                  <div key={i} style={{padding:'0.75rem 0.5rem',borderRight:'1px solid rgba(14,14,12,0.04)',background:today?'rgba(184,151,90,0.04)':'transparent',minHeight:150}}>
-                    <div style={{fontSize:'0.52rem',color:gray,textTransform:'uppercase',letterSpacing:'0.08em'}}>{weekDayNames[i]}</div>
-                    <div style={{fontSize:'0.88rem',fontWeight:today?700:400,color:today?gold:black,marginBottom:'0.4rem'}}>{d.getDate()}</div>
+                  <div key={i} style={{padding:'0.75rem 0.5rem',borderRight:`1px solid ${divider}`,background:today?'rgba(184,151,90,0.04)':'transparent',minHeight:150}}>
+                    <div style={{fontSize:'0.52rem',color:grayC,textTransform:'uppercase',letterSpacing:'0.08em'}}>{weekDayNames[i]}</div>
+                    <div style={{fontSize:'0.88rem',fontWeight:today?700:400,color:today?gold:inkC,marginBottom:'0.4rem'}}>{d.getDate()}</div>
                     {dayBs.map((b,j)=><div key={j} onClick={()=>{setSelected(b);setNotesDraft(b.notes||'')}} style={{fontSize:'0.54rem',background:'rgba(184,151,90,0.1)',color:gold,borderRadius:3,padding:'0.2rem 0.4rem',marginBottom:'0.2rem',lineHeight:1.3,cursor:'pointer'}}><div style={{fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{b.name}</div><div style={{opacity:0.7}}>{b.time}</div></div>)}
                   </div>
                 )
@@ -1626,28 +1648,28 @@ function BookingsPanel() {
         {/* AGENDA */}
         {!loading&&!error&&view==='agenda'&&(
           <div>
-            {bookings.length===0&&<div style={{padding:'2rem',textAlign:'center',color:gray,fontSize:'0.78rem'}}>No upcoming bookings.</div>}
+            {bookings.length===0&&<div style={{padding:'2rem',textAlign:'center',color:grayC,fontSize:'0.78rem'}}>No upcoming bookings.</div>}
             {bookings.map((b,i)=>{
               const st=STATUS_COLORS[b.status]||STATUS_COLORS.pending
               const isToday=b.date===new Date().toISOString().slice(0,10)
               return(
-                <div key={b.id||i} onClick={()=>{setSelected(b);setNotesDraft(b.notes||'')}} style={{display:'flex',alignItems:'center',gap:'1rem',padding:'0.85rem 1.25rem',borderBottom:'1px solid rgba(14,14,12,0.04)',cursor:'pointer',background:isToday?'rgba(184,151,90,0.03)':'transparent'}}>
+                <div key={b.id||i} onClick={()=>{setSelected(b);setNotesDraft(b.notes||'')}} style={{display:'flex',alignItems:'center',gap:'1rem',padding:'0.85rem 1.25rem',borderBottom:`1px solid ${divider}`,cursor:'pointer',background:isToday?'rgba(184,151,90,0.03)':'transparent'}}>
                   <div style={{textAlign:'center',minWidth:42}}>
-                    <div style={{fontSize:'0.6rem',color:gray,textTransform:'uppercase',letterSpacing:'0.08em'}}>{new Date(b.date+'T00:00:00').toLocaleDateString('en-US',{month:'short'})}</div>
-                    <div style={{fontFamily:ffS,fontSize:'1.4rem',fontWeight:300,color:isToday?gold:black,lineHeight:1}}>{new Date(b.date+'T00:00:00').getDate()}</div>
+                    <div style={{fontSize:'0.6rem',color:grayC,textTransform:'uppercase',letterSpacing:'0.08em'}}>{new Date(b.date+'T00:00:00').toLocaleDateString('en-US',{month:'short'})}</div>
+                    <div style={{fontFamily:ffS,fontSize:'1.4rem',fontWeight:300,color:isToday?gold:inkC,lineHeight:1}}>{new Date(b.date+'T00:00:00').getDate()}</div>
                   </div>
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{display:'flex',alignItems:'center',gap:'0.5rem',marginBottom:'0.1rem'}}>
-                      <span style={{fontSize:'0.82rem',fontWeight:500,color:black,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{b.name}</span>
+                      <span style={{fontSize:'0.82rem',fontWeight:500,color:inkC,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{b.name}</span>
                       <span style={{fontSize:'0.56rem',padding:'0.15rem 0.55rem',borderRadius:20,background:st.bg,color:st.color,whiteSpace:'nowrap',flexShrink:0}}>{st.label}</span>
                     </div>
-                    <div style={{fontSize:'0.65rem',color:gray,display:'flex',alignItems:'center',gap:'0.4rem',flexWrap:'wrap'}}>
+                    <div style={{fontSize:'0.65rem',color:grayC,display:'flex',alignItems:'center',gap:'0.4rem',flexWrap:'wrap'}}>
                       <span>{b.business} · {b.time}</span>
                       {b.agent_id&&agentMap[b.agent_id]&&<span style={{background:'rgba(184,151,90,0.15)',color:'#8a6e3a',borderRadius:8,padding:'0.05rem 0.4rem',fontSize:'0.58rem',fontWeight:600,whiteSpace:'nowrap'}}>Ag. {agentMap[b.agent_id]}</span>}
                     </div>
-                    {b.notes&&<div style={{fontSize:'0.62rem',color:gray,marginTop:'0.15rem',fontStyle:'italic',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{b.notes}</div>}
+                    {b.notes&&<div style={{fontSize:'0.62rem',color:grayC,marginTop:'0.15rem',fontStyle:'italic',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{b.notes}</div>}
                   </div>
-                  <div style={{color:gray,fontSize:'0.75rem',flexShrink:0}}>›</div>
+                  <div style={{color:grayC,fontSize:'0.75rem',flexShrink:0}}>›</div>
                 </div>
               )
             })}
@@ -1660,6 +1682,7 @@ function BookingsPanel() {
 
 
 function AdminSystemPanel({ users, cards, allUsers, loadAll, showToast }) {
+  const {dm,inkC,grayC,inputBg,inputBorder,subtleBg,divider,cardBg,cardBorder,surfaceBg}=useTheme()
   const [tab, setTab] = useState('agents')
   const [search, setSearch] = useState('')
   const [roleChanging, setRoleChanging] = useState(null)
@@ -1811,20 +1834,20 @@ function AdminSystemPanel({ users, cards, allUsers, loadAll, showToast }) {
   const tabStyle = (t) => ({
     padding:'0.5rem 1rem', borderRadius:20, border:'none', cursor:'pointer', fontFamily:ff,
     fontSize:'0.62rem', letterSpacing:'0.08em', textTransform:'uppercase',
-    background: tab===t ? black : 'rgba(14,14,12,0.06)',
-    color: tab===t ? white : gray,
+    background: tab===t ? inkC : (dm?'rgba(255,255,255,0.07)':'rgba(14,14,12,0.06)'),
+    color: tab===t ? (dm?'#0e0e0c':white) : grayC,
     transition:'all 0.15s'
   })
 
   return (
     <div>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1.5rem'}}>
-        <h2 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300}}>System Admin</h2>
-        <div style={{fontSize:'0.62rem',color:gray}}>{(allUsers||users).length} users total</div>
+        <h2 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300,color:inkC}}>System Admin</h2>
+        <div style={{fontSize:'0.62rem',color:grayC}}>{(allUsers||users).length} users total</div>
       </div>
 
       <input type="text" placeholder="Search users, actions, targets..." value={search} onChange={e=>setSearch(e.target.value)}
-        style={{width:'100%',padding:'0.7rem 1rem',border:'1px solid '+gl,borderRadius:3,fontFamily:ff,fontSize:'0.82rem',outline:'none',marginBottom:'1.25rem',boxSizing:'border-box',background:white}}/>
+        style={{width:'100%',padding:'0.7rem 1rem',border:`1px solid ${inputBorder}`,borderRadius:3,fontFamily:ff,fontSize:'0.82rem',outline:'none',marginBottom:'1.25rem',boxSizing:'border-box',background:inputBg,color:inkC}}/>
 
       <div style={{display:'flex',gap:'0.5rem',marginBottom:'1.5rem',flexWrap:'wrap'}}>
         <button style={tabStyle('agents')} onClick={()=>setTab('agents')}>Agentes</button>
@@ -1846,35 +1869,35 @@ function AdminSystemPanel({ users, cards, allUsers, loadAll, showToast }) {
               <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
                 {[{k:'firstName',l:'Nombre'},{k:'lastName',l:'Apellido'}].map(f=>(
                   <div key={f.k}>
-                    <label style={{fontSize:10,fontWeight:600,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:3}}>{f.l}</label>
-                    <input required type="text" value={agentForm[f.k]} onChange={e=>setAgentForm(p=>({...p,[f.k]:e.target.value}))} style={{width:'100%',height:40,borderRadius:8,border:'1px solid rgba(14,14,12,0.12)',padding:'0 12px',fontSize:14,fontFamily:ff,outline:'none',boxSizing:'border-box'}}/>
+                    <label style={{fontSize:10,fontWeight:600,color:grayC,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:3}}>{f.l}</label>
+                    <input required type="text" value={agentForm[f.k]} onChange={e=>setAgentForm(p=>({...p,[f.k]:e.target.value}))} style={{width:'100%',height:40,borderRadius:8,border:`1px solid ${inputBorder}`,padding:'0 12px',fontSize:14,fontFamily:ff,outline:'none',boxSizing:'border-box',background:inputBg,color:inkC}}/>
                   </div>
                 ))}
               </div>
               {[{k:'email',l:'Email',t:'email'},{k:'password',l:'Contraseña temporal',t:'text'}].map(f=>(
                 <div key={f.k}>
-                  <label style={{fontSize:10,fontWeight:600,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:3}}>{f.l}</label>
-                  <input required type={f.t} value={agentForm[f.k]} onChange={e=>setAgentForm(p=>({...p,[f.k]:e.target.value}))} style={{width:'100%',height:40,borderRadius:8,border:'1px solid rgba(14,14,12,0.12)',padding:'0 12px',fontSize:14,fontFamily:ff,outline:'none',boxSizing:'border-box'}}/>
+                  <label style={{fontSize:10,fontWeight:600,color:grayC,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:3}}>{f.l}</label>
+                  <input required type={f.t} value={agentForm[f.k]} onChange={e=>setAgentForm(p=>({...p,[f.k]:e.target.value}))} style={{width:'100%',height:40,borderRadius:8,border:`1px solid ${inputBorder}`,padding:'0 12px',fontSize:14,fontFamily:ff,outline:'none',boxSizing:'border-box',background:inputBg,color:inkC}}/>
                 </div>
               ))}
               <div style={{display:'flex',gap:8,marginTop:4}}>
                 <button type="submit" disabled={creatingAgent} style={{flex:1,background:gold,color:'#fff',border:'none',borderRadius:8,padding:'10px',fontSize:13,fontWeight:600,fontFamily:ff,cursor:'pointer'}}>{creatingAgent?'Creando...':'Crear'}</button>
-                <button type="button" onClick={()=>setShowAgentForm(false)} style={{padding:'10px 16px',background:'none',border:'1px solid rgba(14,14,12,0.12)',borderRadius:8,fontSize:13,fontFamily:ff,cursor:'pointer',color:gray}}>Cancelar</button>
+                <button type="button" onClick={()=>setShowAgentForm(false)} style={{padding:'10px 16px',background:'none',border:`1px solid ${inputBorder}`,borderRadius:8,fontSize:13,fontFamily:ff,cursor:'pointer',color:grayC}}>Cancelar</button>
               </div>
             </form>
           )}
-          {agents.length===0&&!showAgentForm&&<p style={{color:gray,fontSize:13,textAlign:'center',padding:'24px 0'}}>No hay agentes aún</p>}
+          {agents.length===0&&!showAgentForm&&<p style={{color:grayC,fontSize:13,textAlign:'center',padding:'24px 0'}}>No hay agentes aún</p>}
           {agents.map(u=>(
-            <div key={u.id} style={{background:'rgba(255,255,255,0.7)',border:`1.5px solid ${u.banned?'rgba(192,57,43,0.3)':'rgba(14,14,12,0.07)'}`,borderRadius:14,padding:14,marginBottom:10}}>
+            <div key={u.id} style={{background:cardBg,backdropFilter:'blur(12px)',border:`1.5px solid ${u.banned?'rgba(192,57,43,0.3)':cardBorder}`,borderRadius:14,padding:14,marginBottom:10}}>
               {/* Header */}
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:8}}>
                 <div style={{minWidth:0}}>
                   <div style={{display:'flex',alignItems:'center',gap:6}}>
-                    <p style={{fontSize:14,fontWeight:600,color:u.banned?'#c0392b':ink}}>{u.business_name||u.full_name}</p>
+                    <p style={{fontSize:14,fontWeight:600,color:u.banned?'#c0392b':inkC}}>{u.business_name||u.full_name}</p>
                     {u.banned&&<span style={{fontSize:10,background:'rgba(192,57,43,0.1)',color:'#c0392b',borderRadius:6,padding:'1px 6px',fontWeight:700}}>BLOQUEADO</span>}
                   </div>
-                  <p style={{fontSize:12,color:gray,marginTop:2}}>{u.email}</p>
-                  {u.last_sign_in_at&&<p style={{fontSize:10,color:gray,marginTop:1}}>Último acceso: {new Date(u.last_sign_in_at).toLocaleDateString('es',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}</p>}
+                  <p style={{fontSize:12,color:grayC,marginTop:2}}>{u.email}</p>
+                  {u.last_sign_in_at&&<p style={{fontSize:10,color:grayC,marginTop:1}}>Último acceso: {new Date(u.last_sign_in_at).toLocaleDateString('es',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}</p>}
                 </div>
                 <button onClick={()=>setEditingAgent(editingAgent?.id===u.id?null:{id:u.id,full_name:u.full_name||'',email:u.email||'',newPassword:''})} style={{fontSize:11,color:gold,background:'rgba(184,151,90,0.1)',border:'none',borderRadius:8,padding:'5px 10px',cursor:'pointer',fontFamily:ff,fontWeight:600,flexShrink:0}}>
                   {editingAgent?.id===u.id?'Cerrar':'Editar'}
@@ -1887,16 +1910,16 @@ function AdminSystemPanel({ users, cards, allUsers, loadAll, showToast }) {
                   <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
                     <div>
                       <p style={{fontSize:10,color:gray,marginBottom:3}}>Nombre completo</p>
-                      <input value={editingAgent.full_name} onChange={e=>setEditingAgent(p=>({...p,full_name:e.target.value}))} style={{width:'100%',boxSizing:'border-box',border:'1px solid rgba(14,14,12,0.15)',borderRadius:8,padding:'7px 10px',fontSize:13,fontFamily:ff,background:'rgba(255,255,255,0.8)',color:ink}}/>
+                      <input value={editingAgent.full_name} onChange={e=>setEditingAgent(p=>({...p,full_name:e.target.value}))} style={{width:'100%',boxSizing:'border-box',border:`1px solid ${inputBorder}`,borderRadius:8,padding:'7px 10px',fontSize:13,fontFamily:ff,background:inputBg,color:inkC}}/>
                     </div>
                     <div>
                       <p style={{fontSize:10,color:gray,marginBottom:3}}>Email</p>
-                      <input value={editingAgent.email} onChange={e=>setEditingAgent(p=>({...p,email:e.target.value}))} style={{width:'100%',boxSizing:'border-box',border:'1px solid rgba(14,14,12,0.15)',borderRadius:8,padding:'7px 10px',fontSize:13,fontFamily:ff,background:'rgba(255,255,255,0.8)',color:ink}}/>
+                      <input value={editingAgent.email} onChange={e=>setEditingAgent(p=>({...p,email:e.target.value}))} style={{width:'100%',boxSizing:'border-box',border:`1px solid ${inputBorder}`,borderRadius:8,padding:'7px 10px',fontSize:13,fontFamily:ff,background:inputBg,color:inkC}}/>
                     </div>
                   </div>
                   <div>
                     <p style={{fontSize:10,color:gray,marginBottom:3}}>Nueva contraseña <span style={{fontStyle:'italic'}}>(dejar vacío para no cambiar)</span></p>
-                    <input type="password" placeholder="mínimo 6 caracteres" value={editingAgent.newPassword} onChange={e=>setEditingAgent(p=>({...p,newPassword:e.target.value}))} style={{width:'100%',boxSizing:'border-box',border:'1px solid rgba(14,14,12,0.15)',borderRadius:8,padding:'7px 10px',fontSize:13,fontFamily:ff,background:'rgba(255,255,255,0.8)',color:ink}}/>
+                    <input type="password" placeholder="mínimo 6 caracteres" value={editingAgent.newPassword} onChange={e=>setEditingAgent(p=>({...p,newPassword:e.target.value}))} style={{width:'100%',boxSizing:'border-box',border:`1px solid ${inputBorder}`,borderRadius:8,padding:'7px 10px',fontSize:13,fontFamily:ff,background:inputBg,color:inkC}}/>
                   </div>
                   <div style={{display:'flex',gap:6}}>
                     <button type="submit" disabled={savingAgent} style={{flex:1,background:gold,color:'#fff',border:'none',borderRadius:8,padding:'8px',fontSize:12,fontWeight:600,fontFamily:ff,cursor:'pointer'}}>{savingAgent?'Guardando...':'Guardar cambios'}</button>
@@ -1908,16 +1931,16 @@ function AdminSystemPanel({ users, cards, allUsers, loadAll, showToast }) {
               )}
 
               {/* Links */}
-              <div style={{marginTop:12,background:'rgba(14,14,12,0.03)',borderRadius:8,padding:'8px 10px',display:'flex',flexDirection:'column',gap:8}}>
+              <div style={{marginTop:12,background:subtleBg,borderRadius:8,padding:'8px 10px',display:'flex',flexDirection:'column',gap:8}}>
                 <div>
-                  <p style={{fontSize:10,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:4}}>Link de consultas (clientes)</p>
+                  <p style={{fontSize:10,color:grayC,textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:4}}>Link de consultas (clientes)</p>
                   <div style={{display:'flex',gap:6,alignItems:'center'}}>
-                    <p style={{fontSize:11,color:ink,flex:1,wordBreak:'break-all',fontFamily:'monospace'}}>{BASE_URL}/?agent={u.id}</p>
+                    <p style={{fontSize:11,color:inkC,flex:1,wordBreak:'break-all',fontFamily:'monospace'}}>{BASE_URL}/?agent={u.id}</p>
                     <button onClick={()=>{navigator.clipboard.writeText(`${BASE_URL}/?agent=${u.id}`);showToast('Link copiado')}} style={{flexShrink:0,background:gold,color:'#fff',border:'none',borderRadius:6,padding:'5px 10px',fontSize:11,fontWeight:600,fontFamily:ff,cursor:'pointer'}}>Copiar</button>
                   </div>
                 </div>
                 <div>
-                  <p style={{fontSize:10,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:4}}>Link de acceso (agente)</p>
+                  <p style={{fontSize:10,color:grayC,textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:4}}>Link de acceso (agente)</p>
                   <button onClick={async()=>{
                     const r=await fetch('/api/admin/magic-link',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:u.email})})
                     const d=await r.json()
@@ -1935,25 +1958,25 @@ function AdminSystemPanel({ users, cards, allUsers, loadAll, showToast }) {
 
       {/* USERS & ROLES */}
       {tab==='users'&&(
-        <div style={{background:'rgba(248,246,241,0.6)',backdropFilter:'blur(20px) saturate(160%)',borderRadius:14,border:'1px solid rgba(255,255,255,0.7)',boxShadow:'inset 0 1px 0 rgba(255,255,255,0.8),0 8px 32px -8px rgba(28,28,26,0.1)',overflow:'hidden'}}>
-          <div style={{display:'grid',gridTemplateColumns:'2fr 1fr 1fr 1fr',padding:'0.6rem 1.25rem',borderBottom:'1px solid rgba(14,14,12,0.06)',fontSize:'0.52rem',letterSpacing:'0.1em',textTransform:'uppercase',color:gray}}>
+        <div style={{...cardBg&&{},background:cardBg,backdropFilter:'blur(20px) saturate(160%)',borderRadius:14,border:`1px solid ${cardBorder}`,overflow:'hidden'}}>
+          <div style={{display:'grid',gridTemplateColumns:'2fr 1fr 1fr 1fr',padding:'0.6rem 1.25rem',borderBottom:`1px solid ${divider}`,fontSize:'0.52rem',letterSpacing:'0.1em',textTransform:'uppercase',color:grayC}}>
             <span>User</span><span>Role</span><span>Card</span><span>Actions</span>
           </div>
           {displayUsers.map(u=>{
             const card = getCard(u.id)
             const isAdmin = u.role === 'admin'
             return (
-              <div key={u.id} style={{display:'grid',gridTemplateColumns:'2fr 1fr 1fr 1fr',padding:'0.85rem 1.25rem',borderBottom:'1px solid rgba(14,14,12,0.04)',alignItems:'center',gap:'0.5rem'}}>
+              <div key={u.id} style={{display:'grid',gridTemplateColumns:'2fr 1fr 1fr 1fr',padding:'0.85rem 1.25rem',borderBottom:`1px solid ${divider}`,alignItems:'center',gap:'0.5rem'}}>
                 <div style={{minWidth:0}}>
-                  <div style={{fontSize:'0.75rem',color:black,fontWeight:500,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{u.business_name||u.full_name}</div>
-                  <div style={{fontSize:'0.6rem',color:gray,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{u.email||'—'}</div>
+                  <div style={{fontSize:'0.75rem',color:inkC,fontWeight:500,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{u.business_name||u.full_name}</div>
+                  <div style={{fontSize:'0.6rem',color:grayC,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{u.email||'—'}</div>
                 </div>
                 <span style={{fontSize:'0.58rem',padding:'0.18rem 0.55rem',borderRadius:20,
                   background:isAdmin?'rgba(184,151,90,0.12)':'rgba(52,152,219,0.08)',
                   color:isAdmin?gold:'#2980b9',width:'fit-content',whiteSpace:'nowrap'}}>
                   {isAdmin?'Admin':'Client'}
                 </span>
-                <span style={{fontSize:'0.62rem',color:card?'#2d8a60':gray}}>
+                <span style={{fontSize:'0.62rem',color:card?'#2d8a60':grayC}}>
                   {card?'#'+card.card_number:'No card'}
                 </span>
                 <div style={{display:'flex',gap:'0.35rem',flexWrap:'wrap'}}>
@@ -1973,31 +1996,31 @@ function AdminSystemPanel({ users, cards, allUsers, loadAll, showToast }) {
               </div>
             )
           })}
-          {displayUsers.length===0&&<div style={{padding:'2rem',textAlign:'center',color:gray,fontSize:'0.82rem'}}>No users found.</div>}
+          {displayUsers.length===0&&<div style={{padding:'2rem',textAlign:'center',color:grayC,fontSize:'0.82rem'}}>No users found.</div>}
         </div>
       )}
 
       {/* ACTIVITY LOG */}
       {tab==='log'&&(
-        <div style={{background:'rgba(248,246,241,0.6)',backdropFilter:'blur(20px) saturate(160%)',borderRadius:14,border:'1px solid rgba(255,255,255,0.7)',boxShadow:'inset 0 1px 0 rgba(255,255,255,0.8),0 8px 32px -8px rgba(28,28,26,0.1)',overflow:'hidden'}}>
-          <div style={{padding:'0.75rem 1.25rem',borderBottom:'1px solid rgba(14,14,12,0.06)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-            <span style={{fontSize:'0.6rem',color:gray,letterSpacing:'0.1em',textTransform:'uppercase'}}>Recent activity</span>
-            <button onClick={loadLog} style={{background:'none',border:'none',cursor:'pointer',fontSize:'0.6rem',color:gray,fontFamily:ff,letterSpacing:'0.08em',textTransform:'uppercase'}}>↺ Refresh</button>
+        <div style={{background:cardBg,backdropFilter:'blur(20px) saturate(160%)',borderRadius:14,border:`1px solid ${cardBorder}`,overflow:'hidden'}}>
+          <div style={{padding:'0.75rem 1.25rem',borderBottom:`1px solid ${divider}`,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+            <span style={{fontSize:'0.6rem',color:grayC,letterSpacing:'0.1em',textTransform:'uppercase'}}>Recent activity</span>
+            <button onClick={loadLog} style={{background:'none',border:'none',cursor:'pointer',fontSize:'0.6rem',color:grayC,fontFamily:ff,letterSpacing:'0.08em',textTransform:'uppercase'}}>↺ Refresh</button>
           </div>
-          {logLoading&&<div style={{padding:'2rem',textAlign:'center',color:gray,fontSize:'0.78rem'}}>Loading...</div>}
-          {!logLoading&&filteredLog.length===0&&<div style={{padding:'2rem',textAlign:'center',color:gray,fontSize:'0.82rem'}}>No activity yet.</div>}
+          {logLoading&&<div style={{padding:'2rem',textAlign:'center',color:grayC,fontSize:'0.78rem'}}>Loading...</div>}
+          {!logLoading&&filteredLog.length===0&&<div style={{padding:'2rem',textAlign:'center',color:grayC,fontSize:'0.82rem'}}>No activity yet.</div>}
           {!logLoading&&filteredLog.map((l,i)=>(
-            <div key={l.id} style={{display:'flex',alignItems:'center',gap:'0.85rem',padding:'0.85rem 1.25rem',borderBottom:'1px solid rgba(14,14,12,0.04)'}}>
+            <div key={l.id} style={{display:'flex',alignItems:'center',gap:'0.85rem',padding:'0.85rem 1.25rem',borderBottom:`1px solid ${divider}`}}>
               <div style={{width:28,height:28,borderRadius:'50%',background:(typeColor[l.type]||gray)+'18',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'0.7rem',color:typeColor[l.type]||gray,flexShrink:0,fontWeight:700}}>
                 {typeIcon[l.type]||'·'}
               </div>
               <div style={{flex:1,minWidth:0}}>
-                <div style={{fontSize:'0.72rem',color:black,fontWeight:500}}>{l.action}</div>
-                <div style={{fontSize:'0.62rem',color:gray,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',marginTop:'0.1rem'}}>{l.target||'—'}</div>
+                <div style={{fontSize:'0.72rem',color:inkC,fontWeight:500}}>{l.action}</div>
+                <div style={{fontSize:'0.62rem',color:grayC,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',marginTop:'0.1rem'}}>{l.target||'—'}</div>
               </div>
               <div style={{textAlign:'right',flexShrink:0}}>
-                <div style={{fontSize:'0.6rem',color:gray}}>{l.created_at?new Date(l.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+' · '+new Date(l.created_at).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}):'—'}</div>
-                <div style={{fontSize:'0.56rem',color:'rgba(14,14,12,0.3)',marginTop:'0.1rem'}}>{l.user_name||'Admin'}</div>
+                <div style={{fontSize:'0.6rem',color:grayC}}>{l.created_at?new Date(l.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+' · '+new Date(l.created_at).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}):'—'}</div>
+                <div style={{fontSize:'0.56rem',color:grayC,marginTop:'0.1rem'}}>{l.user_name||'Admin'}</div>
               </div>
             </div>
           ))}
@@ -2006,26 +2029,26 @@ function AdminSystemPanel({ users, cards, allUsers, loadAll, showToast }) {
 
       {/* SESSIONS */}
       {tab==='sessions'&&(
-        <div style={{background:'rgba(248,246,241,0.6)',backdropFilter:'blur(20px) saturate(160%)',borderRadius:14,border:'1px solid rgba(255,255,255,0.7)',boxShadow:'inset 0 1px 0 rgba(255,255,255,0.8),0 8px 32px -8px rgba(28,28,26,0.1)',overflow:'hidden'}}>
-          <div style={{display:'grid',gridTemplateColumns:'2fr 1fr 1fr',padding:'0.6rem 1.25rem',borderBottom:'1px solid rgba(14,14,12,0.06)',fontSize:'0.52rem',letterSpacing:'0.1em',textTransform:'uppercase',color:gray}}>
+        <div style={{background:cardBg,backdropFilter:'blur(20px) saturate(160%)',borderRadius:14,border:`1px solid ${cardBorder}`,overflow:'hidden'}}>
+          <div style={{display:'grid',gridTemplateColumns:'2fr 1fr 1fr',padding:'0.6rem 1.25rem',borderBottom:`1px solid ${divider}`,fontSize:'0.52rem',letterSpacing:'0.1em',textTransform:'uppercase',color:grayC}}>
             <span>User</span><span>Role</span><span>Last Sign In</span>
           </div>
-          {sessionsLoading&&<div style={{padding:'2rem',textAlign:'center',color:gray,fontSize:'0.78rem'}}>Loading...</div>}
+          {sessionsLoading&&<div style={{padding:'2rem',textAlign:'center',color:grayC,fontSize:'0.78rem'}}>Loading...</div>}
           {!sessionsLoading&&filteredSessions.map((u,i)=>(
-            <div key={u.id} style={{display:'grid',gridTemplateColumns:'2fr 1fr 1fr',padding:'0.85rem 1.25rem',borderBottom:'1px solid rgba(14,14,12,0.04)',alignItems:'center',gap:'0.5rem'}}>
+            <div key={u.id} style={{display:'grid',gridTemplateColumns:'2fr 1fr 1fr',padding:'0.85rem 1.25rem',borderBottom:`1px solid ${divider}`,alignItems:'center',gap:'0.5rem'}}>
               <div style={{minWidth:0}}>
-                <div style={{fontSize:'0.75rem',color:black,fontWeight:500,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{u.business_name||u.full_name||'—'}</div>
-                <div style={{fontSize:'0.6rem',color:gray,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{u.email||'—'}</div>
+                <div style={{fontSize:'0.75rem',color:inkC,fontWeight:500,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{u.business_name||u.full_name||'—'}</div>
+                <div style={{fontSize:'0.6rem',color:grayC,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{u.email||'—'}</div>
               </div>
               <span style={{fontSize:'0.58rem',padding:'0.18rem 0.55rem',borderRadius:20,
                 background:u.role==='admin'?'rgba(184,151,90,0.12)':'rgba(52,152,219,0.08)',
                 color:u.role==='admin'?gold:'#2980b9',width:'fit-content'}}>
                 {u.role==='admin'?'Admin':'Client'}
               </span>
-              <span style={{fontSize:'0.62rem',color:gray}}>{u.last_sign_in_at?new Date(u.last_sign_in_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+' · '+new Date(u.last_sign_in_at).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}):'Never'}</span>
+              <span style={{fontSize:'0.62rem',color:grayC}}>{u.last_sign_in_at?new Date(u.last_sign_in_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+' · '+new Date(u.last_sign_in_at).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}):'Never'}</span>
             </div>
           ))}
-          {!sessionsLoading&&filteredSessions.length===0&&<div style={{padding:'2rem',textAlign:'center',color:gray,fontSize:'0.82rem'}}>No sessions found.</div>}
+          {!sessionsLoading&&filteredSessions.length===0&&<div style={{padding:'2rem',textAlign:'center',color:grayC,fontSize:'0.82rem'}}>No sessions found.</div>}
         </div>
       )}
     </div>
@@ -2394,6 +2417,7 @@ function AdminDashboard({sales,bookings,session,users,onSaleAdded,onNavigate,dar
 
 // ─── ADMIN BOOKINGS ───────────────────────────────────────────────────────────
 function AdminBookings({userRole,agentId}){
+  const {dm,surfaceBg,inkC,grayC,inputBg,inputBorder,subtleBg,divider,glassCard,cardBg,cardBorder}=useTheme()
   const BASE_URL=typeof window!=='undefined'?window.location.origin:''
   const myBookingLink=agentId?`${BASE_URL}/?agent=${agentId}`:BOOKING_LINK
   const [bookings,setBookings]=useState([])
@@ -2477,8 +2501,8 @@ function AdminBookings({userRole,agentId}){
   const active=bookings.filter(b=>!b.archived)
   const archived=bookings.filter(b=>b.archived)
   const SC={pending:{label:'Pendiente',color:'#e67e22',bg:'rgba(230,126,34,0.1)'},confirmed:{label:'Confirmada',color:'#2d8a60',bg:'rgba(45,138,96,0.1)'},cancelled:{label:'Cancelada',color:'#c0392b',bg:'rgba(192,57,43,0.1)'},bought:{label:'Cerrado',color:gold,bg:'rgba(184,151,90,0.12)'},later:{label:'Dijo Luego',color:'#8e44ad',bg:'rgba(142,68,173,0.1)'},no_show:{label:'No Show',color:'#636e72',bg:'rgba(99,110,114,0.1)'}}
-  const inp2={width:'100%',boxSizing:'border-box',height:44,borderRadius:10,border:'1px solid rgba(14,14,12,0.12)',padding:'0 12px',fontSize:14,fontFamily:ff,background:'#fff',outline:'none',marginBottom:0}
-  const glCard2={background:'rgba(255,255,255,0.7)',backdropFilter:'blur(20px) saturate(180%)',WebkitBackdropFilter:'blur(20px) saturate(180%)',border:'1px solid rgba(255,255,255,0.55)',boxShadow:'0 4px 20px rgba(0,0,0,0.07),inset 0 1px 0 rgba(255,255,255,0.85)',borderRadius:18}
+  const inp2={width:'100%',boxSizing:'border-box',height:44,borderRadius:10,border:`1px solid ${inputBorder}`,padding:'0 12px',fontSize:14,fontFamily:ff,background:inputBg,color:inkC,outline:'none',marginBottom:0}
+  const glCard2={...glassCard,borderRadius:18}
   function BookingCard({b}){
     const st=SC[b.status]||SC.pending
     return(
@@ -2487,10 +2511,10 @@ function AdminBookings({userRole,agentId}){
           <span style={{fontSize:10,fontWeight:700,padding:'3px 10px',borderRadius:99,background:st.bg,color:st.color,textTransform:'uppercase',letterSpacing:'0.08em'}}>{st.label}</span>
           {b.facebook_page&&<span style={{fontSize:11,color:'#1877f2'}}>📘 {b.facebook_page}</span>}
         </div>
-        <p style={{fontSize:16,fontWeight:600,color:ink}}>{b.name}</p>
-        <p style={{fontSize:13,color:gray,marginTop:2}}>{b.service||'Consulta'}</p>
-        <p style={{fontSize:12,color:gray,marginTop:4}}>{b.date} · {b.time}</p>
-        {b.notes&&<p style={{fontSize:11,color:gray,marginTop:6,fontStyle:'italic'}}>{b.notes}</p>}
+        <p style={{fontSize:16,fontWeight:600,color:inkC}}>{b.name}</p>
+        <p style={{fontSize:13,color:grayC,marginTop:2}}>{b.service||'Consulta'}</p>
+        <p style={{fontSize:12,color:grayC,marginTop:4}}>{b.date} · {b.time}</p>
+        {b.notes&&<p style={{fontSize:11,color:grayC,marginTop:6,fontStyle:'italic'}}>{b.notes}</p>}
         <div style={{display:'flex',gap:7,marginTop:12,flexWrap:'wrap'}}>
           {b.status!=='confirmed'&&<button onClick={()=>doConfirm(b)} style={{flex:1,minWidth:90,padding:'8px',background:'none',color:'#2d8a60',border:'1.5px solid #2d8a60',borderRadius:10,fontSize:12,fontWeight:600,fontFamily:ff,cursor:'pointer',touchAction:'manipulation'}}>Confirmar</button>}
           <button onClick={()=>{setCerrarModal(b);setCerrarCompro(null);setCerrarForm({service:b.service||'',documentos:'',payType:'completo',total:'',pago_inicial:'',adeudado:'',tiempo_saldo:''})}} style={{flex:1,minWidth:70,padding:'8px',background:ink,color:'#fff',border:'none',borderRadius:10,fontSize:12,fontWeight:700,fontFamily:ff,cursor:'pointer',touchAction:'manipulation'}}>Cerrar</button>
@@ -2525,13 +2549,13 @@ function AdminBookings({userRole,agentId}){
   return(
     <div style={{padding:'20px 16px 32px',fontFamily:ff}}>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
-        <h1 style={{fontFamily:ffS,fontSize:26,fontWeight:300,color:ink}}>Consultas</h1>
-        <button onClick={()=>setShowNew(true)} style={{background:ink,color:cream,border:'none',borderRadius:99,padding:'8px 18px',fontSize:13,fontWeight:600,fontFamily:ff,cursor:'pointer',touchAction:'manipulation'}}>+ Nueva</button>
+        <h1 style={{fontFamily:ffS,fontSize:26,fontWeight:300,color:inkC}}>Consultas</h1>
+        <button onClick={()=>setShowNew(true)} style={{background:inkC,color:dm?'#0e0e0c':cream,border:'none',borderRadius:99,padding:'8px 18px',fontSize:13,fontWeight:600,fontFamily:ff,cursor:'pointer',touchAction:'manipulation'}}>+ Nueva</button>
       </div>
       {/* View toggle */}
-      <div style={{display:'flex',gap:6,marginBottom:16,background:'rgba(14,14,12,0.05)',borderRadius:12,padding:4}}>
+      <div style={{display:'flex',gap:6,marginBottom:16,background:dm?'rgba(255,255,255,0.06)':'rgba(14,14,12,0.05)',borderRadius:12,padding:4}}>
         {[{id:false,label:'Lista'},{id:true,label:'Calendario'}].map(v=>(
-          <button key={String(v.id)} onClick={()=>setWeekView(v.id)} style={{flex:1,padding:'8px',border:'none',borderRadius:9,background:weekView===v.id?'#fff':'none',fontFamily:ff,fontSize:13,fontWeight:weekView===v.id?600:400,color:weekView===v.id?ink:gray,cursor:'pointer',boxShadow:weekView===v.id?'0 1px 4px rgba(0,0,0,0.08)':'none',touchAction:'manipulation'}}>{v.label}</button>
+          <button key={String(v.id)} onClick={()=>setWeekView(v.id)} style={{flex:1,padding:'8px',border:'none',borderRadius:9,background:weekView===v.id?inputBg:'none',fontFamily:ff,fontSize:13,fontWeight:weekView===v.id?600:400,color:weekView===v.id?inkC:grayC,cursor:'pointer',boxShadow:weekView===v.id?'0 1px 4px rgba(0,0,0,0.12)':'none',touchAction:'manipulation'}}>{v.label}</button>
         ))}
       </div>
       {loading&&<p style={{color:gray,textAlign:'center',padding:'40px 0',fontSize:13}}>Cargando...</p>}
@@ -2560,10 +2584,10 @@ function AdminBookings({userRole,agentId}){
           weekMap[k].push(b)
         })
         const weeks=Object.entries(weekMap)
-        if(weeks.length===0) return <div style={{textAlign:'center',padding:'40px 0',color:gray}}><p style={{fontSize:15}}>No hay consultas activas</p><p style={{fontSize:12,marginTop:4}}>Toca "+ Nueva" para crear una</p></div>
+        if(weeks.length===0) return <div style={{textAlign:'center',padding:'40px 0',color:grayC}}><p style={{fontSize:15}}>No hay consultas activas</p><p style={{fontSize:12,marginTop:4}}>Toca "+ Nueva" para crear una</p></div>
         return weeks.map(([wk,bks])=>(
           <div key={wk} style={{marginBottom:20}}>
-            <p style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.1em',color:gray,marginBottom:8,paddingLeft:2}}>{weekLabel(wk)} <span style={{fontWeight:400,opacity:0.6}}>· {bks.length}</span></p>
+            <p style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.1em',color:grayC,marginBottom:8,paddingLeft:2}}>{weekLabel(wk)} <span style={{fontWeight:400,opacity:0.6}}>· {bks.length}</span></p>
             {bks.map(b=><BookingCard key={b.id} b={b}/>)}
           </div>
         ))
@@ -2573,13 +2597,13 @@ function AdminBookings({userRole,agentId}){
         <div style={{...glCard2,padding:'16px 12px 12px'}}>
           {/* Month nav */}
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}}>
-            <button onClick={()=>{const d=new Date(calDate);d.setMonth(d.getMonth()-1);setCalDate(d);setCalDay(null)}} style={{background:'none',border:'none',fontSize:20,color:gray,cursor:'pointer',padding:'0 6px',touchAction:'manipulation'}}>‹</button>
-            <span style={{fontSize:15,fontWeight:700,color:ink}}>{mesNames[calMonth]} {calYear}</span>
-            <button onClick={()=>{const d=new Date(calDate);d.setMonth(d.getMonth()+1);setCalDate(d);setCalDay(null)}} style={{background:'none',border:'none',fontSize:20,color:gray,cursor:'pointer',padding:'0 6px',touchAction:'manipulation'}}>›</button>
+            <button onClick={()=>{const d=new Date(calDate);d.setMonth(d.getMonth()-1);setCalDate(d);setCalDay(null)}} style={{background:'none',border:'none',fontSize:20,color:grayC,cursor:'pointer',padding:'0 6px',touchAction:'manipulation'}}>‹</button>
+            <span style={{fontSize:15,fontWeight:700,color:inkC}}>{mesNames[calMonth]} {calYear}</span>
+            <button onClick={()=>{const d=new Date(calDate);d.setMonth(d.getMonth()+1);setCalDate(d);setCalDay(null)}} style={{background:'none',border:'none',fontSize:20,color:grayC,cursor:'pointer',padding:'0 6px',touchAction:'manipulation'}}>›</button>
           </div>
           {/* Day headers */}
           <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',marginBottom:4}}>
-            {['L','M','X','J','V','S','D'].map(d=><div key={d} style={{textAlign:'center',fontSize:10,fontWeight:700,color:gray,padding:'4px 0'}}>{d}</div>)}
+            {['L','M','X','J','V','S','D'].map(d=><div key={d} style={{textAlign:'center',fontSize:10,fontWeight:700,color:grayC,padding:'4px 0'}}>{d}</div>)}
           </div>
           {/* Day cells */}
           <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:2}}>
@@ -2596,7 +2620,7 @@ function AdminBookings({userRole,agentId}){
                     borderColor:isSelected?gold:isToday?'rgba(184,151,90,0.4)':'transparent',
                     background:isSelected?'rgba(184,151,90,0.12)':isToday?'rgba(184,151,90,0.06)':'transparent',
                     cursor:'pointer',touchAction:'manipulation',minHeight:44}}>
-                  <span style={{fontSize:13,fontWeight:isToday?700:400,color:!inMonth?'rgba(14,14,12,0.2)':isToday?gold:isWeekend?gray:ink,lineHeight:1}}>{cell.getDate()}</span>
+                  <span style={{fontSize:13,fontWeight:isToday?700:400,color:!inMonth?(dm?'rgba(255,255,255,0.15)':'rgba(14,14,12,0.2)'):isToday?gold:isWeekend?grayC:inkC,lineHeight:1}}>{cell.getDate()}</span>
                   {dayBs.length>0&&inMonth&&(
                     <div style={{display:'flex',gap:2,marginTop:3,flexWrap:'wrap',justifyContent:'center'}}>
                       {dayBs.slice(0,3).map((_,i)=><span key={i} style={{width:5,height:5,borderRadius:'50%',background:gold,display:'block'}}/>)}
@@ -2609,33 +2633,33 @@ function AdminBookings({userRole,agentId}){
           </div>
           {/* Selected day panel */}
           {calDay&&(
-            <div style={{marginTop:16,borderTop:'1px solid rgba(14,14,12,0.06)',paddingTop:14}}>
+            <div style={{marginTop:16,borderTop:`1px solid ${divider}`,paddingTop:14}}>
               <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
                 <div>
-                  <p style={{fontSize:13,fontWeight:700,color:ink,margin:0,textTransform:'capitalize'}}>
+                  <p style={{fontSize:13,fontWeight:700,color:inkC,margin:0,textTransform:'capitalize'}}>
                     {new Date(calDay+'T12:00:00').toLocaleDateString('es-PR',{weekday:'long',day:'numeric',month:'long'})}
                   </p>
                   {calDayBookings.length>0&&<p style={{fontSize:11,color:gold,margin:'2px 0 0'}}>{calDayBookings.length} consulta{calDayBookings.length!==1?'s':''}</p>}
                 </div>
                 <button onClick={()=>{setForm(f=>({...f,date:calDay}));setShowNew(true)}}
-                  style={{background:ink,color:cream,border:'none',borderRadius:99,padding:'7px 14px',fontSize:12,fontWeight:600,fontFamily:ff,cursor:'pointer',touchAction:'manipulation',whiteSpace:'nowrap'}}>+ Consulta</button>
+                  style={{background:inkC,color:dm?'#0e0e0c':cream,border:'none',borderRadius:99,padding:'7px 14px',fontSize:12,fontWeight:600,fontFamily:ff,cursor:'pointer',touchAction:'manipulation',whiteSpace:'nowrap'}}>+ Consulta</button>
               </div>
-              {calDayBookings.length===0&&<p style={{textAlign:'center',color:gray,fontSize:13,padding:'16px 0'}}>Sin consultas este día</p>}
+              {calDayBookings.length===0&&<p style={{textAlign:'center',color:grayC,fontSize:13,padding:'16px 0'}}>Sin consultas este día</p>}
               {calDayBookings.map(b=><BookingCard key={b.id} b={b}/>)}
             </div>
           )}
         </div>
       )}
-      {archived.length>0&&<button onClick={()=>setShowArchived(!showArchived)} style={{width:'100%',padding:12,background:'none',border:'1px solid rgba(14,14,12,0.1)',borderRadius:12,color:gray,fontSize:13,fontFamily:ff,cursor:'pointer',marginTop:8,touchAction:'manipulation'}}>{showArchived?'▲':'▼'} Ver Archivo ({archived.length})</button>}
+      {archived.length>0&&<button onClick={()=>setShowArchived(!showArchived)} style={{width:'100%',padding:12,background:'none',border:`1px solid ${inputBorder}`,borderRadius:12,color:grayC,fontSize:13,fontFamily:ff,cursor:'pointer',marginTop:8,touchAction:'manipulation'}}>{showArchived?'▲':'▼'} Ver Archivo ({archived.length})</button>}
       {showArchived&&archived.map(b=>{
         const st=SC[b.status]||SC.pending
         return(
-          <div key={b.id} style={{background:'rgba(248,246,241,0.5)',border:'1px solid rgba(14,14,12,0.05)',borderRadius:14,padding:14,marginTop:8,opacity:0.75}}>
+          <div key={b.id} style={{background:subtleBg,border:`1px solid ${divider}`,borderRadius:14,padding:14,marginTop:8,opacity:0.8}}>
             <div style={{display:'flex',justifyContent:'space-between'}}>
-              <p style={{fontSize:14,fontWeight:600,color:ink}}>{b.name}</p>
+              <p style={{fontSize:14,fontWeight:600,color:inkC}}>{b.name}</p>
               <span style={{fontSize:10,fontWeight:700,padding:'3px 8px',borderRadius:99,background:st.bg,color:st.color}}>{st.label}</span>
             </div>
-            <p style={{fontSize:12,color:gray,marginTop:4}}>{b.date} · {b.service||'Consulta'}</p>
+            <p style={{fontSize:12,color:grayC,marginTop:4}}>{b.date} · {b.service||'Consulta'}</p>
             {b.buy_service&&<p style={{fontSize:11,color:gold,marginTop:4}}>💰 {b.buy_service} · ${b.buy_amount}</p>}
           </div>
         )
@@ -2643,15 +2667,15 @@ function AdminBookings({userRole,agentId}){
       {/* New booking sheet */}
       {showNew&&(
         <div style={{position:'fixed',inset:0,zIndex:300,background:'rgba(0,0,0,0.5)',display:'flex',alignItems:'flex-end',overflow:'hidden'}} onClick={e=>e.target===e.currentTarget&&setShowNew(false)}>
-          <div style={{background:cream,borderRadius:'20px 20px 0 0',width:'100%',maxHeight:'90dvh',overflowY:'auto',overflowX:'hidden',boxSizing:'border-box',WebkitOverflowScrolling:'touch',padding:'24px 20px calc(env(safe-area-inset-bottom,0px) + 32px)'}} onClick={e=>e.stopPropagation()}>
+          <div style={{background:surfaceBg,borderRadius:'20px 20px 0 0',width:'100%',maxHeight:'90dvh',overflowY:'auto',overflowX:'hidden',boxSizing:'border-box',WebkitOverflowScrolling:'touch',padding:'24px 20px calc(env(safe-area-inset-bottom,0px) + 32px)'}} onClick={e=>e.stopPropagation()}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}}>
-              <h2 style={{fontFamily:ffS,fontSize:22,fontWeight:300,color:ink}}>Nueva Consulta</h2>
-              <button onClick={()=>setShowNew(false)} style={{background:'none',border:'none',fontSize:20,cursor:'pointer',color:gray}}>✕</button>
+              <h2 style={{fontFamily:ffS,fontSize:22,fontWeight:300,color:inkC}}>Nueva Consulta</h2>
+              <button onClick={()=>setShowNew(false)} style={{background:'none',border:'none',fontSize:20,cursor:'pointer',color:grayC}}>✕</button>
             </div>
             <form onSubmit={createBooking} style={{display:'flex',flexDirection:'column',gap:12}}>
               {[{k:'name',l:'Nombre del cliente',t:'text',r:true},{k:'phone',l:'Teléfono',t:'tel',r:true},{k:'facebook_page',l:'Página de Facebook',t:'text',r:true},{k:'service',l:'Servicio',t:'text'},{k:'date',l:'Fecha',t:'date',r:true},{k:'time',l:'Hora',t:'time',r:true}].map(f=>(
                 <div key={f.k}>
-                  <label style={{fontSize:11,fontWeight:600,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:4}}>{f.l}</label>
+                  <label style={{fontSize:11,fontWeight:600,color:grayC,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:4}}>{f.l}</label>
                   <input
                     required={!!f.r}
                     type={f.t}
@@ -2666,7 +2690,7 @@ function AdminBookings({userRole,agentId}){
                 <label style={{fontSize:11,fontWeight:600,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:4}}>Notas</label>
                 <textarea value={form.notes} onChange={e=>setForm(p=>({...p,notes:e.target.value}))} rows={3} style={{...inp2,height:'auto',padding:'10px 12px',resize:'none'}}/>
               </div>
-              <button type="submit" disabled={saving} style={{height:48,background:ink,color:cream,border:'none',borderRadius:12,fontSize:15,fontWeight:600,fontFamily:ff,cursor:'pointer',marginTop:4}}>{saving?'Guardando...':'Crear Consulta'}</button>
+              <button type="submit" disabled={saving} style={{height:48,background:inkC,color:dm?'#0e0e0c':cream,border:'none',borderRadius:12,fontSize:15,fontWeight:600,fontFamily:ff,cursor:'pointer',marginTop:4}}>{saving?'Guardando...':'Crear Consulta'}</button>
             </form>
           </div>
         </div>
@@ -2674,20 +2698,20 @@ function AdminBookings({userRole,agentId}){
       {/* Buy sheet */}
       {cerrarModal&&(
         <div style={{position:'fixed',inset:0,zIndex:300,background:'rgba(0,0,0,0.55)',backdropFilter:'blur(4px)',display:'flex',alignItems:'flex-end'}} onClick={e=>e.target===e.currentTarget&&(setCerrarModal(null),setCerrarCompro(null))}>
-          <div style={{background:cream,borderRadius:'24px 24px 0 0',width:'100%',maxHeight:'92vh',overflowY:'auto',boxSizing:'border-box',padding:'8px 0 40px',boxShadow:'0 -8px 40px rgba(0,0,0,0.2)'}}>
-            <div style={{width:36,height:4,background:'rgba(14,14,12,0.15)',borderRadius:99,margin:'12px auto 20px'}}/>
+          <div style={{background:surfaceBg,borderRadius:'24px 24px 0 0',width:'100%',maxHeight:'92vh',overflowY:'auto',boxSizing:'border-box',padding:'8px 0 40px',boxShadow:'0 -8px 40px rgba(0,0,0,0.2)'}}>
+            <div style={{width:36,height:4,background:dm?'rgba(255,255,255,0.15)':'rgba(14,14,12,0.15)',borderRadius:99,margin:'12px auto 20px'}}/>
             {/* Step 1 — ¿Compró? */}
             {cerrarCompro===null&&(
               <div style={{padding:'0 24px'}}>
-                <p style={{fontSize:11,textTransform:'uppercase',letterSpacing:'0.1em',color:gray,fontFamily:ff,marginBottom:4}}>Cerrar consulta</p>
-                <h2 style={{fontFamily:ffS,fontSize:22,fontWeight:400,color:ink,marginBottom:4}}>{cerrarModal.name}</h2>
-                <p style={{fontSize:13,color:gray,marginBottom:28}}>{cerrarModal.service||'Consulta'} · {cerrarModal.date}</p>
-                <p style={{fontSize:15,fontWeight:600,color:ink,fontFamily:ff,marginBottom:16,textAlign:'center'}}>¿El cliente compró?</p>
+                <p style={{fontSize:11,textTransform:'uppercase',letterSpacing:'0.1em',color:grayC,fontFamily:ff,marginBottom:4}}>Cerrar consulta</p>
+                <h2 style={{fontFamily:ffS,fontSize:22,fontWeight:400,color:inkC,marginBottom:4}}>{cerrarModal.name}</h2>
+                <p style={{fontSize:13,color:grayC,marginBottom:28}}>{cerrarModal.service||'Consulta'} · {cerrarModal.date}</p>
+                <p style={{fontSize:15,fontWeight:600,color:inkC,fontFamily:ff,marginBottom:16,textAlign:'center'}}>¿El cliente compró?</p>
                 <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
                   <button onClick={()=>setCerrarCompro(true)} style={{padding:'18px 12px',borderRadius:16,border:'2px solid #2d8a60',background:'rgba(45,138,96,0.06)',color:'#2d8a60',fontSize:15,fontWeight:700,fontFamily:ff,cursor:'pointer',touchAction:'manipulation'}}>
                     Sí ✓
                   </button>
-                  <button onClick={()=>{updateStatus(cerrarModal.id,'confirmed');setCerrarModal(null);setCerrarCompro(null)}} style={{padding:'18px 12px',borderRadius:16,border:'2px solid rgba(14,14,12,0.15)',background:'rgba(14,14,12,0.04)',color:gray,fontSize:15,fontWeight:600,fontFamily:ff,cursor:'pointer',touchAction:'manipulation'}}>
+                  <button onClick={()=>{updateStatus(cerrarModal.id,'confirmed');setCerrarModal(null);setCerrarCompro(null)}} style={{padding:'18px 12px',borderRadius:16,border:`2px solid ${inputBorder}`,background:subtleBg,color:grayC,fontSize:15,fontWeight:600,fontFamily:ff,cursor:'pointer',touchAction:'manipulation'}}>
                     No
                   </button>
                 </div>
@@ -2698,30 +2722,30 @@ function AdminBookings({userRole,agentId}){
               <form onSubmit={confirmCerrar} style={{padding:'0 24px',display:'flex',flexDirection:'column',gap:14}}>
                 <div>
                   <p style={{fontSize:11,textTransform:'uppercase',letterSpacing:'0.1em',color:'#2d8a60',fontFamily:ff,marginBottom:2}}>Cierre exitoso</p>
-                  <h2 style={{fontFamily:ffS,fontSize:20,fontWeight:400,color:ink,marginBottom:0}}>{cerrarModal.name}</h2>
+                  <h2 style={{fontFamily:ffS,fontSize:20,fontWeight:400,color:inkC,marginBottom:0}}>{cerrarModal.name}</h2>
                 </div>
                 {/* Servicio */}
                 <div>
-                  <label style={{fontSize:11,fontWeight:600,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:4}}>Servicio</label>
+                  <label style={{fontSize:11,fontWeight:600,color:grayC,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:4}}>Servicio</label>
                   <input value={cerrarForm.service} onChange={e=>setCerrarForm(p=>({...p,service:e.target.value}))} placeholder="Servicio adquirido" style={inp2}/>
                 </div>
                 {/* Documentos */}
                 <div>
-                  <label style={{fontSize:11,fontWeight:600,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:4}}>Documentos / notas del cierre</label>
+                  <label style={{fontSize:11,fontWeight:600,color:grayC,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:4}}>Documentos / notas del cierre</label>
                   <textarea value={cerrarForm.documentos} onChange={e=>setCerrarForm(p=>({...p,documentos:e.target.value}))} rows={2} placeholder="Contrato firmado, propuesta enviada…" style={{...inp2,height:'auto',padding:'10px 12px',resize:'none'}}/>
                 </div>
                 {/* Tipo de pago */}
                 <div>
-                  <label style={{fontSize:11,fontWeight:600,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:8}}>Total</label>
+                  <label style={{fontSize:11,fontWeight:600,color:grayC,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:8}}>Total</label>
                   <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:12}}>
                     {[['completo','Pago Completo'],['financiado','Financiado']].map(([v,l])=>(
-                      <button type="button" key={v} onClick={()=>setCerrarForm(p=>({...p,payType:v}))} style={{padding:'12px 8px',borderRadius:12,border:'1.5px solid',borderColor:cerrarForm.payType===v?ink:'rgba(14,14,12,0.12)',background:cerrarForm.payType===v?ink:'#fff',color:cerrarForm.payType===v?cream:ink,fontSize:13,fontWeight:cerrarForm.payType===v?700:400,fontFamily:ff,cursor:'pointer',textAlign:'center',touchAction:'manipulation'}}>{l}</button>
+                      <button type="button" key={v} onClick={()=>setCerrarForm(p=>({...p,payType:v}))} style={{padding:'12px 8px',borderRadius:12,border:'1.5px solid',borderColor:cerrarForm.payType===v?inkC:inputBorder,background:cerrarForm.payType===v?inkC:inputBg,color:cerrarForm.payType===v?(dm?'#0e0e0c':cream):inkC,fontSize:13,fontWeight:cerrarForm.payType===v?700:400,fontFamily:ff,cursor:'pointer',textAlign:'center',touchAction:'manipulation'}}>{l}</button>
                     ))}
                   </div>
                   {/* Pago Completo */}
                   {cerrarForm.payType==='completo'&&(
                     <div>
-                      <label style={{fontSize:11,fontWeight:600,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:4}}>Total ($)</label>
+                      <label style={{fontSize:11,fontWeight:600,color:grayC,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:4}}>Total ($)</label>
                       <input required type="number" min="0" step="0.01" placeholder="0.00" value={cerrarForm.total} onChange={e=>setCerrarForm(p=>({...p,total:e.target.value}))} style={inp2}/>
                     </div>
                   )}
@@ -2729,19 +2753,19 @@ function AdminBookings({userRole,agentId}){
                   {cerrarForm.payType==='financiado'&&(
                     <div style={{display:'flex',flexDirection:'column',gap:10}}>
                       <div>
-                        <label style={{fontSize:11,fontWeight:600,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:4}}>Total del servicio ($)</label>
+                        <label style={{fontSize:11,fontWeight:600,color:grayC,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:4}}>Total del servicio ($)</label>
                         <input required type="number" min="0" step="0.01" placeholder="0.00" value={cerrarForm.total} onChange={e=>setCerrarForm(p=>({...p,total:e.target.value}))} style={inp2}/>
                       </div>
                       <div>
-                        <label style={{fontSize:11,fontWeight:600,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:4}}>Pago inicial ($)</label>
+                        <label style={{fontSize:11,fontWeight:600,color:grayC,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:4}}>Pago inicial ($)</label>
                         <input required type="number" min="0" step="0.01" placeholder="0.00" value={cerrarForm.pago_inicial} onChange={e=>setCerrarForm(p=>({...p,pago_inicial:e.target.value}))} style={inp2}/>
                       </div>
                       <div>
-                        <label style={{fontSize:11,fontWeight:600,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:4}}>Cantidad adeudada ($)</label>
+                        <label style={{fontSize:11,fontWeight:600,color:grayC,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:4}}>Cantidad adeudada ($)</label>
                         <input required type="number" min="0" step="0.01" placeholder="0.00" value={cerrarForm.adeudado} onChange={e=>setCerrarForm(p=>({...p,adeudado:e.target.value}))} style={inp2}/>
                       </div>
                       <div>
-                        <label style={{fontSize:11,fontWeight:600,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:4}}>Tiempo estimado de saldo</label>
+                        <label style={{fontSize:11,fontWeight:600,color:grayC,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:4}}>Tiempo estimado de saldo</label>
                         <input placeholder="ej. 3 meses, 60 días…" value={cerrarForm.tiempo_saldo} onChange={e=>setCerrarForm(p=>({...p,tiempo_saldo:e.target.value}))} style={inp2}/>
                       </div>
                     </div>
@@ -2750,7 +2774,7 @@ function AdminBookings({userRole,agentId}){
                 <button type="submit" disabled={saving} style={{height:52,background:'#2d8a60',color:'#fff',border:'none',borderRadius:14,fontSize:15,fontWeight:700,fontFamily:ff,cursor:'pointer',marginTop:4}}>
                   {saving?'Guardando…':'Registrar cierre →'}
                 </button>
-                <button type="button" onClick={()=>setCerrarCompro(null)} style={{height:40,background:'none',border:'none',fontSize:13,color:gray,fontFamily:ff,cursor:'pointer'}}>← Atrás</button>
+                <button type="button" onClick={()=>setCerrarCompro(null)} style={{height:40,background:'none',border:'none',fontSize:13,color:grayC,fontFamily:ff,cursor:'pointer'}}>← Atrás</button>
               </form>
             )}
           </div>
@@ -2762,6 +2786,7 @@ function AdminBookings({userRole,agentId}){
 
 // ─── ADMIN COLD CALLING ───────────────────────────────────────────────────────
 function ConsultasPanel(){
+  const {dm,inkC,grayC,cardBg,cardBorder,subtleBg,divider}=useTheme()
   const [leads,setLeads]=useState([])
   const [loading,setLoading]=useState(true)
   useEffect(()=>{
@@ -2773,25 +2798,25 @@ function ConsultasPanel(){
   const SC={website:{label:'Website',color:'#1877f2',bg:'rgba(24,119,242,0.1)'},direct:{label:'Consulta Enviada',color:'#2d8a60',bg:'rgba(45,138,96,0.1)'}}
   return(
     <div style={{padding:'20px 16px 32px',fontFamily:ff}}>
-      <h1 style={{fontFamily:ffS,fontSize:26,fontWeight:300,color:ink,marginBottom:6}}>Consultas</h1>
-      <p style={{fontSize:12,color:gray,marginBottom:20}}>Registro de consultas enviadas directamente</p>
-      {loading&&<p style={{color:gray,fontSize:13,textAlign:'center',padding:'40px 0'}}>Cargando...</p>}
-      {!loading&&leads.length===0&&<div style={{textAlign:'center',padding:'40px 0',color:gray}}><p style={{fontSize:15}}>Sin consultas enviadas</p><p style={{fontSize:12,marginTop:4}}>Usa "Enviar consulta" en Cold Calling para registrarlas</p></div>}
+      <h1 style={{fontFamily:ffS,fontSize:26,fontWeight:300,color:inkC,marginBottom:6}}>Consultas</h1>
+      <p style={{fontSize:12,color:grayC,marginBottom:20}}>Registro de consultas enviadas directamente</p>
+      {loading&&<p style={{color:grayC,fontSize:13,textAlign:'center',padding:'40px 0'}}>Cargando...</p>}
+      {!loading&&leads.length===0&&<div style={{textAlign:'center',padding:'40px 0',color:grayC}}><p style={{fontSize:15}}>Sin consultas enviadas</p><p style={{fontSize:12,marginTop:4}}>Usa "Enviar consulta" en Cold Calling para registrarlas</p></div>}
       {leads.map(l=>{
         const src=l.source==='website'?SC.website:SC.direct
         const d=new Date(l.created_at)
         return(
-          <div key={l.id} style={{background:'rgba(248,246,241,0.9)',border:'1px solid rgba(14,14,12,0.07)',borderRadius:14,padding:'14px 16px',marginBottom:10}}>
+          <div key={l.id} style={{background:cardBg,border:`1px solid ${cardBorder}`,borderRadius:14,padding:'14px 16px',marginBottom:10,backdropFilter:'blur(12px)'}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:6}}>
               <div>
-                <p style={{fontSize:15,fontWeight:600,color:ink}}>{l.business_name}</p>
-                {l.pueblo&&<p style={{fontSize:12,color:gray,marginTop:1}}>{l.pueblo}</p>}
+                <p style={{fontSize:15,fontWeight:600,color:inkC}}>{l.business_name}</p>
+                {l.pueblo&&<p style={{fontSize:12,color:grayC,marginTop:1}}>{l.pueblo}</p>}
               </div>
               <span style={{fontSize:9,fontWeight:700,padding:'3px 9px',borderRadius:99,background:src.bg,color:src.color,whiteSpace:'nowrap',flexShrink:0,marginLeft:8}}>{src.label}</span>
             </div>
             {l.phone&&<a href={`tel:${l.phone}`} style={{fontSize:12,color:'#2d8a60',textDecoration:'none',display:'block'}}>{l.phone}</a>}
-            {l.notes&&<p style={{fontSize:11,color:gray,fontStyle:'italic',marginTop:6}}>{l.notes}</p>}
-            <p style={{fontSize:10,color:gray,marginTop:8,opacity:0.6}}>{d.toLocaleDateString('es-PR',{weekday:'short',day:'numeric',month:'short',year:'numeric'})}</p>
+            {l.notes&&<p style={{fontSize:11,color:grayC,fontStyle:'italic',marginTop:6}}>{l.notes}</p>}
+            <p style={{fontSize:10,color:grayC,marginTop:8,opacity:0.6}}>{d.toLocaleDateString('es-PR',{weekday:'short',day:'numeric',month:'short',year:'numeric'})}</p>
           </div>
         )
       })}
@@ -2800,6 +2825,7 @@ function ConsultasPanel(){
 }
 
 function AdminColdCalling({agentId}){
+  const {dm,surfaceBg,inkC,grayC,inputBg,inputBorder,subtleBg,divider,glassCard,cardBg,cardBorder}=useTheme()
   const BASE_URL=typeof window!=='undefined'?window.location.origin:''
   const myBookingLink=agentId?`${BASE_URL}/?agent=${agentId}`:BOOKING_LINK
   const [leads,setLeads]=useState([])
@@ -2877,19 +2903,19 @@ function AdminColdCalling({agentId}){
     frio:{label:'Frío',color:'#5d8aa8',bg:'rgba(93,138,168,0.1)'},
     enviar_cita:{label:'Enviar consulta',color:'#8e44ad',bg:'rgba(142,68,173,0.1)'},
   }
-  const inp2={width:'100%',boxSizing:'border-box',height:44,borderRadius:10,border:'1px solid rgba(14,14,12,0.12)',padding:'0 12px',fontSize:14,fontFamily:ff,background:'#fff',outline:'none'}
+  const inp2={width:'100%',boxSizing:'border-box',height:44,borderRadius:10,border:`1px solid ${inputBorder}`,padding:'0 12px',fontSize:14,fontFamily:ff,background:inputBg,color:inkC,outline:'none'}
   return(
     <div style={{padding:'20px 16px 32px',fontFamily:ff}}>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:16}}>
-        <h1 style={{fontFamily:ffS,fontSize:26,fontWeight:300,color:ink}}>Cold Calling</h1>
-        <span style={{fontSize:10,color:gray,textTransform:'uppercase',letterSpacing:'0.08em'}}>{now.toLocaleString('es-PR',{month:'long'})}</span>
+        <h1 style={{fontFamily:ffS,fontSize:26,fontWeight:300,color:inkC}}>Cold Calling</h1>
+        <span style={{fontSize:10,color:grayC,textTransform:'uppercase',letterSpacing:'0.08em'}}>{now.toLocaleString('es-PR',{month:'long'})}</span>
       </div>
       {/* Monthly stat cards */}
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:18}}>
         {monthStats.map(s=>(
-          <button key={s.key} onClick={()=>{setStatSheet(s);setSortMode('month')}} style={{background:'rgba(248,246,241,0.9)',border:'1px solid rgba(14,14,12,0.07)',borderRadius:12,padding:'12px 10px',textAlign:'left',cursor:'pointer',touchAction:'manipulation',fontFamily:ff}}>
+          <button key={s.key} onClick={()=>{setStatSheet(s);setSortMode('month')}} style={{background:cardBg,border:`1px solid ${cardBorder}`,borderRadius:12,padding:'12px 10px',textAlign:'left',cursor:'pointer',touchAction:'manipulation',fontFamily:ff,backdropFilter:'blur(12px)'}}>
             <p style={{fontSize:22,fontWeight:700,color:s.color,lineHeight:1}}>{s.items.length}</p>
-            <p style={{fontSize:9,color:gray,textTransform:'uppercase',letterSpacing:'0.06em',marginTop:4}}>{s.label}</p>
+            <p style={{fontSize:9,color:grayC,textTransform:'uppercase',letterSpacing:'0.06em',marginTop:4}}>{s.label}</p>
           </button>
         ))}
       </div>
@@ -2897,16 +2923,16 @@ function AdminColdCalling({agentId}){
       {statSheet&&(
         <>
           <div style={{position:'fixed',inset:0,zIndex:300,background:'rgba(0,0,0,0.3)'}} onClick={()=>setStatSheet(null)}/>
-          <div style={{position:'fixed',bottom:0,left:0,right:0,zIndex:305,background:'rgba(255,255,255,0.97)',backdropFilter:'blur(24px)',borderRadius:'20px 20px 0 0',maxHeight:'78vh',display:'flex',flexDirection:'column'}}>
+          <div style={{position:'fixed',bottom:0,left:0,right:0,zIndex:305,background:surfaceBg,backdropFilter:'blur(24px)',borderRadius:'20px 20px 0 0',maxHeight:'78vh',display:'flex',flexDirection:'column'}}>
             <div style={{padding:'12px 20px 12px',borderBottom:'1px solid rgba(14,14,12,0.07)',flexShrink:0}}>
               <div style={{width:36,height:4,background:'rgba(14,14,12,0.15)',borderRadius:99,margin:'0 auto 12px'}}/>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
-                <p style={{fontSize:14,fontWeight:700,color:ink}}>{statSheet.label} <span style={{color:statSheet.color}}>({(sortMode==='week'?statSheet.items.filter(l=>{const d=l.created_at?.split('T')[0];return d>=wsStr&&d<=weStr}):statSheet.items).length})</span></p>
-                <button onClick={()=>setStatSheet(null)} style={{background:'none',border:'none',fontSize:18,cursor:'pointer',color:gray}}>✕</button>
+                <p style={{fontSize:14,fontWeight:700,color:inkC}}>{statSheet.label} <span style={{color:statSheet.color}}>({(sortMode==='week'?statSheet.items.filter(l=>{const d=l.created_at?.split('T')[0];return d>=wsStr&&d<=weStr}):statSheet.items).length})</span></p>
+                <button onClick={()=>setStatSheet(null)} style={{background:'none',border:'none',fontSize:18,cursor:'pointer',color:grayC}}>✕</button>
               </div>
               <div style={{display:'flex',gap:6}}>
                 {['month','week'].map(m=>(
-                  <button key={m} onClick={()=>setSortMode(m)} style={{padding:'6px 14px',borderRadius:99,border:'1px solid',borderColor:sortMode===m?ink:'rgba(14,14,12,0.12)',background:sortMode===m?ink:'transparent',color:sortMode===m?cream:gray,fontSize:11,fontWeight:600,fontFamily:ff,cursor:'pointer',touchAction:'manipulation'}}>
+                  <button key={m} onClick={()=>setSortMode(m)} style={{padding:'6px 14px',borderRadius:99,border:'1px solid',borderColor:sortMode===m?inkC:inputBorder,background:sortMode===m?inkC:'transparent',color:sortMode===m?(dm?'#0e0e0c':cream):grayC,fontSize:11,fontWeight:600,fontFamily:ff,cursor:'pointer',touchAction:'manipulation'}}>
                     {m==='month'?'Este mes':'Esta semana'}
                   </button>
                 ))}
@@ -2915,16 +2941,16 @@ function AdminColdCalling({agentId}){
             <div style={{overflowY:'auto',padding:'0 20px 20px'}}>
               {(()=>{
                 const items=sortMode==='week'?statSheet.items.filter(l=>{const d=l.created_at?.split('T')[0];return d>=wsStr&&d<=weStr}):statSheet.items
-                if(!items.length) return <p style={{color:gray,fontSize:13,textAlign:'center',padding:'28px 0'}}>Sin leads</p>
+                if(!items.length) return <p style={{color:grayC,fontSize:13,textAlign:'center',padding:'28px 0'}}>Sin leads</p>
                 return items.map(l=>(
-                  <div key={l.id} style={{padding:'12px 0',borderBottom:'1px solid rgba(14,14,12,0.06)'}}>
+                  <div key={l.id} style={{padding:'12px 0',borderBottom:`1px solid ${divider}`}}>
                     <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
                       <div>
-                        <p style={{fontSize:14,fontWeight:600,color:ink}}>{l.business_name}</p>
-                        {l.pueblo&&<p style={{fontSize:11,color:gray,marginTop:1}}>{l.pueblo}</p>}
-                        {l.notes&&<p style={{fontSize:11,color:gray,fontStyle:'italic',marginTop:2}}>{l.notes}</p>}
+                        <p style={{fontSize:14,fontWeight:600,color:inkC}}>{l.business_name}</p>
+                        {l.pueblo&&<p style={{fontSize:11,color:grayC,marginTop:1}}>{l.pueblo}</p>}
+                        {l.notes&&<p style={{fontSize:11,color:grayC,fontStyle:'italic',marginTop:2}}>{l.notes}</p>}
                       </div>
-                      <p style={{fontSize:10,color:gray,flexShrink:0,marginLeft:8}}>{new Date(l.created_at).toLocaleDateString('es-PR',{day:'numeric',month:'short'})}</p>
+                      <p style={{fontSize:10,color:grayC,flexShrink:0,marginLeft:8}}>{new Date(l.created_at).toLocaleDateString('es-PR',{day:'numeric',month:'short'})}</p>
                     </div>
                     {l.phone&&<a href={`tel:${l.phone}`} style={{fontSize:12,color:'#2d8a60',textDecoration:'none',display:'block',marginTop:4}}>{l.phone}</a>}
                     {l.followup_date&&<p style={{fontSize:11,color:gold,marginTop:3}}>Follow-up: {l.followup_date}</p>}
@@ -2936,31 +2962,31 @@ function AdminColdCalling({agentId}){
         </>
       )}
       {/* Weekly card */}
-      <div style={{background:'rgba(248,246,241,0.9)',border:'1px solid rgba(14,14,12,0.08)',borderRadius:18,overflow:'hidden'}}>
+      <div style={{background:cardBg,border:`1px solid ${cardBorder}`,borderRadius:18,overflow:'hidden',backdropFilter:'blur(12px)'}}>
         {/* Week navigation */}
-        <div style={{padding:'12px 16px',borderBottom:'1px solid rgba(14,14,12,0.06)',display:'flex',alignItems:'center',justifyContent:'space-between',gap:8}}>
-          <button onClick={()=>{setWeekOffset(p=>p-1);setExpanded({})}} style={{background:'none',border:'none',cursor:'pointer',fontSize:22,color:gray,padding:'0 6px',lineHeight:1,touchAction:'manipulation'}}>‹</button>
+        <div style={{padding:'12px 16px',borderBottom:`1px solid ${divider}`,display:'flex',alignItems:'center',justifyContent:'space-between',gap:8}}>
+          <button onClick={()=>{setWeekOffset(p=>p-1);setExpanded({})}} style={{background:'none',border:'none',cursor:'pointer',fontSize:22,color:grayC,padding:'0 6px',lineHeight:1,touchAction:'manipulation'}}>‹</button>
           <div style={{textAlign:'center',flex:1}}>
-            <p style={{fontSize:13,fontWeight:600,color:ink}}>{ws.toLocaleDateString('es-PR',{day:'numeric',month:'long'})} — {we.toLocaleDateString('es-PR',{day:'numeric',month:'long'})}</p>
+            <p style={{fontSize:13,fontWeight:600,color:inkC}}>{ws.toLocaleDateString('es-PR',{day:'numeric',month:'long'})} — {we.toLocaleDateString('es-PR',{day:'numeric',month:'long'})}</p>
             {isCurrentWeek&&<span style={{fontSize:9,background:gold,color:ink,borderRadius:99,padding:'2px 8px',fontWeight:700}}>SEMANA ACTUAL</span>}
           </div>
-          <button onClick={()=>{if(!isCurrentWeek){setWeekOffset(p=>p+1);setExpanded({})}}} style={{background:'none',border:'none',cursor:isCurrentWeek?'default':'pointer',fontSize:22,color:isCurrentWeek?'rgba(14,14,12,0.2)':gray,padding:'0 6px',lineHeight:1,touchAction:'manipulation'}}>›</button>
+          <button onClick={()=>{if(!isCurrentWeek){setWeekOffset(p=>p+1);setExpanded({})}}} style={{background:'none',border:'none',cursor:isCurrentWeek?'default':'pointer',fontSize:22,color:isCurrentWeek?(dm?'rgba(255,255,255,0.15)':'rgba(14,14,12,0.2)'):grayC,padding:'0 6px',lineHeight:1,touchAction:'manipulation'}}>›</button>
         </div>
         {weekDays.map((day,i)=>{
           const dayLeads=byDay[day.date]||[]
           const isExp=expanded[day.date]
           const isToday=day.date===new Date().toISOString().split('T')[0]
           return(
-            <div key={day.date} style={{borderBottom:i<6?'1px solid rgba(14,14,12,0.06)':'none'}}>
+            <div key={day.date} style={{borderBottom:i<6?`1px solid ${divider}`:'none'}}>
               <button onClick={()=>setExpanded(p=>({...p,[day.date]:!p[day.date]}))} style={{width:'100%',padding:'13px 16px',background:'none',border:'none',cursor:'pointer',display:'flex',justifyContent:'space-between',alignItems:'center',fontFamily:ff}}>
                 <div style={{display:'flex',alignItems:'center',gap:8}}>
-                  <span style={{fontSize:14,fontWeight:600,color:isToday?gold:ink}}>{day.name}</span>
-                  {isToday&&<span style={{fontSize:9,background:gold,color:ink,borderRadius:99,padding:'2px 7px',fontWeight:700}}>HOY</span>}
-                  <span style={{fontSize:11,color:gray}}>{day.dateObj.toLocaleDateString('es-PR',{day:'numeric',month:'short'})}</span>
+                  <span style={{fontSize:14,fontWeight:600,color:isToday?gold:inkC}}>{day.name}</span>
+                  {isToday&&<span style={{fontSize:9,background:gold,color:'#0e0e0c',borderRadius:99,padding:'2px 7px',fontWeight:700}}>HOY</span>}
+                  <span style={{fontSize:11,color:grayC}}>{day.dateObj.toLocaleDateString('es-PR',{day:'numeric',month:'short'})}</span>
                 </div>
                 <div style={{display:'flex',alignItems:'center',gap:8}}>
-                  {dayLeads.length>0&&<span style={{fontSize:12,background:'rgba(14,14,12,0.07)',borderRadius:99,padding:'2px 8px',fontWeight:600,color:ink}}>{dayLeads.length}</span>}
-                  <span style={{fontSize:12,color:gray}}>{isExp?'▲':'▼'}</span>
+                  {dayLeads.length>0&&<span style={{fontSize:12,background:dm?'rgba(255,255,255,0.1)':'rgba(14,14,12,0.07)',borderRadius:99,padding:'2px 8px',fontWeight:600,color:inkC}}>{dayLeads.length}</span>}
+                  <span style={{fontSize:12,color:grayC}}>{isExp?'▲':'▼'}</span>
                 </div>
               </button>
               {isExp&&(
@@ -2969,11 +2995,11 @@ function AdminColdCalling({agentId}){
                     const st=SS[l.call_status]||SS.no_answer
                     const isUpdating=updatingId===l.id
                     return(
-                      <div key={l.id} style={{background:'#fff',borderRadius:12,padding:12,marginBottom:8,border:'1px solid rgba(14,14,12,0.06)'}}>
+                      <div key={l.id} style={{background:inputBg,borderRadius:12,padding:12,marginBottom:8,border:`1px solid ${divider}`}}>
                         <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
                           <div>
-                            <p style={{fontSize:14,fontWeight:600,color:ink}}>{l.business_name}</p>
-                            {l.pueblo&&<p style={{fontSize:12,color:gray}}>{l.pueblo}</p>}
+                            <p style={{fontSize:14,fontWeight:600,color:inkC}}>{l.business_name}</p>
+                            {l.pueblo&&<p style={{fontSize:12,color:grayC}}>{l.pueblo}</p>}
                           </div>
                           <div style={{display:'flex',alignItems:'center',gap:6}}>
                             {l.call_status==='llamar_luego'&&(l.llamar_luego_count||0)>0&&<span style={{fontSize:10,fontWeight:700,color:'#e67e22',background:'rgba(230,126,34,0.12)',borderRadius:99,padding:'1px 6px'}}>{l.llamar_luego_count}x</span>}
@@ -2982,7 +3008,7 @@ function AdminColdCalling({agentId}){
                         </div>
                         {l.phone&&<a href={`tel:${l.phone}`} style={{fontSize:12,color:'#2d8a60',display:'block',marginTop:6,textDecoration:'none'}}>📞 {l.phone}</a>}
                         {l.followup_date&&<p style={{fontSize:11,color:gold,marginTop:4}}>🔔 Follow-up: {l.followup_date}</p>}
-                        {l.notes&&<p style={{fontSize:11,color:gray,marginTop:6,fontStyle:'italic'}}>{l.notes}</p>}
+                        {l.notes&&<p style={{fontSize:11,color:grayC,marginTop:6,fontStyle:'italic'}}>{l.notes}</p>}
                         {/* Horizontal pill strip */}
                         <div style={{display:'flex',gap:5,marginTop:10,overflowX:'auto',paddingBottom:2,WebkitOverflowScrolling:'touch'}}>
                           {[
@@ -3016,15 +3042,15 @@ function AdminColdCalling({agentId}){
       {/* Register lead sheet */}
       {showForm&&(
         <div style={{position:'fixed',inset:0,zIndex:300,background:'rgba(0,0,0,0.5)',display:'flex',alignItems:'flex-end',overflow:'hidden'}} onClick={e=>e.target===e.currentTarget&&setShowForm(null)}>
-          <div style={{background:cream,borderRadius:'20px 20px 0 0',width:'100%',maxHeight:'90dvh',overflowY:'auto',overflowX:'hidden',boxSizing:'border-box',WebkitOverflowScrolling:'touch',padding:'24px 20px calc(env(safe-area-inset-bottom,0px) + 32px)'}} onClick={e=>e.stopPropagation()}>
+          <div style={{background:surfaceBg,borderRadius:'20px 20px 0 0',width:'100%',maxHeight:'90dvh',overflowY:'auto',overflowX:'hidden',boxSizing:'border-box',WebkitOverflowScrolling:'touch',padding:'24px 20px calc(env(safe-area-inset-bottom,0px) + 32px)'}} onClick={e=>e.stopPropagation()}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}}>
-              <h2 style={{fontFamily:ffS,fontSize:22,fontWeight:300,color:ink}}>Registrar Lead</h2>
-              <button onClick={()=>setShowForm(null)} style={{background:'none',border:'none',fontSize:20,cursor:'pointer',color:gray}}>✕</button>
+              <h2 style={{fontFamily:ffS,fontSize:22,fontWeight:300,color:inkC}}>Registrar Lead</h2>
+              <button onClick={()=>setShowForm(null)} style={{background:'none',border:'none',fontSize:20,cursor:'pointer',color:grayC}}>✕</button>
             </div>
             <form onSubmit={saveLead} style={{display:'flex',flexDirection:'column',gap:12}}>
               {/* Contact picker — native phone contacts first, CRM fallback */}
               <div style={{position:'relative'}}>
-                <label style={{fontSize:11,fontWeight:600,color:gray,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:4}}>Buscar en contactos</label>
+                <label style={{fontSize:11,fontWeight:600,color:grayC,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:4}}>Buscar en contactos</label>
                 <div style={{display:'flex',gap:6}}>
                   <input
                     type="text"
@@ -3047,7 +3073,7 @@ function AdminColdCalling({agentId}){
                           setShowContacts(false)
                         }
                       }catch(e){}
-                    }} style={{flexShrink:0,height:44,width:44,borderRadius:10,border:'1px solid rgba(14,14,12,0.12)',background:'rgba(14,14,12,0.04)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',touchAction:'manipulation'}}>
+                    }} style={{flexShrink:0,height:44,width:44,borderRadius:10,border:`1px solid ${inputBorder}`,background:subtleBg,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',touchAction:'manipulation'}}>
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={gray} strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                     </button>
                   )}
@@ -3113,6 +3139,7 @@ function AdminColdCalling({agentId}){
 
 // ─── CRM CLIENTS PANEL ────────────────────────────────────────────────────────
 function AdminCRMClients(){
+  const {dm,inkC,grayC,inputBg,inputBorder,subtleBg,cardBg,cardBorder}=useTheme()
   const [clients,setClients]=useState([])
   const [loading,setLoading]=useState(true)
   const [search,setSearch]=useState('')
@@ -3123,27 +3150,27 @@ function AdminCRMClients(){
   const TL={once:'Pago único',subscription:'Suscripción',installments:'Cuotas'}
   return(
     <div style={{padding:'20px 16px 32px',fontFamily:ff}}>
-      <h1 style={{fontFamily:ffS,fontSize:26,fontWeight:300,color:ink,marginBottom:16}}>Clientes</h1>
-      <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar cliente o servicio..." style={{width:'100%',boxSizing:'border-box',height:44,borderRadius:12,border:'1px solid rgba(14,14,12,0.12)',padding:'0 16px',fontSize:14,fontFamily:ff,background:'rgba(248,246,241,0.8)',outline:'none',marginBottom:16}}/>
-      {loading&&<p style={{color:gray,textAlign:'center',padding:'40px 0'}}>Cargando...</p>}
-      {!loading&&filtered.length===0&&<p style={{color:gray,textAlign:'center',padding:'40px 0',fontSize:14}}>Aún no hay clientes. Cuando alguien "Compre" en Bookings, aparecerá aquí.</p>}
+      <h1 style={{fontFamily:ffS,fontSize:26,fontWeight:300,color:inkC,marginBottom:16}}>Clientes</h1>
+      <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar cliente o servicio..." style={{width:'100%',boxSizing:'border-box',height:44,borderRadius:12,border:`1px solid ${inputBorder}`,padding:'0 16px',fontSize:14,fontFamily:ff,background:inputBg,color:inkC,outline:'none',marginBottom:16}}/>
+      {loading&&<p style={{color:grayC,textAlign:'center',padding:'40px 0'}}>Cargando...</p>}
+      {!loading&&filtered.length===0&&<p style={{color:grayC,textAlign:'center',padding:'40px 0',fontSize:14}}>Aún no hay clientes. Cuando alguien "Compre" en Bookings, aparecerá aquí.</p>}
       {filtered.map(c=>(
-        <div key={c.id} style={{background:'rgba(248,246,241,0.9)',border:'1px solid rgba(14,14,12,0.08)',borderRadius:16,padding:16,marginBottom:12}}>
+        <div key={c.id} style={{background:cardBg,border:`1px solid ${cardBorder}`,borderRadius:16,padding:16,marginBottom:12,backdropFilter:'blur(12px)'}}>
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
             <div>
-              <p style={{fontSize:16,fontWeight:600,color:ink}}>{c.name}</p>
+              <p style={{fontSize:16,fontWeight:600,color:inkC}}>{c.name}</p>
               {c.facebook_page&&<p style={{fontSize:12,color:'#1877f2',marginTop:2}}>📘 {c.facebook_page}</p>}
             </div>
             <span style={{fontSize:10,padding:'3px 10px',borderRadius:99,background:'rgba(184,151,90,0.12)',color:gold,fontWeight:600}}>{TL[c.payment_type]||'Pago único'}</span>
           </div>
-          <div style={{marginTop:10,padding:'10px 12px',background:'rgba(14,14,12,0.03)',borderRadius:10}}>
-            <p style={{fontSize:13,color:ink,fontWeight:500}}>{c.service_acquired}</p>
+          <div style={{marginTop:10,padding:'10px 12px',background:subtleBg,borderRadius:10}}>
+            <p style={{fontSize:13,color:inkC,fontWeight:500}}>{c.service_acquired}</p>
             <p style={{fontSize:20,fontWeight:700,fontFamily:ff,color:'#2d8a60',marginTop:2}}>${(c.amount_paid||0).toLocaleString()}</p>
-            {c.payment_type==='subscription'&&c.monthly_amount&&<p style={{fontSize:11,color:gray}}>${c.monthly_amount}/mes</p>}
-            {c.payment_type==='installments'&&c.installments&&<p style={{fontSize:11,color:gray}}>{c.installments} cuotas · total ${c.total_amount}</p>}
+            {c.payment_type==='subscription'&&c.monthly_amount&&<p style={{fontSize:11,color:grayC}}>${c.monthly_amount}/mes</p>}
+            {c.payment_type==='installments'&&c.installments&&<p style={{fontSize:11,color:grayC}}>{c.installments} cuotas · total ${c.total_amount}</p>}
           </div>
-          {c.notes&&<p style={{fontSize:11,color:gray,marginTop:8,fontStyle:'italic'}}>{c.notes}</p>}
-          <p style={{fontSize:10,color:gray,marginTop:8}}>{new Date(c.created_at).toLocaleDateString('es-PR',{year:'numeric',month:'long',day:'numeric'})}</p>
+          {c.notes&&<p style={{fontSize:11,color:grayC,marginTop:8,fontStyle:'italic'}}>{c.notes}</p>}
+          <p style={{fontSize:10,color:grayC,marginTop:8}}>{new Date(c.created_at).toLocaleDateString('es-PR',{year:'numeric',month:'long',day:'numeric'})}</p>
         </div>
       ))}
     </div>
@@ -3347,14 +3374,21 @@ export default function Admin({session}){
   }
   const upd=(k,v)=>setForm(f=>({...f,[k]:v}))
   const cardUrl=(card)=>`https://app.accountingpluscrm.com/c/${card?.card_number}`
-  const inp={width:'100%',padding:'0.75rem 0.9rem',border:'1px solid rgba(184,151,90,0.2)',borderRadius:10,background:'rgba(248,246,241,0.7)',fontFamily:ff,fontSize:'0.88rem',outline:'none',color:black,marginBottom:'1rem',boxSizing:'border-box',backdropFilter:'blur(8px)'}
-  const lbl={fontSize:'0.56rem',letterSpacing:'0.13em',textTransform:'uppercase',color:gray,display:'block',marginBottom:'0.35rem'}
+  const inp={width:'100%',padding:'0.75rem 0.9rem',border:`1px solid ${darkMode?'rgba(255,255,255,0.12)':'rgba(184,151,90,0.2)'}`,borderRadius:10,background:darkMode?'rgba(255,255,255,0.07)':'rgba(248,246,241,0.7)',fontFamily:ff,fontSize:'0.88rem',outline:'none',color:darkMode?'rgba(255,255,255,0.9)':black,marginBottom:'1rem',boxSizing:'border-box',backdropFilter:'blur(8px)'}
+  const lbl={fontSize:'0.56rem',letterSpacing:'0.13em',textTransform:'uppercase',color:darkMode?'rgba(255,255,255,0.4)':gray,display:'block',marginBottom:'0.35rem'}
 
   const [tab,setTab]=useState('dashboard')
   const [burger,setBurger]=useState(false)
   const [activePanel,setActivePanel]=useState('dashboard')
   const [adminBookings,setAdminBookings]=useState([])
   const [darkMode,setDarkMode]=useState(()=>{ try{ return localStorage.getItem('aplus_dark')==='1' }catch{return false} })
+  const modalBg=darkMode?'#1a1a18':'#ffffff'
+  const modalInk=darkMode?'rgba(255,255,255,0.9)':ink
+  const modalGray=darkMode?'rgba(255,255,255,0.4)':gray
+  const modalInputBg=darkMode?'rgba(255,255,255,0.07)':'#fff'
+  const modalInputBorder=darkMode?'rgba(255,255,255,0.12)':'rgba(14,14,12,0.12)'
+  const modalSubtle=darkMode?'rgba(255,255,255,0.05)':'rgba(14,14,12,0.03)'
+  const modalDivider=darkMode?'rgba(255,255,255,0.07)':'rgba(14,14,12,0.06)'
   const [agentName,setAgentName]=useState('')
   const [showOnboarding,setShowOnboarding]=useState(false)
   const [onboardStep,setOnboardStep]=useState(0)
@@ -3376,11 +3410,12 @@ export default function Admin({session}){
   // activePanel is the single source of truth for what's displayed
 
   return(
+    <DarkCtx.Provider value={darkMode}>
     <>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap');
         *,*::before,*::after{box-sizing:border-box;}
-        html,body{background:#f8f6f1;overscroll-behavior:none;-webkit-font-smoothing:antialiased;touch-action:manipulation;}
+        html,body{background:${darkMode?'#0e0e0c':'#f8f6f1'};overscroll-behavior:none;-webkit-font-smoothing:antialiased;touch-action:manipulation;}
         button,a,input,select,textarea{touch-action:manipulation;}
         @supports(padding-top:env(safe-area-inset-top)){
           .safe-header{padding-top:env(safe-area-inset-top)!important;height:calc(52px + env(safe-area-inset-top))!important;}
@@ -3465,7 +3500,7 @@ export default function Admin({session}){
               <button onClick={()=>setModal('card')} style={{background:black,color:white,border:'none',padding:'0.6rem 1.1rem',fontFamily:ff,fontSize:'0.6rem',letterSpacing:'0.12em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>+ New</button>
             </div>
             <div style={{padding:'0 16px'}}>
-              <input type="text" placeholder="Search client..." value={search} onChange={e=>setSearch(e.target.value)} style={{width:'100%',padding:'0.7rem 1rem',border:'1px solid '+gl,borderRadius:3,fontFamily:ff,fontSize:'0.82rem',outline:'none',marginBottom:'1.25rem',boxSizing:'border-box',background:white}}/>
+              <input type="text" placeholder="Search client..." value={search} onChange={e=>setSearch(e.target.value)} style={{width:'100%',padding:'0.7rem 1rem',border:`1px solid ${darkMode?'rgba(255,255,255,0.12)':gl}`,borderRadius:3,fontFamily:ff,fontSize:'0.82rem',outline:'none',marginBottom:'1.25rem',boxSizing:'border-box',background:darkMode?'rgba(255,255,255,0.07)':white,color:darkMode?'rgba(255,255,255,0.9)':ink}}/>
               <div style={{display:'flex',flexDirection:'column',gap:'0.75rem'}}>
                 {cards.filter(c=>(c.profiles?.full_name||'').toLowerCase().includes(search.toLowerCase())||(c.profiles?.business_name||'').toLowerCase().includes(search.toLowerCase())).map(card=>{
                   const cur=card.stamps%5===0&&card.stamps>0?5:card.stamps%5
@@ -3511,7 +3546,7 @@ export default function Admin({session}){
           </>}
           {activePanel==='punch'&&<div style={{padding:'20px 16px'}}>
               <h2 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300,marginBottom:'1.25rem'}}>Punch Card</h2>
-              <div style={{background:white,borderRadius:10,padding:'1.5rem',border:'1px solid rgba(14,14,12,0.07)'}}>
+              <div style={{background:modalBg,borderRadius:10,padding:'1.5rem',border:`1px solid ${darkMode?'rgba(255,255,255,0.08)':'rgba(14,14,12,0.07)'}`}}>
                 <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1rem',marginBottom:'1rem'}}>
                   <div><label style={lbl}>Client</label><select value={punchId} onChange={e=>setPunchId(e.target.value)} style={{...inp,marginBottom:0}}><option value="">Select</option>{cards.map(c=><option key={c.id} value={c.id}>{c.profiles?.business_name||c.profiles?.full_name} · {c.stamps%5===0&&c.stamps>0?5:c.stamps%5}/5</option>)}</select></div>
                   <div><label style={lbl}>Amount *</label><input style={{...inp,marginBottom:0}} type="number" step="0.01" placeholder="0.00" value={punchAmt} onChange={e=>setPunchAmt(e.target.value)}/></div>
@@ -3682,8 +3717,8 @@ export default function Admin({session}){
 
       {/* MODAL: New Card */}
         {modal==='card'&&(<div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:500,display:'flex',alignItems:'flex-end',justifyContent:'center'}} onClick={e=>e.target===e.currentTarget&&setModal(null)}>
-          <div style={{background:white,borderRadius:'12px 12px 0 0',padding:'2rem',width:'100%',maxWidth:520,maxHeight:'90vh',overflowY:'auto'}}>
-            <h3 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300,marginBottom:'1.5rem'}}>New Card</h3>
+          <div style={{background:modalBg,borderRadius:'12px 12px 0 0',padding:'2rem',width:'100%',maxWidth:520,maxHeight:'90vh',overflowY:'auto'}}>
+            <h3 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300,marginBottom:'1.5rem',color:modalInk}}>New Card</h3>
             <div style={{background:'rgba(184,151,90,0.05)',border:'1px solid rgba(184,151,90,0.2)',borderRadius:8,padding:'1.25rem',marginBottom:'1.25rem'}}>
               <div style={{fontSize:'0.58rem',letterSpacing:'0.14em',textTransform:'uppercase',color:gold,marginBottom:'1rem'}}>Create New Client</div>
               <label style={lbl}>Full Name</label><input style={inp} type="text" placeholder="Client name" value={form.new_name||''} onChange={e=>upd('new_name',e.target.value)}/>
@@ -3693,39 +3728,39 @@ export default function Admin({session}){
               <label style={lbl}>Temporary Password</label><input style={{...inp,marginBottom:0}} type="text" placeholder="min. 6 characters" value={form.new_password||''} onChange={e=>upd('new_password',e.target.value)}/>
               <button onClick={createClient} style={{width:'100%',background:gold,color:white,border:'none',padding:'0.75rem',fontFamily:ff,fontSize:'0.62rem',letterSpacing:'0.12em',textTransform:'uppercase',borderRadius:3,cursor:'pointer',marginTop:'0.85rem'}}>Create Client</button>
             </div>
-            <div style={{fontSize:'0.58rem',letterSpacing:'0.14em',textTransform:'uppercase',color:gray,marginBottom:'0.75rem',textAlign:'center'}}>— or select existing —</div>
+            <div style={{fontSize:'0.58rem',letterSpacing:'0.14em',textTransform:'uppercase',color:modalGray,marginBottom:'0.75rem',textAlign:'center'}}>— or select existing —</div>
             <label style={lbl}>Existing Client</label>
             <select value={form.user_id||''} onChange={e=>upd('user_id',e.target.value)} style={inp}><option value="">Select client</option>{users.map(u=><option key={u.id} value={u.id}>{u.business_name||u.full_name}</option>)}</select>
             <label style={lbl}>Notes (optional)</label><input style={inp} type="text" placeholder="Additional info..." value={form.notes||''} onChange={e=>upd('notes',e.target.value)}/>
             <div style={{display:'flex',gap:'0.75rem'}}>
               <button onClick={createCard} style={{flex:1,background:black,color:white,border:'none',padding:'0.85rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Assign Card</button>
-              <button onClick={()=>setModal(null)} style={{background:'rgba(14,14,12,0.06)',color:black,border:'none',padding:'0.85rem 1.25rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Cancel</button>
+              <button onClick={()=>setModal(null)} style={{background:modalSubtle,color:modalInk,border:'none',padding:'0.85rem 1.25rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Cancel</button>
             </div>
           </div>
         </div>)}
 
         {/* MODAL: QR */}
         {modal==='qr'&&qrCard&&(<div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:500,display:'flex',alignItems:'center',justifyContent:'center',padding:'1.25rem'}} onClick={e=>e.target===e.currentTarget&&setModal(null)}>
-          <div style={{background:white,borderRadius:12,padding:'2rem',width:'100%',maxWidth:360,textAlign:'center'}}>
-            <h3 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300,marginBottom:'0.25rem'}}>QR Code</h3>
-            <p style={{fontSize:'0.72rem',color:gray,marginBottom:'0.5rem'}}>{qrCard.profiles?.business_name||qrCard.profiles?.full_name}</p>
-            <p style={{fontSize:'0.6rem',color:gray,marginBottom:'1.25rem'}}>#{qrCard.card_number}</p>
+          <div style={{background:modalBg,borderRadius:12,padding:'2rem',width:'100%',maxWidth:360,textAlign:'center'}}>
+            <h3 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300,marginBottom:'0.25rem',color:modalInk}}>QR Code</h3>
+            <p style={{fontSize:'0.72rem',color:modalGray,marginBottom:'0.5rem'}}>{qrCard.profiles?.business_name||qrCard.profiles?.full_name}</p>
+            <p style={{fontSize:'0.6rem',color:modalGray,marginBottom:'1.25rem'}}>#{qrCard.card_number}</p>
             <div style={{display:'flex',justifyContent:'center',marginBottom:'1.25rem'}}><img src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(cardUrl(qrCard))}&color=0e0e0c&bgcolor=f8f6f1`} alt="QR" style={{borderRadius:8,border:'1px solid '+gl,padding:8,background:white}} width={200} height={200}/></div>
-            <p style={{fontSize:'0.58rem',color:gray,marginBottom:'1.25rem',wordBreak:'break-all',lineHeight:1.6}}>{cardUrl(qrCard)}</p>
+            <p style={{fontSize:'0.58rem',color:modalGray,marginBottom:'1.25rem',wordBreak:'break-all',lineHeight:1.6}}>{cardUrl(qrCard)}</p>
             <div style={{display:'flex',gap:'0.75rem'}}>
               <button onClick={()=>window.open(cardUrl(qrCard),'_blank')} style={{flex:1,background:black,color:white,border:'none',padding:'0.85rem',fontFamily:ff,fontSize:'0.62rem',letterSpacing:'0.12em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Open</button>
               <button onClick={()=>{navigator.clipboard.writeText(cardUrl(qrCard));showToast('Link copied!')}} style={{flex:1,background:'rgba(184,151,90,0.1)',color:gold,border:'1px solid rgba(184,151,90,0.25)',padding:'0.85rem',fontFamily:ff,fontSize:'0.62rem',letterSpacing:'0.12em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Copy</button>
-              <button onClick={()=>setModal(null)} style={{background:'rgba(14,14,12,0.06)',color:black,border:'none',padding:'0.85rem 0.75rem',fontFamily:ff,fontSize:'0.62rem',letterSpacing:'0.12em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>X</button>
+              <button onClick={()=>setModal(null)} style={{background:modalSubtle,color:modalInk,border:'none',padding:'0.85rem 0.75rem',fontFamily:ff,fontSize:'0.62rem',letterSpacing:'0.12em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>X</button>
             </div>
           </div>
         </div>)}
 
         {/* MODAL: Edit Client */}
         {modal==='editclient'&&editingClient&&(<div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:500,display:'flex',alignItems:'flex-end',justifyContent:'center'}} onClick={e=>e.target===e.currentTarget&&setModal(null)}>
-          <div style={{background:white,borderRadius:'12px 12px 0 0',padding:'2rem',width:'100%',maxWidth:520,maxHeight:'90vh',overflowY:'auto'}}>
+          <div style={{background:modalBg,borderRadius:'12px 12px 0 0',padding:'2rem',width:'100%',maxWidth:520,maxHeight:'90vh',overflowY:'auto'}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1.5rem'}}>
-              <h3 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300}}>Edit Client</h3>
-              <button onClick={()=>setModal(null)} style={{background:'none',border:'none',fontSize:'1.1rem',cursor:'pointer',color:gray}}>x</button>
+              <h3 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300,color:modalInk}}>Edit Client</h3>
+              <button onClick={()=>setModal(null)} style={{background:'none',border:'none',fontSize:'1.1rem',cursor:'pointer',color:modalGray}}>x</button>
             </div>
             <label style={lbl}>Full Name</label><input style={inp} type="text" value={editForm.name||''} onChange={e=>setEditForm(f=>({...f,name:e.target.value}))}/>
             <label style={lbl}>Business Name</label><input style={inp} type="text" value={editForm.business||''} onChange={e=>setEditForm(f=>({...f,business:e.target.value}))}/>
@@ -3734,17 +3769,17 @@ export default function Admin({session}){
             <label style={lbl}>New Password (optional)</label><input style={inp} type="text" placeholder="Leave empty to keep current" value={editForm.password||''} onChange={e=>setEditForm(f=>({...f,password:e.target.value}))}/>
             <div style={{display:'flex',gap:'0.75rem'}}>
               <button onClick={async()=>{await fetch('/api/admin/users',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:editingClient.id,full_name:editForm.name,business_name:editForm.business,phone:editForm.phone,email:editForm.email||null,password:editForm.password||null})});await fetch('/api/admin/activity-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'Edited client',target:editForm.business||editForm.name||'',type:'edit'})});showToast('Client updated');setModal(null);setEditingClient(null);loadAll()}} style={{flex:1,background:black,color:white,border:'none',padding:'0.85rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Save</button>
-              <button onClick={()=>setModal(null)} style={{background:'rgba(14,14,12,0.06)',color:black,border:'none',padding:'0.85rem 1.25rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Cancel</button>
+              <button onClick={()=>setModal(null)} style={{background:modalSubtle,color:modalInk,border:'none',padding:'0.85rem 1.25rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Cancel</button>
             </div>
           </div>
         </div>)}
 
         {/* MODAL: Files */}
         {modal==='files'&&filesClient&&(<div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:500,display:'flex',alignItems:'flex-end',justifyContent:'center'}} onClick={e=>e.target===e.currentTarget&&setModal(null)}>
-          <div style={{background:white,borderRadius:'12px 12px 0 0',padding:'2rem',width:'100%',maxWidth:520,maxHeight:'90vh',overflowY:'auto'}}>
+          <div style={{background:modalBg,borderRadius:'12px 12px 0 0',padding:'2rem',width:'100%',maxWidth:520,maxHeight:'90vh',overflowY:'auto'}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1.5rem'}}>
-              <h3 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300}}>Files — {filesClient.business_name||filesClient.full_name}</h3>
-              <button onClick={()=>setModal(null)} style={{background:'none',border:'none',fontSize:'1.1rem',cursor:'pointer',color:gray}}>x</button>
+              <h3 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300,color:modalInk}}>Files — {filesClient.business_name||filesClient.full_name}</h3>
+              <button onClick={()=>setModal(null)} style={{background:'none',border:'none',fontSize:'1.1rem',cursor:'pointer',color:modalGray}}>x</button>
             </div>
             <div style={{border:'2px dashed rgba(184,151,90,0.3)',borderRadius:8,padding:'2rem',textAlign:'center',marginBottom:'1.25rem',background:'rgba(184,151,90,0.03)'}}>
               <div style={{fontSize:'1.5rem',marginBottom:'0.5rem'}}>+</div>
@@ -3758,18 +3793,18 @@ export default function Admin({session}){
 
         {/* MODAL: Expense */}
         {modal==='expense'&&expenseClient&&(<div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:500,display:'flex',alignItems:'flex-end',justifyContent:'center'}} onClick={e=>e.target===e.currentTarget&&setModal(null)}>
-          <div style={{background:white,borderRadius:'12px 12px 0 0',padding:'2rem',width:'100%',maxWidth:520,maxHeight:'90vh',overflowY:'auto'}}>
+          <div style={{background:modalBg,borderRadius:'12px 12px 0 0',padding:'2rem',width:'100%',maxWidth:520,maxHeight:'90vh',overflowY:'auto'}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.25rem'}}>
-              <h3 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300}}>Expenses</h3>
-              <button onClick={()=>setModal(null)} style={{background:'none',border:'none',fontSize:'1.1rem',cursor:'pointer',color:gray}}>x</button>
+              <h3 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300,color:modalInk}}>Expenses</h3>
+              <button onClick={()=>setModal(null)} style={{background:'none',border:'none',fontSize:'1.1rem',cursor:'pointer',color:modalGray}}>x</button>
             </div>
-            <p style={{fontSize:'0.72rem',color:gray,marginBottom:'1.5rem'}}>{expenseClient.business_name||expenseClient.full_name}</p>
+            <p style={{fontSize:'0.72rem',color:modalGray,marginBottom:'1.5rem'}}>{expenseClient.business_name||expenseClient.full_name}</p>
             <label style={lbl}>Amount ($)</label><input style={inp} type="number" step="0.01" placeholder="0.00" value={expenseForm.amount} onChange={e=>setExpenseForm(f=>({...f,amount:e.target.value}))}/>
             <label style={lbl}>Description</label><input style={inp} type="text" placeholder="e.g. Domain renewal, hosting..." value={expenseForm.description} onChange={e=>setExpenseForm(f=>({...f,description:e.target.value}))}/>
             <label style={lbl}>Date</label><input style={{...inp}} type="date" value={expenseForm.date} onChange={e=>setExpenseForm(f=>({...f,date:e.target.value}))}/>
             <div style={{display:'flex',alignItems:'center',gap:'0.75rem',marginBottom:'1rem'}}>
               <input type="checkbox" id="recurring-cb" checked={expenseForm.recurring||false} onChange={e=>setExpenseForm(f=>({...f,recurring:e.target.checked}))} style={{width:16,height:16,cursor:'pointer'}}/>
-              <label htmlFor="recurring-cb" style={{fontSize:'0.72rem',color:black,cursor:'pointer'}}>Recurring expense</label>
+              <label htmlFor="recurring-cb" style={{fontSize:'0.72rem',color:modalInk,cursor:'pointer'}}>Recurring expense</label>
             </div>
             {expenseForm.recurring&&(
               <div style={{marginBottom:'1rem'}}>
@@ -3787,7 +3822,7 @@ export default function Admin({session}){
                 if(res.ok){showToast('Expense saved');setExpenseForm({amount:'',description:'',date:new Date().toISOString().split('T')[0],recurring:false,recurring_interval:'month'})}
                 else showToast('Error saving expense')
               }} style={{flex:1,background:black,color:white,border:'none',padding:'0.85rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Save Expense</button>
-              <button onClick={()=>setModal(null)} style={{background:'rgba(14,14,12,0.06)',color:black,border:'none',padding:'0.85rem 1.25rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Close</button>
+              <button onClick={()=>setModal(null)} style={{background:modalSubtle,color:modalInk,border:'none',padding:'0.85rem 1.25rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Close</button>
             </div>
             <ExpenseHistory clientId={expenseClient.id} showToast={showToast} supplies={supplies}/>
           </div>
@@ -3795,12 +3830,12 @@ export default function Admin({session}){
 
         {/* MODAL: Set Cost */}
         {modal==='cost'&&editCost&&(<div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:500,display:'flex',alignItems:'flex-end',justifyContent:'center'}} onClick={e=>e.target===e.currentTarget&&setModal(null)}>
-          <div style={{background:white,borderRadius:'12px 12px 0 0',padding:'2rem',width:'100%',maxWidth:520,maxHeight:'90vh',overflowY:'auto'}}>
+          <div style={{background:modalBg,borderRadius:'12px 12px 0 0',padding:'2rem',width:'100%',maxWidth:520,maxHeight:'90vh',overflowY:'auto'}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.25rem'}}>
-              <h3 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300}}>Set Cost</h3>
-              <button onClick={()=>setModal(null)} style={{background:'none',border:'none',fontSize:'1.1rem',cursor:'pointer',color:gray}}>x</button>
+              <h3 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300,color:modalInk}}>Set Cost</h3>
+              <button onClick={()=>setModal(null)} style={{background:'none',border:'none',fontSize:'1.1rem',cursor:'pointer',color:modalGray}}>x</button>
             </div>
-            <p style={{fontSize:'0.72rem',color:gray,marginBottom:'1.25rem'}}>{editCost.name}</p>
+            <p style={{fontSize:'0.72rem',color:modalGray,marginBottom:'1.25rem'}}>{editCost.name}</p>
 
             {/* Supplies calculator */}
             {supplies.length>0&&(
@@ -3814,8 +3849,8 @@ export default function Admin({session}){
                   return(
                     <div key={s.id} style={{display:'flex',alignItems:'center',gap:'0.75rem',marginBottom:'0.5rem'}}>
                       <div style={{flex:1,minWidth:0}}>
-                        <div style={{fontSize:'0.68rem',color:black,fontWeight:500}}>{s.name}</div>
-                        <div style={{fontSize:'0.58rem',color:gray}}>${parseFloat(s.cost).toFixed(2)}{unitLabel}</div>
+                        <div style={{fontSize:'0.68rem',color:modalInk,fontWeight:500}}>{s.name}</div>
+                        <div style={{fontSize:'0.58rem',color:modalGray}}>${parseFloat(s.cost).toFixed(2)}{unitLabel}</div>
                       </div>
                       <input type="number" min="0" step="0.1" placeholder="0"
                         value={costForm[qtyKey]||''}
@@ -3839,7 +3874,7 @@ export default function Admin({session}){
                   )
                 })}
                 <div style={{display:'flex',justifyContent:'space-between',paddingTop:'0.6rem',marginTop:'0.25rem',borderTop:'1px solid rgba(14,14,12,0.07)'}}>
-                  <span style={{fontSize:'0.58rem',color:gray,letterSpacing:'0.08em',textTransform:'uppercase'}}>Total Cost</span>
+                  <span style={{fontSize:'0.58rem',color:modalGray,letterSpacing:'0.08em',textTransform:'uppercase'}}>Total Cost</span>
                   <span style={{fontFamily:ffS,fontSize:'1rem',fontWeight:300,color:'#c0392b'}}>${parseFloat(costForm.cost||0).toFixed(2)}</span>
                 </div>
               </div>
@@ -3863,24 +3898,24 @@ export default function Admin({session}){
               }} style={{padding:'0.78rem 1.25rem',background:black,color:white,border:'none',borderRadius:3,cursor:'pointer',fontFamily:ff,fontSize:'0.62rem',letterSpacing:'0.12em',textTransform:'uppercase',flexShrink:0}}>Save</button>
             </div>
             <CostHistory productId={editCost.id}/>
-            <button onClick={()=>setModal(null)} style={{width:'100%',background:'rgba(14,14,12,0.06)',color:black,border:'none',padding:'0.75rem',fontFamily:ff,fontSize:'0.62rem',letterSpacing:'0.12em',textTransform:'uppercase',borderRadius:3,cursor:'pointer',marginTop:'0.5rem'}}>Close</button>
+            <button onClick={()=>setModal(null)} style={{width:'100%',background:modalSubtle,color:modalInk,border:'none',padding:'0.75rem',fontFamily:ff,fontSize:'0.62rem',letterSpacing:'0.12em',textTransform:'uppercase',borderRadius:3,cursor:'pointer',marginTop:'0.5rem'}}>Close</button>
           </div>
         </div>)}
 
         {/* MODAL: Suppliers */}
         {modal==='suppliers'&&suppliersItem&&(<div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:500,display:'flex',alignItems:'flex-end',justifyContent:'center'}} onClick={e=>e.target===e.currentTarget&&setModal(null)}>
-          <div style={{background:white,borderRadius:'12px 12px 0 0',padding:'2rem',width:'100%',maxWidth:520,maxHeight:'90vh',overflowY:'auto'}}>
+          <div style={{background:modalBg,borderRadius:'12px 12px 0 0',padding:'2rem',width:'100%',maxWidth:520,maxHeight:'90vh',overflowY:'auto'}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.25rem'}}>
-              <h3 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300}}>Suppliers</h3>
-              <button onClick={()=>setModal(null)} style={{background:'none',border:'none',fontSize:'1.1rem',cursor:'pointer',color:gray}}>x</button>
+              <h3 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300,color:modalInk}}>Suppliers</h3>
+              <button onClick={()=>setModal(null)} style={{background:'none',border:'none',fontSize:'1.1rem',cursor:'pointer',color:modalGray}}>x</button>
             </div>
-            <p style={{fontSize:'0.72rem',color:gray,marginBottom:'1.25rem'}}>{suppliersItem.name}</p>
+            <p style={{fontSize:'0.72rem',color:modalGray,marginBottom:'1.25rem'}}>{suppliersItem.name}</p>
             <div style={{background:'rgba(184,151,90,0.04)',border:'1px solid rgba(184,151,90,0.15)',borderRadius:8,padding:'1rem',marginBottom:'1rem'}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.5rem'}}>
-                <input value={suppliersTitle} onChange={e=>setSuppliersTitle(e.target.value)} placeholder="Note title..." style={{background:'none',border:'none',outline:'none',fontFamily:ffS,fontSize:'1rem',fontWeight:300,color:black,flex:1}} id="suppliers-title"/>
-                <span style={{fontSize:'0.58rem',color:gray,flexShrink:0,marginLeft:'0.5rem'}}>{new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</span>
+                <input value={suppliersTitle} onChange={e=>setSuppliersTitle(e.target.value)} placeholder="Note title..." style={{background:'none',border:'none',outline:'none',fontFamily:ffS,fontSize:'1rem',fontWeight:300,color:modalInk,flex:1}} id="suppliers-title"/>
+                <span style={{fontSize:'0.58rem',color:modalGray,flexShrink:0,marginLeft:'0.5rem'}}>{new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</span>
               </div>
-              <textarea id="suppliers-text" value={suppliersText} onChange={e=>setSuppliersText(e.target.value)} rows={6} placeholder="e.g. Vercel hosting, GoDaddy domain, Supabase..." style={{width:'100%',background:'none',border:'none',outline:'none',fontFamily:ff,fontSize:'0.82rem',color:black,resize:'vertical',boxSizing:'border-box',lineHeight:1.7}}/>
+              <textarea id="suppliers-text" value={suppliersText} onChange={e=>setSuppliersText(e.target.value)} rows={6} placeholder="e.g. Vercel hosting, GoDaddy domain, Supabase..." style={{width:'100%',background:'none',border:'none',outline:'none',fontFamily:ff,fontSize:'0.82rem',color:modalInk,resize:'vertical',boxSizing:'border-box',lineHeight:1.7}}/>
             </div>
             <div style={{display:'flex',gap:'0.75rem'}}>
               <button onClick={async()=>{
@@ -3889,7 +3924,7 @@ export default function Admin({session}){
                 if(r.ok){showToast('Saved ✓');fetch('/api/admin/catalog').then(r=>r.json()).then(d=>setCatalog(d.items||[]))}
                 else showToast('Error: '+(d.error||'Unknown'))
               }} style={{flex:1,background:black,color:white,border:'none',padding:'0.85rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Save</button>
-              <button onClick={()=>setModal(null)} style={{background:'rgba(14,14,12,0.06)',color:black,border:'none',padding:'0.85rem 1.25rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Close</button>
+              <button onClick={()=>setModal(null)} style={{background:modalSubtle,color:modalInk,border:'none',padding:'0.85rem 1.25rem',fontFamily:ff,fontSize:'0.66rem',letterSpacing:'0.14em',textTransform:'uppercase',borderRadius:3,cursor:'pointer'}}>Close</button>
             </div>
           </div>
         </div>)}
@@ -3897,13 +3932,13 @@ export default function Admin({session}){
         {/* MODAL: History */}
         {modal==='history'&&historyClient&&(
           <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:500,display:'flex',alignItems:'flex-end',justifyContent:'center'}} onClick={e=>e.target===e.currentTarget&&setModal(null)}>
-            <div style={{background:white,borderRadius:'12px 12px 0 0',width:'100%',maxWidth:560,maxHeight:'85vh',display:'flex',flexDirection:'column'}}>
+            <div style={{background:modalBg,borderRadius:'12px 12px 0 0',width:'100%',maxWidth:560,maxHeight:'85vh',display:'flex',flexDirection:'column'}}>
               <div style={{padding:'1.5rem 1.5rem 1rem',flexShrink:0}}>
                 <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                  <h3 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300}}>Transaction History</h3>
-                  <button onClick={()=>setModal(null)} style={{background:'none',border:'none',fontSize:'1.1rem',cursor:'pointer',color:gray}}>x</button>
+                  <h3 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300,color:modalInk}}>Transaction History</h3>
+                  <button onClick={()=>setModal(null)} style={{background:'none',border:'none',fontSize:'1.1rem',cursor:'pointer',color:modalGray}}>x</button>
                 </div>
-                <p style={{fontSize:'0.72rem',color:gray,marginTop:'0.25rem'}}>{historyClient.business_name||historyClient.full_name}</p>
+                <p style={{fontSize:'0.72rem',color:modalGray,marginTop:'0.25rem'}}>{historyClient.business_name||historyClient.full_name}</p>
               </div>
               <ClientHistory client={historyClient}/>
             </div>
@@ -3913,22 +3948,22 @@ export default function Admin({session}){
         {/* MODAL: Reward — inline per card */}
         {rewardCard&&(
           <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:500,display:'flex',alignItems:'flex-end',justifyContent:'center'}} onClick={e=>e.target===e.currentTarget&&setRewardCard(null)}>
-            <div style={{background:white,borderRadius:'12px 12px 0 0',padding:'2rem',width:'100%',maxWidth:520,maxHeight:'90vh',overflowY:'auto'}}>
+            <div style={{background:modalBg,borderRadius:'12px 12px 0 0',padding:'2rem',width:'100%',maxWidth:520,maxHeight:'90vh',overflowY:'auto'}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.25rem'}}>
-                <h3 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300}}>Rewards</h3>
-                <button onClick={()=>setRewardCard(null)} style={{background:'none',border:'none',fontSize:'1.1rem',cursor:'pointer',color:gray}}>x</button>
+                <h3 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300,color:modalInk}}>Rewards</h3>
+                <button onClick={()=>setRewardCard(null)} style={{background:'none',border:'none',fontSize:'1.1rem',cursor:'pointer',color:modalGray}}>x</button>
               </div>
-              <p style={{fontSize:'0.72rem',color:gray,marginBottom:'1.5rem'}}>{rewardCard.profiles?.business_name||rewardCard.profiles?.full_name} · #{rewardCard.card_number}</p>
+              <p style={{fontSize:'0.72rem',color:modalGray,marginBottom:'1.5rem'}}>{rewardCard.profiles?.business_name||rewardCard.profiles?.full_name} · #{rewardCard.card_number}</p>
 
               {/* Existing rewards list */}
               {rewardCard.rewards?.length>0&&(
                 <div style={{marginBottom:'1.5rem',border:'1px solid rgba(14,14,12,0.07)',borderRadius:8,overflow:'hidden'}}>
                   <div style={{padding:'0.6rem 1rem',background:'rgba(14,14,12,0.02)',fontSize:'0.52rem',letterSpacing:'0.1em',textTransform:'uppercase',color:gray}}>Reward History</div>
                   {rewardCard.rewards.map((r,i)=>(
-                    <div key={r.id||i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'0.75rem 1rem',borderTop:'1px solid rgba(14,14,12,0.05)'}}>
+                    <div key={r.id||i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'0.75rem 1rem',borderTop:`1px solid ${modalDivider}`}}>
                       <div>
-                        <div style={{fontSize:'0.75rem',color:black,fontWeight:500}}>{r.reward_type}</div>
-                        <div style={{fontSize:'0.6rem',color:gray,marginTop:'0.1rem'}}>
+                        <div style={{fontSize:'0.75rem',color:modalInk,fontWeight:500}}>{r.reward_type}</div>
+                        <div style={{fontSize:'0.6rem',color:modalGray,marginTop:'0.1rem'}}>
                           {r.redeemed_at?new Date(r.redeemed_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):r.created_at?new Date(r.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'—'}
                           {r.reward_cost&&' · '+r.reward_cost}
                         </div>
@@ -3941,7 +3976,7 @@ export default function Admin({session}){
                   ))}
                 </div>
               )}
-              {(!rewardCard.rewards||rewardCard.rewards.length===0)&&<p style={{fontSize:'0.72rem',color:gray,marginBottom:'1.5rem'}}>No rewards yet.</p>}
+              {(!rewardCard.rewards||rewardCard.rewards.length===0)&&<p style={{fontSize:'0.72rem',color:modalGray,marginBottom:'1.5rem'}}>No rewards yet.</p>}
 
               {/* Register new reward */}
               <div style={{fontSize:'0.52rem',letterSpacing:'0.14em',textTransform:'uppercase',color:gold,marginBottom:'1rem'}}>Register New Reward</div>
@@ -3973,10 +4008,10 @@ export default function Admin({session}){
         {/* MODAL: Supply Add/Edit */}
         {supplyModal&&(
           <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:500,display:'flex',alignItems:'flex-end',justifyContent:'center'}} onClick={e=>e.target===e.currentTarget&&setSupplyModal(null)}>
-            <div style={{background:white,borderRadius:'12px 12px 0 0',padding:'2rem',width:'100%',maxWidth:520,maxHeight:'90vh',overflowY:'auto'}}>
+            <div style={{background:modalBg,borderRadius:'12px 12px 0 0',padding:'2rem',width:'100%',maxWidth:520,maxHeight:'90vh',overflowY:'auto'}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'1.5rem'}}>
-                <h3 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300}}>{supplyModal==='add'?'Add Supply':'Edit Supply'}</h3>
-                <button onClick={()=>setSupplyModal(null)} style={{background:'none',border:'none',fontSize:'1.1rem',cursor:'pointer',color:gray}}>x</button>
+                <h3 style={{fontFamily:ffS,fontSize:'1.5rem',fontWeight:300,color:modalInk}}>{supplyModal==='add'?'Add Supply':'Edit Supply'}</h3>
+                <button onClick={()=>setSupplyModal(null)} style={{background:'none',border:'none',fontSize:'1.1rem',cursor:'pointer',color:modalGray}}>x</button>
               </div>
               <label style={lbl}>Name</label>
               <input style={inp} type="text" placeholder="e.g. Vercel Pro" value={supplyForm.name} onChange={e=>setSupplyForm(f=>({...f,name:e.target.value}))}/>
@@ -4035,6 +4070,7 @@ export default function Admin({session}){
         </div>
       )}
     </>
+    </DarkCtx.Provider>
   )
 }
 
