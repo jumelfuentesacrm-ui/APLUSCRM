@@ -2443,14 +2443,19 @@ function AdminBookings({userRole,agentId}){
   const [cerrarCompro,setCerrarCompro]=useState(null) // null | true | false
   const [cerrarForm,setCerrarForm]=useState({service:'',documentos:'',payType:'completo',total:'',pago_inicial:'',adeudado:'',tiempo_saldo:''})
   const [agentMap,setAgentMap]=useState({}) // id -> last name
+  const [agentList,setAgentList]=useState([]) // full agent objects with avatar
+  const [collabPicker,setCollabPicker]=useState(null) // booking id being assigned
+  const [expandedCard,setExpandedCard]=useState(null) // booking id expanded
   useEffect(()=>{
     fetch('/api/admin/users?all=1').then(r=>r.json()).then(d=>{
+      const agents=(d.users||[]).filter(u=>u.role==='agent')
       const map={}
-      ;(d.users||[]).filter(u=>u.role==='agent').forEach(u=>{
+      agents.forEach(u=>{
         const parts=(u.full_name||u.email||'').trim().split(' ')
         map[u.id]=parts[parts.length-1]||u.email
       })
       setAgentMap(map)
+      setAgentList(agents)
     }).catch(()=>{})
     load()
     const channel = supabase
@@ -2513,27 +2518,66 @@ function AdminBookings({userRole,agentId}){
   const SC={pending:{label:'Pendiente',color:'#e67e22',bg:'rgba(230,126,34,0.1)'},confirmed:{label:'Confirmada',color:'#2d8a60',bg:'rgba(45,138,96,0.1)'},cancelled:{label:'Cancelada',color:'#c0392b',bg:'rgba(192,57,43,0.1)'},bought:{label:'Cerrado',color:gold,bg:'rgba(184,151,90,0.12)'},later:{label:'Dijo Luego',color:'#8e44ad',bg:'rgba(142,68,173,0.1)'},no_show:{label:'No Show',color:'#636e72',bg:'rgba(99,110,114,0.1)'}}
   const inp2={width:'100%',boxSizing:'border-box',height:44,borderRadius:10,border:`1px solid ${inputBorder}`,padding:'0 12px',fontSize:14,fontFamily:ff,background:inputBg,color:inkC,outline:'none',marginBottom:0}
   const glCard2={...glassCard,borderRadius:18}
+  async function assignCollab(bookingId, agentId){
+    await fetch('/api/admin/bookings',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:bookingId,agent_id:agentId})})
+    setCollabPicker(null); await load()
+  }
   function BookingCard({b}){
     const st=SC[b.status]||SC.pending
+    const open=expandedCard===b.id
+    const assignedAgent=b.agent_id?agentList.find(a=>a.id===b.agent_id):null
     return(
-      <div style={{...glCard2,padding:16,marginBottom:10}}>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
-          <span style={{fontSize:10,fontWeight:700,padding:'3px 10px',borderRadius:99,background:st.bg,color:st.color,textTransform:'uppercase',letterSpacing:'0.08em'}}>{st.label}</span>
-          {b.facebook_page&&<span style={{fontSize:11,color:'#1877f2'}}>📘 {b.facebook_page}</span>}
+      <div style={{...glCard2,marginBottom:10,overflow:'hidden'}}>
+        {/* collapsed row — always visible */}
+        <div style={{padding:'12px 14px',display:'flex',alignItems:'center',gap:10}}>
+          <button onClick={()=>setExpandedCard(open?null:b.id)} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'flex-start',background:'none',border:'none',cursor:'pointer',padding:0,textAlign:'left',touchAction:'manipulation'}}>
+            <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
+              <span style={{fontSize:9,fontWeight:700,padding:'2px 8px',borderRadius:99,background:st.bg,color:st.color,textTransform:'uppercase',letterSpacing:'0.08em'}}>{st.label}</span>
+              {b.facebook_page&&<span style={{fontSize:10,color:'#1877f2'}}>📘</span>}
+            </div>
+            <p style={{fontSize:15,fontWeight:600,color:inkC,margin:0}}>{b.name}</p>
+            <p style={{fontSize:11,color:grayC,marginTop:2}}>{b.date} · {b.time}</p>
+          </button>
+          {/* Llamar button always visible */}
+          {b.phone&&<a href={`tel:${b.phone}`} onClick={e=>e.stopPropagation()} style={{flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center',width:40,height:40,borderRadius:'50%',background:'rgba(45,138,96,0.1)',border:'1.5px solid rgba(45,138,96,0.25)',textDecoration:'none'}}>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#2d8a60" strokeWidth="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.65 3.38 2 2 0 0 1 3.62 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.58a16 16 0 0 0 6 6l.96-.87a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.92 16.92z"/></svg>
+          </a>}
+          <button onClick={()=>setExpandedCard(open?null:b.id)} style={{flexShrink:0,background:'none',border:'none',cursor:'pointer',color:grayC,fontSize:16,padding:'4px',touchAction:'manipulation'}}>{open?'▲':'▼'}</button>
         </div>
-        <p style={{fontSize:16,fontWeight:600,color:inkC}}>{b.name}</p>
-        {b.business&&b.business!==b.name&&<p style={{fontSize:12,color:grayC,marginTop:1}}>{b.business}</p>}
-        {b.phone&&<a href={`tel:${b.phone}`} style={{fontSize:13,color:'#2d8a60',textDecoration:'none',display:'block',marginTop:3,fontWeight:500}}>{b.phone}</a>}
-        <p style={{fontSize:13,color:grayC,marginTop:4}}>{b.service||'Consulta'}</p>
-        <p style={{fontSize:12,color:grayC,marginTop:2}}>{b.date} · {b.time}</p>
-        {b.notes&&<p style={{fontSize:11,color:grayC,marginTop:6,fontStyle:'italic'}}>{b.notes}</p>}
-        <div style={{display:'flex',gap:7,marginTop:12,flexWrap:'wrap'}}>
-          {b.status!=='confirmed'&&<button onClick={()=>doConfirm(b)} style={{flex:1,minWidth:90,padding:'8px',background:'none',color:'#2d8a60',border:'1.5px solid #2d8a60',borderRadius:10,fontSize:12,fontWeight:600,fontFamily:ff,cursor:'pointer',touchAction:'manipulation'}}>Confirmar</button>}
-          <button onClick={()=>{setCerrarModal(b);setCerrarCompro(null);setCerrarForm({service:b.service||'',documentos:'',payType:'completo',total:'',pago_inicial:'',adeudado:'',tiempo_saldo:''})}} style={{flex:1,minWidth:70,padding:'8px',background:ink,color:'#fff',border:'none',borderRadius:10,fontSize:12,fontWeight:700,fontFamily:ff,cursor:'pointer',touchAction:'manipulation'}}>Cerrar</button>
-          <button onClick={()=>updateStatus(b.id,'later')} style={{padding:'8px 12px',background:'none',color:'#8e44ad',border:'1.5px solid #8e44ad',borderRadius:10,fontSize:12,fontFamily:ff,cursor:'pointer',touchAction:'manipulation'}}>Dijo Luego</button>
-          <button onClick={()=>updateStatus(b.id,'no_show')} style={{padding:'8px 12px',background:'none',color:'#636e72',border:'1.5px solid #636e72',borderRadius:10,fontSize:12,fontFamily:ff,cursor:'pointer',touchAction:'manipulation'}}>No Show</button>
-          <button onClick={()=>updateStatus(b.id,'cancelled')} style={{padding:'8px 12px',background:'none',color:'#c0392b',border:'1.5px solid #c0392b',borderRadius:10,fontSize:12,fontFamily:ff,cursor:'pointer',touchAction:'manipulation'}}>Cancelar</button>
-        </div>
+        {/* expanded detail */}
+        {open&&(
+          <div style={{borderTop:`1px solid ${divider}`,padding:'12px 14px 14px'}}>
+            {b.business&&b.business!==b.name&&<p style={{fontSize:12,color:grayC,marginBottom:4}}>{b.business}</p>}
+            {b.phone&&<p style={{fontSize:13,color:'#2d8a60',fontWeight:500,marginBottom:4}}>{b.phone}</p>}
+            <p style={{fontSize:13,color:grayC,marginBottom:2}}>{b.service||'Consulta'}</p>
+            {b.notes&&<p style={{fontSize:11,color:grayC,fontStyle:'italic',marginBottom:8}}>{b.notes}</p>}
+            {/* Colaborador */}
+            <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:12,marginTop:6}}>
+              <p style={{fontSize:10,fontWeight:700,color:grayC,textTransform:'uppercase',letterSpacing:'0.08em',margin:0}}>Colaborador</p>
+              {assignedAgent?(
+                <div style={{display:'flex',alignItems:'center',gap:6}}>
+                  <div style={{width:28,height:28,borderRadius:'50%',overflow:'hidden',background:'rgba(184,151,90,0.15)',border:`1.5px solid ${gold}`,flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                    {assignedAgent.avatar_url?<img src={assignedAgent.avatar_url} style={{width:'100%',height:'100%',objectFit:'cover'}} alt=""/>:<span style={{fontSize:11,fontWeight:700,color:gold}}>{(assignedAgent.full_name||assignedAgent.email||'?')[0].toUpperCase()}</span>}
+                  </div>
+                  <span style={{fontSize:12,color:inkC,fontWeight:500}}>{assignedAgent.full_name||assignedAgent.email}</span>
+                  <button onClick={()=>setCollabPicker(b.id)} style={{background:'none',border:'none',cursor:'pointer',fontSize:11,color:grayC,padding:0,textDecoration:'underline'}}>cambiar</button>
+                </div>
+              ):(
+                <button onClick={()=>setCollabPicker(b.id)} style={{display:'flex',alignItems:'center',gap:6,background:'none',border:`1.5px dashed ${divider}`,borderRadius:99,padding:'4px 10px',cursor:'pointer',touchAction:'manipulation'}}>
+                  <span style={{width:20,height:20,borderRadius:'50%',border:`1.5px dashed ${grayC}`,display:'flex',alignItems:'center',justifyContent:'center',color:grayC,fontSize:14,lineHeight:1}}>+</span>
+                  <span style={{fontSize:11,color:grayC}}>Añadir colaborador</span>
+                </button>
+              )}
+            </div>
+            <div style={{display:'flex',gap:7,flexWrap:'wrap'}}>
+              {b.status!=='confirmed'&&<button onClick={()=>doConfirm(b)} style={{flex:1,minWidth:90,padding:'8px',background:'none',color:'#2d8a60',border:'1.5px solid #2d8a60',borderRadius:10,fontSize:12,fontWeight:600,fontFamily:ff,cursor:'pointer',touchAction:'manipulation'}}>Confirmar</button>}
+              <button onClick={()=>{setCerrarModal(b);setCerrarCompro(null);setCerrarForm({service:b.service||'',documentos:'',payType:'completo',total:'',pago_inicial:'',adeudado:'',tiempo_saldo:''})}} style={{flex:1,minWidth:70,padding:'8px',background:ink,color:'#fff',border:'none',borderRadius:10,fontSize:12,fontWeight:700,fontFamily:ff,cursor:'pointer',touchAction:'manipulation'}}>Cerrar</button>
+              <button onClick={()=>updateStatus(b.id,'later')} style={{padding:'8px 12px',background:'none',color:'#8e44ad',border:'1.5px solid #8e44ad',borderRadius:10,fontSize:12,fontFamily:ff,cursor:'pointer',touchAction:'manipulation'}}>Dijo Luego</button>
+              <button onClick={()=>updateStatus(b.id,'no_show')} style={{padding:'8px 12px',background:'none',color:'#636e72',border:'1.5px solid #636e72',borderRadius:10,fontSize:12,fontFamily:ff,cursor:'pointer',touchAction:'manipulation'}}>No Show</button>
+              <button onClick={()=>updateStatus(b.id,'cancelled')} style={{padding:'8px 12px',background:'none',color:'#c0392b',border:'1.5px solid #c0392b',borderRadius:10,fontSize:12,fontFamily:ff,cursor:'pointer',touchAction:'manipulation'}}>Cancelar</button>
+            </div>
+          </div>
+        )}
       </div>
     )
   }
@@ -2705,6 +2749,27 @@ function AdminBookings({userRole,agentId}){
               </div>
               <button type="submit" disabled={saving} style={{height:48,background:inkC,color:dm?'#0e0e0c':cream,border:'none',borderRadius:12,fontSize:15,fontWeight:600,fontFamily:ff,cursor:'pointer',marginTop:4}}>{saving?'Guardando...':'Crear Consulta'}</button>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Colaborador picker */}
+      {collabPicker&&(
+        <div style={{position:'fixed',inset:0,zIndex:320,background:'rgba(0,0,0,0.5)',display:'flex',alignItems:'flex-end'}} onClick={e=>e.target===e.currentTarget&&setCollabPicker(null)}>
+          <div style={{background:surfaceBg,borderRadius:'24px 24px 0 0',width:'100%',maxHeight:'75vh',overflowY:'auto',padding:'8px 0 calc(env(safe-area-inset-bottom,0px)+24px)',boxShadow:'0 -8px 40px rgba(0,0,0,0.2)'}}>
+            <div style={{width:36,height:4,background:dm?'rgba(255,255,255,0.15)':'rgba(14,14,12,0.15)',borderRadius:99,margin:'12px auto 16px'}}/>
+            <p style={{fontFamily:ffS,fontSize:22,fontWeight:300,color:inkC,textAlign:'center',marginBottom:20,paddingInline:20}}>¿A quién deseas añadir?</p>
+            {agentList.length===0&&<p style={{textAlign:'center',color:grayC,fontSize:13,padding:'20px 0'}}>No hay personas disponibles</p>}
+            <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:16,padding:'0 20px 8px'}}>
+              {agentList.map(a=>(
+                <button key={a.id} onClick={()=>assignCollab(collabPicker,a.id)} style={{display:'flex',flexDirection:'column',alignItems:'center',gap:6,background:'none',border:'none',cursor:'pointer',touchAction:'manipulation',padding:'8px 4px'}}>
+                  <div style={{width:56,height:56,borderRadius:'50%',overflow:'hidden',background:'rgba(184,151,90,0.12)',border:`2px solid ${gold}`,flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                    {a.avatar_url?<img src={a.avatar_url} style={{width:'100%',height:'100%',objectFit:'cover'}} alt=""/>:<span style={{fontSize:20,fontWeight:700,color:gold}}>{(a.full_name||a.email||'?')[0].toUpperCase()}</span>}
+                  </div>
+                  <span style={{fontSize:11,fontWeight:600,color:inkC,textAlign:'center',lineHeight:1.3,wordBreak:'break-word'}}>{a.full_name||(a.email||'').split('@')[0]}</span>
+                </button>
+              ))}
+            </div>
+            <button onClick={()=>setCollabPicker(null)} style={{display:'block',margin:'12px auto 0',background:'none',border:'none',fontSize:13,color:grayC,cursor:'pointer',fontFamily:ff}}>Cancelar</button>
           </div>
         </div>
       )}
