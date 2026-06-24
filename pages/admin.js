@@ -2724,7 +2724,7 @@ function AdminBookings({userRole,agentId}){
       {/* New booking sheet */}
       {showNew&&(
         <div style={{position:'fixed',inset:0,zIndex:300,background:'rgba(0,0,0,0.5)',display:'flex',alignItems:'center',justifyContent:'center'}} onClick={e=>e.target===e.currentTarget&&setShowNew(false)}>
-          <div style={{background:surfaceBg,borderRadius:20,width:'100%',maxWidth:480,boxSizing:'border-box',padding:'24px 20px 28px',maxHeight:'90dvh',overflowY:'auto',WebkitOverflowScrolling:'touch'}} onClick={e=>e.stopPropagation()}>
+          <div style={{background:surfaceBg,borderRadius:20,width:'calc(100% - 32px)',maxWidth:480,boxSizing:'border-box',padding:'24px 20px 28px',maxHeight:'90dvh',overflowY:'auto',WebkitOverflowScrolling:'touch',boxShadow:'0 24px 60px rgba(0,0,0,0.3)'}} onClick={e=>e.stopPropagation()}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}}>
               <h2 style={{fontFamily:ffS,fontSize:22,fontWeight:300,color:inkC}}>Nueva Consulta</h2>
               <button onClick={()=>setShowNew(false)} style={{background:'none',border:'none',fontSize:20,cursor:'pointer',color:grayC}}>✕</button>
