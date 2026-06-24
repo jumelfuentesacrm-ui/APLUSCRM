@@ -2723,14 +2723,14 @@ function AdminBookings({userRole,agentId}){
       })}
       {/* New booking sheet */}
       {showNew&&(
-        <div style={{position:'fixed',inset:0,zIndex:300,background:'rgba(0,0,0,0.5)',display:'flex',alignItems:'flex-start',justifyContent:'center',padding:'16px 16px calc(env(safe-area-inset-bottom,0px) + 80px)',overflowY:'auto'}} onClick={e=>e.target===e.currentTarget&&setShowNew(false)}>
-          <div style={{background:surfaceBg,borderRadius:20,width:'100%',maxWidth:480,boxSizing:'border-box',padding:'24px 20px 28px',marginTop:'auto',marginBottom:'auto'}} onClick={e=>e.stopPropagation()}>
+        <div style={{position:'fixed',inset:0,zIndex:300,background:'rgba(0,0,0,0.5)',display:'flex',alignItems:'center',justifyContent:'center',padding:16}} onClick={e=>e.target===e.currentTarget&&setShowNew(false)}>
+          <div style={{background:surfaceBg,borderRadius:20,width:'100%',maxWidth:480,boxSizing:'border-box',padding:'24px 20px 28px',maxHeight:'90dvh',overflowY:'auto',WebkitOverflowScrolling:'touch'}} onClick={e=>e.stopPropagation()}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}}>
               <h2 style={{fontFamily:ffS,fontSize:22,fontWeight:300,color:inkC}}>Nueva Consulta</h2>
               <button onClick={()=>setShowNew(false)} style={{background:'none',border:'none',fontSize:20,cursor:'pointer',color:grayC}}>✕</button>
             </div>
             <form onSubmit={createBooking} style={{display:'flex',flexDirection:'column',gap:12}}>
-              {[{k:'name',l:'Nombre del cliente',t:'text',r:true},{k:'phone',l:'Teléfono',t:'tel',r:true},{k:'facebook_page',l:'Página de Facebook',t:'text'},{k:'service',l:'Servicio',t:'text'},{k:'date',l:'Fecha',t:'date',r:true},{k:'time',l:'Hora',t:'time',r:true}].map(f=>(
+              {[{k:'name',l:'Nombre del cliente',t:'text',r:true},{k:'phone',l:'Teléfono',t:'tel',r:true},{k:'service',l:'Servicio',t:'text'},{k:'date',l:'Fecha',t:'date',r:true},{k:'time',l:'Hora',t:'time',r:true}].map(f=>(
                 <div key={f.k}>
                   <label style={{fontSize:11,fontWeight:600,color:grayC,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:4}}>{f.l}</label>
                   <input
