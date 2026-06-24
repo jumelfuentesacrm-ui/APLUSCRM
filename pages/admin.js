@@ -2948,7 +2948,11 @@ function AdminColdCalling({agentId}){
   async function saveLead(e){
     e.preventDefault(); setSaving(true)
     const responded=form.call_status!=='no_answer'
-    await fetch('/api/admin/cold-calls',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...form,responded})})
+    const r=await fetch('/api/admin/cold-calls',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...form,responded})})
+    if(!r.ok){
+      const d=await r.json().catch(()=>({}))
+      showToast('Error: '+(d.error||r.status)); setSaving(false); return
+    }
     if(form.call_status==='follow_up'&&form.followup_date&&typeof window!=='undefined'&&'Notification' in window){
       Notification.requestPermission().then(p=>{
         if(p==='granted'){
