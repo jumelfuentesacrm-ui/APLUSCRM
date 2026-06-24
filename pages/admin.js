@@ -2730,7 +2730,7 @@ function AdminBookings({userRole,agentId}){
               <button onClick={()=>setShowNew(false)} style={{background:'none',border:'none',fontSize:20,cursor:'pointer',color:grayC}}>✕</button>
             </div>
             <form onSubmit={createBooking} style={{display:'flex',flexDirection:'column',gap:12}}>
-              {[{k:'name',l:'Nombre del cliente',t:'text',r:true},{k:'phone',l:'Teléfono',t:'tel',r:true},{k:'facebook_page',l:'Página de Facebook',t:'text',r:true},{k:'service',l:'Servicio',t:'text'},{k:'date',l:'Fecha',t:'date',r:true},{k:'time',l:'Hora',t:'time',r:true}].map(f=>(
+              {[{k:'name',l:'Nombre del cliente',t:'text',r:true},{k:'phone',l:'Teléfono',t:'tel',r:true},{k:'facebook_page',l:'Página de Facebook',t:'text'},{k:'service',l:'Servicio',t:'text'},{k:'date',l:'Fecha',t:'date',r:true},{k:'time',l:'Hora',t:'time',r:true}].map(f=>(
                 <div key={f.k}>
                   <label style={{fontSize:11,fontWeight:600,color:grayC,textTransform:'uppercase',letterSpacing:'0.08em',display:'block',marginBottom:4}}>{f.l}</label>
                   <input
