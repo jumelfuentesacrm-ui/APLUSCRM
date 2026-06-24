@@ -9,8 +9,8 @@ const supabaseAdmin = createClient(
 export default async function handler(req, res) {
   const user = await requireAdminOrAgent(req, res)
   if (!user) return
-  // Agents: read-only
-  if (user.role === 'agent' && req.method !== 'GET') return res.status(403).json({ error: 'Read-only' })
+  // Agents can only DELETE their own leads, not others'
+  // (full write access allowed — they need to create and update calls)
 
   if (req.method === 'GET') {
     let query = supabaseAdmin.from('cold_calls').select('*').order('created_at', { ascending: false })
