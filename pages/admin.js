@@ -2902,7 +2902,7 @@ function ConsultasPanel(){
   )
 }
 
-function AdminColdCalling({agentId}){
+function AdminColdCalling({agentId,showToast}){
   const {dm,surfaceBg,inkC,grayC,inputBg,inputBorder,subtleBg,divider,glassCard,cardBg,cardBorder}=useTheme()
   const BASE_URL=typeof window!=='undefined'?window.location.origin:''
   const myBookingLink=agentId?`${BASE_URL}/?agent=${agentId}`:BOOKING_LINK
@@ -3842,7 +3842,7 @@ export default function Admin({session}){
           {/* PRIMARY TABS */}
           {activePanel==='dashboard'&&<AdminDashboard sales={sales} bookings={adminBookings} session={session} users={users} onSaleAdded={loadAll} darkMode={darkMode} onNavigate={(p)=>{setActivePanel(p);setTab(p)}}/>}
           {activePanel==='bookings'&&<AdminBookings userRole={userRole} agentId={agentId}/>}
-          {activePanel==='coldcalling'&&<AdminColdCalling agentId={agentId}/>}
+          {activePanel==='coldcalling'&&<AdminColdCalling agentId={agentId} showToast={showToast}/>}
 
 
           {/* BURGER PANELS */}
