@@ -5,7 +5,7 @@ import Head from 'next/head'
 
 export default function App({ Component, pageProps }) {
   const [session, setSession] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
