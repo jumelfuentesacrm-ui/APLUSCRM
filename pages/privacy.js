@@ -42,6 +42,7 @@ export default function Privacy() {
             <ul>
               <li>Dirección IP y datos del navegador</li>
               <li>Páginas visitadas y tiempo en el sitio</li>
+              <li>En el catálogo de plantillas: un identificador anónimo guardado en tu navegador para contar visitas, carritos y reservas; y tu correo electrónico si reservas un pedido, que usamos solo para avisarte cuando abra el pago</li>
               <li>Dispositivo y sistema operativo</li>
               <li>Cookies de sesión y preferencias (ver nuestra Política de Cookies)</li>
             </ul>

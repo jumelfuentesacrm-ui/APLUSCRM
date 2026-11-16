@@ -921,6 +921,8 @@ function Footer() {
             {[['#home','Home'],['#products','Products'],['#portfolio','Portfolio'],['#contact','Contact Us']].map(([href, label]) => (
               <a key={href} href={href} style={linkS}>{label}</a>
             ))}
+            <a href="/plantillas" style={linkS}>Plantillas imprimibles</a>
+            <a href="/templates" style={linkS}>Printable templates</a>
             <a href="/login" style={{ ...linkS, color: GOLD }}>Login Admin</a>
           </div>
           <div>

@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /login
+Disallow: /api/
+Disallow: /carrito
+Disallow: /reservar
+
+Sitemap: https://www.accountingpluscrm.com/sitemap-plantillas.xml

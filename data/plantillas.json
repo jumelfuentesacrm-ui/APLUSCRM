@@ -1,0 +1,2887 @@
+{
+ "generated": "2026-11-16",
+ "families": [
+  {
+   "id": "bookkeeping",
+   "price": 1599,
+   "name": {
+    "en": "Bookkeeping kits by trade",
+    "es": "Kits de contabilidad por oficio"
+   },
+   "summary": {
+    "en": "Printable income, expense and invoice logs with the categories of your trade already written in.",
+    "es": "Registros imprimibles de ingresos, gastos y facturas con las categorías de tu oficio ya escritas."
+   },
+   "slug": {
+    "en": "bookkeeping",
+    "es": "contabilidad"
+   }
+  },
+  {
+   "id": "budget",
+   "price": 899,
+   "name": {
+    "en": "Household budget kits",
+    "es": "Kits de presupuesto del hogar"
+   },
+   "summary": {
+    "en": "Printable budgets, spending logs and debt lists set up for your situation. An organizing tool, not financial advice.",
+    "es": "Presupuestos, registros de gastos y listas de deudas imprimibles, preparados para tu situación. Es una herramienta de organización, no asesoría financiera."
+   },
+   "slug": {
+    "en": "budget",
+    "es": "presupuesto"
+   }
+  },
+  {
+   "id": "study",
+   "price": 799,
+   "name": {
+    "en": "Study and exam planners",
+    "es": "Planificadores de estudio y exámenes"
+   },
+   "summary": {
+    "en": "Printable planners that turn a syllabus into weekly blocks, with logs for practice tests.",
+    "es": "Planificadores imprimibles que convierten un temario en bloques semanales, con registro de simulacros."
+   },
+   "slug": {
+    "en": "study",
+    "es": "estudio"
+   }
+  },
+  {
+   "id": "jobsearch",
+   "price": 799,
+   "name": {
+    "en": "Job search workbooks",
+    "es": "Cuadernos de búsqueda de empleo"
+   },
+   "summary": {
+    "en": "Printable trackers for applications and one-page interview preparation.",
+    "es": "Controles imprimibles de solicitudes y preparación de entrevistas en una página."
+   },
+   "slug": {
+    "en": "job-search",
+    "es": "empleo"
+   }
+  },
+  {
+   "id": "planner",
+   "price": 699,
+   "name": {
+    "en": "Weekly planners",
+    "es": "Planificadores semanales"
+   },
+   "summary": {
+    "en": "Printable weekly planners with priorities, habits and a short review.",
+    "es": "Planificadores semanales imprimibles con prioridades, hábitos y una revisión corta."
+   },
+   "slug": {
+    "en": "planners",
+    "es": "planificadores"
+   }
+  }
+ ],
+ "products": [
+  {
+   "id": "hair-salon",
+   "family": "bookkeeping",
+   "price": 1599,
+   "title": {
+    "en": "Hair Salon Bookkeeping Kit",
+    "es": "Kit de contabilidad para salones de belleza"
+   },
+   "lists": [
+    {
+     "label": {
+      "en": "Income to record",
+      "es": "Ingresos que registrar"
+     },
+     "items": [
+      {
+       "en": "Cuts and styling",
+       "es": "Cortes y peinados"
+      },
+      {
+       "en": "Color and chemical services",
+       "es": "Color y tratamientos químicos"
+      },
+      {
+       "en": "Retail product sales",
+       "es": "Venta de productos"
+      },
+      {
+       "en": "Tips received",
+       "es": "Propinas recibidas"
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Expense categories",
+      "es": "Categorías de gasto"
+     },
+     "items": [
+      {
+       "en": "Color, developer and back-bar supplies",
+       "es": "Tintes, reveladores y productos de lavacabezas"
+      },
+      {
+       "en": "Chair or booth rent",
+       "es": "Alquiler de silla o local"
+      },
+      {
+       "en": "Tools and their maintenance",
+       "es": "Herramientas y su mantenimiento"
+      },
+      {
+       "en": "Towels, capes and laundry",
+       "es": "Toallas, capas y lavandería"
+      },
+      {
+       "en": "Licenses and continuing education",
+       "es": "Licencias y educación continua"
+      },
+      {
+       "en": "Card processing fees",
+       "es": "Comisiones por cobros con tarjeta"
+      }
+     ]
+    }
+   ],
+   "tips": [
+    {
+     "en": "Log tips on the day you receive them; cash tips are the first thing people forget at tax time.",
+     "es": "Anota las propinas el mismo día; las propinas en efectivo son lo primero que se olvida al declarar."
+    },
+    {
+     "en": "Write the color cost next to each color service so you can see what each one really leaves you.",
+     "es": "Escribe el costo del tinte junto a cada servicio de color para ver cuánto te deja de verdad."
+    }
+   ],
+   "slug": {
+    "en": "hair-salon-bookkeeping-kit",
+    "es": "kit-de-contabilidad-para-salones-de-belleza"
+   },
+   "who": {
+    "en": "Salon owners and stylists who rent a chair",
+    "es": "Dueñas de salón y estilistas que alquilan una silla"
+   },
+   "contents": {
+    "en": [
+     {
+      "t": "Income log",
+      "i": "Write down every sale the day it happens."
+     },
+     {
+      "t": "Expense log",
+      "i": "Keep the receipt and note its category."
+     },
+     {
+      "t": "Invoice tracker",
+      "i": "Know who owes you and since when."
+     },
+     {
+      "t": "Monthly close",
+      "i": "Answer these once a month."
+     },
+     {
+      "t": "Cash flow checklist",
+      "i": "Run through it every Friday."
+     }
+    ],
+    "es": [
+     {
+      "t": "Registro de ingresos",
+      "i": "Anota cada venta el mismo día."
+     },
+     {
+      "t": "Registro de gastos",
+      "i": "Guarda el recibo y anota su categoría."
+     },
+     {
+      "t": "Control de facturas",
+      "i": "Sabe quién te debe y desde cuándo."
+     },
+     {
+      "t": "Cierre mensual",
+      "i": "Responde esto una vez al mes."
+     },
+     {
+      "t": "Lista de flujo de caja",
+      "i": "Repásala cada viernes."
+     }
+    ]
+   },
+   "pages": {
+    "en": 10,
+    "es": 10
+   },
+   "img": {
+    "en": {
+     "cover": "/plantillas/hair-salon-en-portada.png",
+     "preview": "/plantillas/hair-salon-en-muestra.png"
+    },
+    "es": {
+     "cover": "/plantillas/hair-salon-es-portada.png",
+     "preview": "/plantillas/hair-salon-es-muestra.png"
+    }
+   }
+  },
+  {
+   "id": "barbershop",
+   "family": "bookkeeping",
+   "price": 1599,
+   "title": {
+    "en": "Barbershop Bookkeeping Kit",
+    "es": "Kit de contabilidad para barberías"
+   },
+   "lists": [
+    {
+     "label": {
+      "en": "Income to record",
+      "es": "Ingresos que registrar"
+     },
+     "items": [
+      {
+       "en": "Haircuts",
+       "es": "Cortes"
+      },
+      {
+       "en": "Beard trims and shaves",
+       "es": "Arreglo de barba y afeitado"
+      },
+      {
+       "en": "Product sales",
+       "es": "Venta de productos"
+      },
+      {
+       "en": "Tips received",
+       "es": "Propinas recibidas"
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Expense categories",
+      "es": "Categorías de gasto"
+     },
+     "items": [
+      {
+       "en": "Chair rent or shop rent",
+       "es": "Alquiler de silla o del local"
+      },
+      {
+       "en": "Clippers, blades and guards",
+       "es": "Máquinas, navajas y guías"
+      },
+      {
+       "en": "Disinfectant and disposables",
+       "es": "Desinfectante y desechables"
+      },
+      {
+       "en": "Capes, towels and laundry",
+       "es": "Capas, toallas y lavandería"
+      },
+      {
+       "en": "License renewal",
+       "es": "Renovación de licencia"
+      },
+      {
+       "en": "Booking app subscription",
+       "es": "Suscripción de la app de citas"
+      }
+     ]
+    }
+   ],
+   "tips": [
+    {
+     "en": "Count your cuts per day in the income log; cuts per day times price is the fastest check that no sale is missing.",
+     "es": "Cuenta los cortes por día en el registro; cortes por precio es la forma más rápida de comprobar que no falta ninguna venta."
+    },
+    {
+     "en": "Keep blade and clipper receipts together; small tool purchases add up over a year.",
+     "es": "Guarda juntos los recibos de navajas y máquinas; las compras pequeñas de herramientas suman mucho en un año."
+    }
+   ],
+   "slug": {
+    "en": "barbershop-bookkeeping-kit",
+    "es": "kit-de-contabilidad-para-barberias"
+   },
+   "who": {
+    "en": "Barbers who own a shop or rent a chair",
+    "es": "Barberos con local propio o que alquilan silla"
+   },
+   "contents": {
+    "en": [
+     {
+      "t": "Income log",
+      "i": "Write down every sale the day it happens."
+     },
+     {
+      "t": "Expense log",
+      "i": "Keep the receipt and note its category."
+     },
+     {
+      "t": "Invoice tracker",
+      "i": "Know who owes you and since when."
+     },
+     {
+      "t": "Monthly close",
+      "i": "Answer these once a month."
+     },
+     {
+      "t": "Cash flow checklist",
+      "i": "Run through it every Friday."
+     }
+    ],
+    "es": [
+     {
+      "t": "Registro de ingresos",
+      "i": "Anota cada venta el mismo día."
+     },
+     {
+      "t": "Registro de gastos",
+      "i": "Guarda el recibo y anota su categoría."
+     },
+     {
+      "t": "Control de facturas",
+      "i": "Sabe quién te debe y desde cuándo."
+     },
+     {
+      "t": "Cierre mensual",
+      "i": "Responde esto una vez al mes."
+     },
+     {
+      "t": "Lista de flujo de caja",
+      "i": "Repásala cada viernes."
+     }
+    ]
+   },
+   "pages": {
+    "en": 10,
+    "es": 10
+   },
+   "img": {
+    "en": {
+     "cover": "/plantillas/barbershop-en-portada.png",
+     "preview": "/plantillas/barbershop-en-muestra.png"
+    },
+    "es": {
+     "cover": "/plantillas/barbershop-es-portada.png",
+     "preview": "/plantillas/barbershop-es-muestra.png"
+    }
+   }
+  },
+  {
+   "id": "food-truck",
+   "family": "bookkeeping",
+   "price": 1599,
+   "title": {
+    "en": "Food Truck Bookkeeping Kit",
+    "es": "Kit de contabilidad para food trucks"
+   },
+   "lists": [
+    {
+     "label": {
+      "en": "Income to record",
+      "es": "Ingresos que registrar"
+     },
+     "items": [
+      {
+       "en": "Daily window sales",
+       "es": "Ventas diarias en ventanilla"
+      },
+      {
+       "en": "Catering and private events",
+       "es": "Catering y eventos privados"
+      },
+      {
+       "en": "Delivery app payouts",
+       "es": "Pagos de apps de entrega"
+      },
+      {
+       "en": "Festival and market sales",
+       "es": "Ventas en festivales y mercados"
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Expense categories",
+      "es": "Categorías de gasto"
+     },
+     "items": [
+      {
+       "en": "Ingredients",
+       "es": "Ingredientes"
+      },
+      {
+       "en": "Packaging, napkins and utensils",
+       "es": "Empaques, servilletas y utensilios"
+      },
+      {
+       "en": "Propane and generator fuel",
+       "es": "Gas propano y combustible del generador"
+      },
+      {
+       "en": "Truck fuel and maintenance",
+       "es": "Combustible y mantenimiento del camión"
+      },
+      {
+       "en": "Permits, inspections and parking fees",
+       "es": "Permisos, inspecciones y estacionamiento"
+      },
+      {
+       "en": "Commissary kitchen rent",
+       "es": "Alquiler de cocina comisaria"
+      }
+     ]
+    }
+   ],
+   "tips": [
+    {
+     "en": "Close each service day on its own line with location and weather; after a month you will see which spots are worth returning to.",
+     "es": "Cierra cada día de servicio en una línea con lugar y clima; al mes verás a qué puntos vale la pena volver."
+    },
+    {
+     "en": "Record delivery app payouts after their commission, and note the commission as an expense.",
+     "es": "Registra los pagos de las apps ya sin su comisión, y anota la comisión como gasto."
+    }
+   ],
+   "slug": {
+    "en": "food-truck-bookkeeping-kit",
+    "es": "kit-de-contabilidad-para-food-trucks"
+   },
+   "who": {
+    "en": "Food truck and food stand owners",
+    "es": "Dueños de food trucks y puestos de comida"
+   },
+   "contents": {
+    "en": [
+     {
+      "t": "Income log",
+      "i": "Write down every sale the day it happens."
+     },
+     {
+      "t": "Expense log",
+      "i": "Keep the receipt and note its category."
+     },
+     {
+      "t": "Invoice tracker",
+      "i": "Know who owes you and since when."
+     },
+     {
+      "t": "Monthly close",
+      "i": "Answer these once a month."
+     },
+     {
+      "t": "Cash flow checklist",
+      "i": "Run through it every Friday."
+     }
+    ],
+    "es": [
+     {
+      "t": "Registro de ingresos",
+      "i": "Anota cada venta el mismo día."
+     },
+     {
+      "t": "Registro de gastos",
+      "i": "Guarda el recibo y anota su categoría."
+     },
+     {
+      "t": "Control de facturas",
+      "i": "Sabe quién te debe y desde cuándo."
+     },
+     {
+      "t": "Cierre mensual",
+      "i": "Responde esto una vez al mes."
+     },
+     {
+      "t": "Lista de flujo de caja",
+      "i": "Repásala cada viernes."
+     }
+    ]
+   },
+   "pages": {
+    "en": 10,
+    "es": 10
+   },
+   "img": {
+    "en": {
+     "cover": "/plantillas/food-truck-en-portada.png",
+     "preview": "/plantillas/food-truck-en-muestra.png"
+    },
+    "es": {
+     "cover": "/plantillas/food-truck-es-portada.png",
+     "preview": "/plantillas/food-truck-es-muestra.png"
+    }
+   }
+  },
+  {
+   "id": "cleaning-service",
+   "family": "bookkeeping",
+   "price": 1599,
+   "title": {
+    "en": "Cleaning Business Bookkeeping Kit",
+    "es": "Kit de contabilidad para servicios de limpieza"
+   },
+   "lists": [
+    {
+     "label": {
+      "en": "Income to record",
+      "es": "Ingresos que registrar"
+     },
+     "items": [
+      {
+       "en": "Recurring home cleanings",
+       "es": "Limpiezas recurrentes de hogares"
+      },
+      {
+       "en": "One-time deep cleans",
+       "es": "Limpiezas profundas puntuales"
+      },
+      {
+       "en": "Move-in and move-out jobs",
+       "es": "Trabajos de mudanza"
+      },
+      {
+       "en": "Office contracts",
+       "es": "Contratos de oficinas"
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Expense categories",
+      "es": "Categorías de gasto"
+     },
+     "items": [
+      {
+       "en": "Cleaning products",
+       "es": "Productos de limpieza"
+      },
+      {
+       "en": "Cloths, mops and equipment",
+       "es": "Paños, mapos y equipo"
+      },
+      {
+       "en": "Mileage and fuel between clients",
+       "es": "Millaje y gasolina entre clientes"
+      },
+      {
+       "en": "Helper pay",
+       "es": "Pago a ayudantes"
+      },
+      {
+       "en": "Liability insurance",
+       "es": "Seguro de responsabilidad"
+      },
+      {
+       "en": "Uniforms and gloves",
+       "es": "Uniformes y guantes"
+      }
+     ]
+    }
+   ],
+   "tips": [
+    {
+     "en": "Write the mileage for each client visit; driving between homes is usually the largest cost nobody tracks.",
+     "es": "Anota el millaje de cada visita; conducir entre casas suele ser el gasto más grande que nadie registra."
+    },
+    {
+     "en": "Use the invoice tracker for clients who pay monthly, so a missed payment shows up in the first week.",
+     "es": "Usa el control de facturas para clientes que pagan por mes, así un pago atrasado aparece en la primera semana."
+    }
+   ],
+   "slug": {
+    "en": "cleaning-business-bookkeeping-kit",
+    "es": "kit-de-contabilidad-para-servicios-de-limpieza"
+   },
+   "who": {
+    "en": "Solo cleaners and small cleaning teams",
+    "es": "Personas que limpian por cuenta propia y equipos pequeños"
+   },
+   "contents": {
+    "en": [
+     {
+      "t": "Income log",
+      "i": "Write down every sale the day it happens."
+     },
+     {
+      "t": "Expense log",
+      "i": "Keep the receipt and note its category."
+     },
+     {
+      "t": "Invoice tracker",
+      "i": "Know who owes you and since when."
+     },
+     {
+      "t": "Monthly close",
+      "i": "Answer these once a month."
+     },
+     {
+      "t": "Cash flow checklist",
+      "i": "Run through it every Friday."
+     }
+    ],
+    "es": [
+     {
+      "t": "Registro de ingresos",
+      "i": "Anota cada venta el mismo día."
+     },
+     {
+      "t": "Registro de gastos",
+      "i": "Guarda el recibo y anota su categoría."
+     },
+     {
+      "t": "Control de facturas",
+      "i": "Sabe quién te debe y desde cuándo."
+     },
+     {
+      "t": "Cierre mensual",
+      "i": "Responde esto una vez al mes."
+     },
+     {
+      "t": "Lista de flujo de caja",
+      "i": "Repásala cada viernes."
+     }
+    ]
+   },
+   "pages": {
+    "en": 10,
+    "es": 10
+   },
+   "img": {
+    "en": {
+     "cover": "/plantillas/cleaning-service-en-portada.png",
+     "preview": "/plantillas/cleaning-service-en-muestra.png"
+    },
+    "es": {
+     "cover": "/plantillas/cleaning-service-es-portada.png",
+     "preview": "/plantillas/cleaning-service-es-muestra.png"
+    }
+   }
+  },
+  {
+   "id": "landscaping",
+   "family": "bookkeeping",
+   "price": 1599,
+   "title": {
+    "en": "Landscaping Bookkeeping Kit",
+    "es": "Kit de contabilidad para jardinería y paisajismo"
+   },
+   "lists": [
+    {
+     "label": {
+      "en": "Income to record",
+      "es": "Ingresos que registrar"
+     },
+     "items": [
+      {
+       "en": "Weekly and biweekly mowing",
+       "es": "Corte semanal y quincenal"
+      },
+      {
+       "en": "Planting and installation jobs",
+       "es": "Siembra e instalaciones"
+      },
+      {
+       "en": "Tree and hedge trimming",
+       "es": "Poda de árboles y setos"
+      },
+      {
+       "en": "Seasonal cleanups",
+       "es": "Limpiezas de temporada"
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Expense categories",
+      "es": "Categorías de gasto"
+     },
+     "items": [
+      {
+       "en": "Fuel for mowers and trimmers",
+       "es": "Combustible para máquinas"
+      },
+      {
+       "en": "Blades, line and equipment repair",
+       "es": "Cuchillas, hilo y reparación de equipo"
+      },
+      {
+       "en": "Plants, soil and mulch",
+       "es": "Plantas, tierra y mulch"
+      },
+      {
+       "en": "Dump and disposal fees",
+       "es": "Tarifas de vertedero"
+      },
+      {
+       "en": "Truck and trailer costs",
+       "es": "Gastos del camión y remolque"
+      },
+      {
+       "en": "Crew wages",
+       "es": "Sueldos del equipo"
+      }
+     ]
+    }
+   ],
+   "tips": [
+    {
+     "en": "Separate materials you resell to the client from your own supplies; the first should appear on the invoice.",
+     "es": "Separa los materiales que revendes al cliente de tus propios suministros; los primeros deben ir en la factura."
+    },
+    {
+     "en": "Note rained-out days in the income log; they explain the slow months when you review the year.",
+     "es": "Marca los días perdidos por lluvia en el registro; explican los meses flojos cuando revises el año."
+    }
+   ],
+   "slug": {
+    "en": "landscaping-bookkeeping-kit",
+    "es": "kit-de-contabilidad-para-jardineria-y-paisajismo"
+   },
+   "who": {
+    "en": "Lawn care and landscaping crews",
+    "es": "Equipos de mantenimiento de patios y paisajismo"
+   },
+   "contents": {
+    "en": [
+     {
+      "t": "Income log",
+      "i": "Write down every sale the day it happens."
+     },
+     {
+      "t": "Expense log",
+      "i": "Keep the receipt and note its category."
+     },
+     {
+      "t": "Invoice tracker",
+      "i": "Know who owes you and since when."
+     },
+     {
+      "t": "Monthly close",
+      "i": "Answer these once a month."
+     },
+     {
+      "t": "Cash flow checklist",
+      "i": "Run through it every Friday."
+     }
+    ],
+    "es": [
+     {
+      "t": "Registro de ingresos",
+      "i": "Anota cada venta el mismo día."
+     },
+     {
+      "t": "Registro de gastos",
+      "i": "Guarda el recibo y anota su categoría."
+     },
+     {
+      "t": "Control de facturas",
+      "i": "Sabe quién te debe y desde cuándo."
+     },
+     {
+      "t": "Cierre mensual",
+      "i": "Responde esto una vez al mes."
+     },
+     {
+      "t": "Lista de flujo de caja",
+      "i": "Repásala cada viernes."
+     }
+    ]
+   },
+   "pages": {
+    "en": 10,
+    "es": 10
+   },
+   "img": {
+    "en": {
+     "cover": "/plantillas/landscaping-en-portada.png",
+     "preview": "/plantillas/landscaping-en-muestra.png"
+    },
+    "es": {
+     "cover": "/plantillas/landscaping-es-portada.png",
+     "preview": "/plantillas/landscaping-es-muestra.png"
+    }
+   }
+  },
+  {
+   "id": "photographer",
+   "family": "bookkeeping",
+   "price": 1599,
+   "title": {
+    "en": "Photographer Bookkeeping Kit",
+    "es": "Kit de contabilidad para fotógrafos"
+   },
+   "lists": [
+    {
+     "label": {
+      "en": "Income to record",
+      "es": "Ingresos que registrar"
+     },
+     "items": [
+      {
+       "en": "Session fees",
+       "es": "Sesiones"
+      },
+      {
+       "en": "Event and wedding packages",
+       "es": "Paquetes de eventos y bodas"
+      },
+      {
+       "en": "Prints and albums",
+       "es": "Impresiones y álbumes"
+      },
+      {
+       "en": "Image licensing",
+       "es": "Licencias de imágenes"
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Expense categories",
+      "es": "Categorías de gasto"
+     },
+     "items": [
+      {
+       "en": "Camera gear and lenses",
+       "es": "Equipo y lentes"
+      },
+      {
+       "en": "Editing software subscriptions",
+       "es": "Suscripciones de software de edición"
+      },
+      {
+       "en": "Storage drives and cloud backup",
+       "es": "Discos y respaldo en la nube"
+      },
+      {
+       "en": "Studio or location rental",
+       "es": "Alquiler de estudio o locación"
+      },
+      {
+       "en": "Travel to shoots",
+       "es": "Viajes a las sesiones"
+      },
+      {
+       "en": "Second shooter or assistant",
+       "es": "Segundo fotógrafo o asistente"
+      }
+     ]
+    }
+   ],
+   "tips": [
+    {
+     "en": "Log deposits and final payments as two lines with the same client name, so the invoice tracker shows what is still owed.",
+     "es": "Registra el depósito y el pago final en dos líneas con el mismo cliente, así el control de facturas muestra lo que falta."
+    },
+    {
+     "en": "Record gear purchases with their serial number; you will need it for insurance as well as for your books.",
+     "es": "Anota las compras de equipo con su número de serie; lo necesitarás para el seguro además de para tus cuentas."
+    }
+   ],
+   "slug": {
+    "en": "photographer-bookkeeping-kit",
+    "es": "kit-de-contabilidad-para-fotografos"
+   },
+   "who": {
+    "en": "Freelance and studio photographers",
+    "es": "Fotógrafos independientes y de estudio"
+   },
+   "contents": {
+    "en": [
+     {
+      "t": "Income log",
+      "i": "Write down every sale the day it happens."
+     },
+     {
+      "t": "Expense log",
+      "i": "Keep the receipt and note its category."
+     },
+     {
+      "t": "Invoice tracker",
+      "i": "Know who owes you and since when."
+     },
+     {
+      "t": "Monthly close",
+      "i": "Answer these once a month."
+     },
+     {
+      "t": "Cash flow checklist",
+      "i": "Run through it every Friday."
+     }
+    ],
+    "es": [
+     {
+      "t": "Registro de ingresos",
+      "i": "Anota cada venta el mismo día."
+     },
+     {
+      "t": "Registro de gastos",
+      "i": "Guarda el recibo y anota su categoría."
+     },
+     {
+      "t": "Control de facturas",
+      "i": "Sabe quién te debe y desde cuándo."
+     },
+     {
+      "t": "Cierre mensual",
+      "i": "Responde esto una vez al mes."
+     },
+     {
+      "t": "Lista de flujo de caja",
+      "i": "Repásala cada viernes."
+     }
+    ]
+   },
+   "pages": {
+    "en": 10,
+    "es": 10
+   },
+   "img": {
+    "en": {
+     "cover": "/plantillas/photographer-en-portada.png",
+     "preview": "/plantillas/photographer-en-muestra.png"
+    },
+    "es": {
+     "cover": "/plantillas/photographer-es-portada.png",
+     "preview": "/plantillas/photographer-es-muestra.png"
+    }
+   }
+  },
+  {
+   "id": "home-bakery",
+   "family": "bookkeeping",
+   "price": 1599,
+   "title": {
+    "en": "Home Bakery Bookkeeping Kit",
+    "es": "Kit de contabilidad para repostería en casa"
+   },
+   "lists": [
+    {
+     "label": {
+      "en": "Income to record",
+      "es": "Ingresos que registrar"
+     },
+     "items": [
+      {
+       "en": "Custom cake orders",
+       "es": "Bizcochos por encargo"
+      },
+      {
+       "en": "Cookies and small desserts",
+       "es": "Galletas y postres pequeños"
+      },
+      {
+       "en": "Market and pop-up sales",
+       "es": "Ventas en mercados y pop-ups"
+      },
+      {
+       "en": "Deposits for future orders",
+       "es": "Depósitos de pedidos futuros"
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Expense categories",
+      "es": "Categorías de gasto"
+     },
+     "items": [
+      {
+       "en": "Flour, sugar, butter and eggs",
+       "es": "Harina, azúcar, mantequilla y huevos"
+      },
+      {
+       "en": "Decorations, colors and toppers",
+       "es": "Decoraciones, colorantes y toppers"
+      },
+      {
+       "en": "Boxes, boards and ribbon",
+       "es": "Cajas, bases y cintas"
+      },
+      {
+       "en": "Electricity and gas for the oven",
+       "es": "Electricidad y gas del horno"
+      },
+      {
+       "en": "Market stall fees",
+       "es": "Cuotas de puestos en mercados"
+      },
+      {
+       "en": "Permits and food handler course",
+       "es": "Permisos y curso de manejo de alimentos"
+      }
+     ]
+    }
+   ],
+   "tips": [
+    {
+     "en": "Write the ingredient cost of each order next to its price; many home bakers find their most requested cake is the one that leaves the least.",
+     "es": "Escribe el costo de ingredientes de cada pedido junto al precio; muchas reposteras descubren que su bizcocho más pedido es el que menos deja."
+    },
+    {
+     "en": "Record a deposit when it arrives and mark the order date, so you never spend money for a cake you still have to bake.",
+     "es": "Registra el depósito cuando llega y marca la fecha del pedido, para no gastar el dinero de un bizcocho que aún debes hornear."
+    }
+   ],
+   "slug": {
+    "en": "home-bakery-bookkeeping-kit",
+    "es": "kit-de-contabilidad-para-reposteria-en-casa"
+   },
+   "who": {
+    "en": "Home bakers who sell cakes, cookies and desserts",
+    "es": "Reposteras que venden bizcochos, galletas y postres desde casa"
+   },
+   "contents": {
+    "en": [
+     {
+      "t": "Income log",
+      "i": "Write down every sale the day it happens."
+     },
+     {
+      "t": "Expense log",
+      "i": "Keep the receipt and note its category."
+     },
+     {
+      "t": "Invoice tracker",
+      "i": "Know who owes you and since when."
+     },
+     {
+      "t": "Monthly close",
+      "i": "Answer these once a month."
+     },
+     {
+      "t": "Cash flow checklist",
+      "i": "Run through it every Friday."
+     }
+    ],
+    "es": [
+     {
+      "t": "Registro de ingresos",
+      "i": "Anota cada venta el mismo día."
+     },
+     {
+      "t": "Registro de gastos",
+      "i": "Guarda el recibo y anota su categoría."
+     },
+     {
+      "t": "Control de facturas",
+      "i": "Sabe quién te debe y desde cuándo."
+     },
+     {
+      "t": "Cierre mensual",
+      "i": "Responde esto una vez al mes."
+     },
+     {
+      "t": "Lista de flujo de caja",
+      "i": "Repásala cada viernes."
+     }
+    ]
+   },
+   "pages": {
+    "en": 10,
+    "es": 10
+   },
+   "img": {
+    "en": {
+     "cover": "/plantillas/home-bakery-en-portada.png",
+     "preview": "/plantillas/home-bakery-en-muestra.png"
+    },
+    "es": {
+     "cover": "/plantillas/home-bakery-es-portada.png",
+     "preview": "/plantillas/home-bakery-es-muestra.png"
+    }
+   }
+  },
+  {
+   "id": "handyman",
+   "family": "bookkeeping",
+   "price": 1599,
+   "title": {
+    "en": "Handyman Bookkeeping Kit",
+    "es": "Kit de contabilidad para handyman y reparaciones"
+   },
+   "lists": [
+    {
+     "label": {
+      "en": "Income to record",
+      "es": "Ingresos que registrar"
+     },
+     "items": [
+      {
+       "en": "Hourly repair jobs",
+       "es": "Reparaciones por hora"
+      },
+      {
+       "en": "Fixed-price projects",
+       "es": "Proyectos a precio fijo"
+      },
+      {
+       "en": "Materials billed to the client",
+       "es": "Materiales facturados al cliente"
+      },
+      {
+       "en": "Emergency call-outs",
+       "es": "Llamadas de emergencia"
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Expense categories",
+      "es": "Categorías de gasto"
+     },
+     "items": [
+      {
+       "en": "Materials and hardware",
+       "es": "Materiales y ferretería"
+      },
+      {
+       "en": "Tools and blades",
+       "es": "Herramientas y cuchillas"
+      },
+      {
+       "en": "Vehicle fuel and maintenance",
+       "es": "Gasolina y mantenimiento del vehículo"
+      },
+      {
+       "en": "Subcontractors",
+       "es": "Subcontratistas"
+      },
+      {
+       "en": "Licenses and insurance",
+       "es": "Licencias y seguros"
+      },
+      {
+       "en": "Disposal fees",
+       "es": "Tarifas de disposición"
+      }
+     ]
+    }
+   ],
+   "tips": [
+    {
+     "en": "Keep one line per job with the receipt numbers of its materials; it makes every client question about a bill easy to answer.",
+     "es": "Lleva una línea por trabajo con los números de recibo de sus materiales; así cualquier duda del cliente sobre la cuenta se responde fácil."
+    },
+    {
+     "en": "Ask for a deposit on fixed-price projects and log it in the invoice tracker the same day.",
+     "es": "Pide depósito en los proyectos a precio fijo y anótalo en el control de facturas el mismo día."
+    }
+   ],
+   "slug": {
+    "en": "handyman-bookkeeping-kit",
+    "es": "kit-de-contabilidad-para-handyman-y-reparaciones"
+   },
+   "who": {
+    "en": "Handymen and home repair contractors",
+    "es": "Handyman y contratistas de reparaciones del hogar"
+   },
+   "contents": {
+    "en": [
+     {
+      "t": "Income log",
+      "i": "Write down every sale the day it happens."
+     },
+     {
+      "t": "Expense log",
+      "i": "Keep the receipt and note its category."
+     },
+     {
+      "t": "Invoice tracker",
+      "i": "Know who owes you and since when."
+     },
+     {
+      "t": "Monthly close",
+      "i": "Answer these once a month."
+     },
+     {
+      "t": "Cash flow checklist",
+      "i": "Run through it every Friday."
+     }
+    ],
+    "es": [
+     {
+      "t": "Registro de ingresos",
+      "i": "Anota cada venta el mismo día."
+     },
+     {
+      "t": "Registro de gastos",
+      "i": "Guarda el recibo y anota su categoría."
+     },
+     {
+      "t": "Control de facturas",
+      "i": "Sabe quién te debe y desde cuándo."
+     },
+     {
+      "t": "Cierre mensual",
+      "i": "Responde esto una vez al mes."
+     },
+     {
+      "t": "Lista de flujo de caja",
+      "i": "Repásala cada viernes."
+     }
+    ]
+   },
+   "pages": {
+    "en": 10,
+    "es": 10
+   },
+   "img": {
+    "en": {
+     "cover": "/plantillas/handyman-en-portada.png",
+     "preview": "/plantillas/handyman-en-muestra.png"
+    },
+    "es": {
+     "cover": "/plantillas/handyman-es-portada.png",
+     "preview": "/plantillas/handyman-es-muestra.png"
+    }
+   }
+  },
+  {
+   "id": "first-apartment",
+   "family": "budget",
+   "price": 899,
+   "title": {
+    "en": "First Apartment Budget Kit",
+    "es": "Kit de presupuesto para tu primer apartamento"
+   },
+   "lists": [
+    {
+     "label": {
+      "en": "Budget lines to start with",
+      "es": "Partidas para empezar"
+     },
+     "items": [
+      {
+       "en": "Rent and renter's insurance",
+       "es": "Renta y seguro de inquilino"
+      },
+      {
+       "en": "Electricity, water and internet",
+       "es": "Luz, agua e internet"
+      },
+      {
+       "en": "Groceries and household supplies",
+       "es": "Compra y artículos del hogar"
+      },
+      {
+       "en": "Transport",
+       "es": "Transporte"
+      },
+      {
+       "en": "Phone",
+       "es": "Teléfono"
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "One-time costs of moving in",
+      "es": "Gastos únicos de la mudanza"
+     },
+     "items": [
+      {
+       "en": "Security deposit and first month",
+       "es": "Depósito y primer mes"
+      },
+      {
+       "en": "Utility connection fees",
+       "es": "Cargos de conexión de servicios"
+      },
+      {
+       "en": "Basic furniture and kitchen items",
+       "es": "Muebles básicos y cocina"
+      },
+      {
+       "en": "Moving truck or help",
+       "es": "Camión o ayuda para mudarte"
+      }
+     ]
+    }
+   ],
+   "tips": [
+    {
+     "en": "Fill in the one-time costs page before signing the lease; it tells you how much cash you need on day one.",
+     "es": "Completa la página de gastos únicos antes de firmar el contrato; te dice cuánto efectivo necesitas el primer día."
+    },
+    {
+     "en": "Log every expense for the first month, even small ones; the first month sets the real numbers for your budget.",
+     "es": "Anota cada gasto del primer mes, incluso los pequeños; ese mes fija los números reales de tu presupuesto."
+    }
+   ],
+   "slug": {
+    "en": "first-apartment-budget-kit",
+    "es": "kit-de-presupuesto-para-tu-primer-apartamento"
+   },
+   "who": {
+    "en": "People moving into their first place",
+    "es": "Personas que se mudan solas por primera vez"
+   },
+   "contents": {
+    "en": [
+     {
+      "t": "Monthly budget",
+      "i": "Plan first, then compare."
+     },
+     {
+      "t": "Spending log",
+      "i": "Every expense, however small."
+     },
+     {
+      "t": "Debt list",
+      "i": "Write them all down in one place."
+     },
+     {
+      "t": "Savings tracker",
+      "i": "One goal per row."
+     },
+     {
+      "t": "Month-end review",
+      "i": "Fifteen minutes, once a month."
+     }
+    ],
+    "es": [
+     {
+      "t": "Presupuesto mensual",
+      "i": "Planifica primero, compara después."
+     },
+     {
+      "t": "Registro de gastos",
+      "i": "Cada gasto, por pequeño que sea."
+     },
+     {
+      "t": "Lista de deudas",
+      "i": "Anótalas todas en un mismo lugar."
+     },
+     {
+      "t": "Registro de ahorro",
+      "i": "Una meta por fila."
+     },
+     {
+      "t": "Revisión de fin de mes",
+      "i": "Quince minutos, una vez al mes."
+     }
+    ]
+   },
+   "pages": {
+    "en": 10,
+    "es": 10
+   },
+   "img": {
+    "en": {
+     "cover": "/plantillas/first-apartment-en-portada.png",
+     "preview": "/plantillas/first-apartment-en-muestra.png"
+    },
+    "es": {
+     "cover": "/plantillas/first-apartment-es-portada.png",
+     "preview": "/plantillas/first-apartment-es-muestra.png"
+    }
+   }
+  },
+  {
+   "id": "family",
+   "family": "budget",
+   "price": 899,
+   "title": {
+    "en": "Family Budget Kit",
+    "es": "Kit de presupuesto familiar"
+   },
+   "lists": [
+    {
+     "label": {
+      "en": "Budget lines to start with",
+      "es": "Partidas para empezar"
+     },
+     "items": [
+      {
+       "en": "Housing and utilities",
+       "es": "Vivienda y servicios"
+      },
+      {
+       "en": "Groceries",
+       "es": "Compra de alimentos"
+      },
+      {
+       "en": "Childcare and school costs",
+       "es": "Cuido y gastos escolares"
+      },
+      {
+       "en": "Health and medicines",
+       "es": "Salud y medicinas"
+      },
+      {
+       "en": "Transport",
+       "es": "Transporte"
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Costs that come once or twice a year",
+      "es": "Gastos que llegan una o dos veces al año"
+     },
+     "items": [
+      {
+       "en": "Back-to-school supplies and uniforms",
+       "es": "Materiales y uniformes de regreso a clases"
+      },
+      {
+       "en": "Birthdays and holidays",
+       "es": "Cumpleaños y fiestas"
+      },
+      {
+       "en": "Car registration and insurance",
+       "es": "Marbete y seguro del carro"
+      },
+      {
+       "en": "Summer camps and activities",
+       "es": "Campamentos y actividades de verano"
+      }
+     ]
+    }
+   ],
+   "tips": [
+    {
+     "en": "Divide each yearly cost by twelve and give it its own line; back-to-school stops being a surprise.",
+     "es": "Divide cada gasto anual entre doce y dale su propia línea; el regreso a clases deja de ser una sorpresa."
+    },
+    {
+     "en": "Review the month together for fifteen minutes; a budget only one person knows rarely lasts.",
+     "es": "Revisen el mes juntos durante quince minutos; un presupuesto que conoce una sola persona rara vez dura."
+    }
+   ],
+   "slug": {
+    "en": "family-budget-kit",
+    "es": "kit-de-presupuesto-familiar"
+   },
+   "who": {
+    "en": "Households with children",
+    "es": "Hogares con niños"
+   },
+   "contents": {
+    "en": [
+     {
+      "t": "Monthly budget",
+      "i": "Plan first, then compare."
+     },
+     {
+      "t": "Spending log",
+      "i": "Every expense, however small."
+     },
+     {
+      "t": "Debt list",
+      "i": "Write them all down in one place."
+     },
+     {
+      "t": "Savings tracker",
+      "i": "One goal per row."
+     },
+     {
+      "t": "Month-end review",
+      "i": "Fifteen minutes, once a month."
+     }
+    ],
+    "es": [
+     {
+      "t": "Presupuesto mensual",
+      "i": "Planifica primero, compara después."
+     },
+     {
+      "t": "Registro de gastos",
+      "i": "Cada gasto, por pequeño que sea."
+     },
+     {
+      "t": "Lista de deudas",
+      "i": "Anótalas todas en un mismo lugar."
+     },
+     {
+      "t": "Registro de ahorro",
+      "i": "Una meta por fila."
+     },
+     {
+      "t": "Revisión de fin de mes",
+      "i": "Quince minutos, una vez al mes."
+     }
+    ]
+   },
+   "pages": {
+    "en": 10,
+    "es": 10
+   },
+   "img": {
+    "en": {
+     "cover": "/plantillas/family-en-portada.png",
+     "preview": "/plantillas/family-en-muestra.png"
+    },
+    "es": {
+     "cover": "/plantillas/family-es-portada.png",
+     "preview": "/plantillas/family-es-muestra.png"
+    }
+   }
+  },
+  {
+   "id": "irregular-income",
+   "family": "budget",
+   "price": 899,
+   "title": {
+    "en": "Irregular Income Budget Kit",
+    "es": "Kit de presupuesto para ingresos irregulares"
+   },
+   "lists": [
+    {
+     "label": {
+      "en": "Budget lines to start with",
+      "es": "Partidas para empezar"
+     },
+     "items": [
+      {
+       "en": "Fixed bills that cannot wait",
+       "es": "Cuentas fijas que no pueden esperar"
+      },
+      {
+       "en": "Food and transport",
+       "es": "Comida y transporte"
+      },
+      {
+       "en": "Taxes set aside",
+       "es": "Dinero apartado para impuestos"
+      },
+      {
+       "en": "Buffer for slow months",
+       "es": "Colchón para meses flojos"
+      },
+      {
+       "en": "Everything else",
+       "es": "Todo lo demás"
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Income to write down as it arrives",
+      "es": "Ingresos que anotar según llegan"
+     },
+     "items": [
+      {
+       "en": "Client payments",
+       "es": "Pagos de clientes"
+      },
+      {
+       "en": "Platform or app payouts",
+       "es": "Pagos de plataformas o apps"
+      },
+      {
+       "en": "Side jobs",
+       "es": "Trabajos extra"
+      },
+      {
+       "en": "Late payments finally received",
+       "es": "Pagos atrasados que por fin llegan"
+      }
+     ]
+    }
+   ],
+   "tips": [
+    {
+     "en": "Build the budget on your lowest month of the last six, not on the average; the extra in good months goes to the buffer line.",
+     "es": "Arma el presupuesto con tu mes más bajo de los últimos seis, no con el promedio; lo que sobre en meses buenos va al colchón."
+    },
+    {
+     "en": "Set aside the tax money the day each payment arrives, on its own line.",
+     "es": "Aparta el dinero de impuestos el día que llega cada pago, en su propia línea."
+    }
+   ],
+   "slug": {
+    "en": "irregular-income-budget-kit",
+    "es": "kit-de-presupuesto-para-ingresos-irregulares"
+   },
+   "who": {
+    "en": "Freelancers, gig workers and anyone paid different amounts each month",
+    "es": "Freelancers, trabajadores por encargo y quien cobra distinto cada mes"
+   },
+   "contents": {
+    "en": [
+     {
+      "t": "Monthly budget",
+      "i": "Plan first, then compare."
+     },
+     {
+      "t": "Spending log",
+      "i": "Every expense, however small."
+     },
+     {
+      "t": "Debt list",
+      "i": "Write them all down in one place."
+     },
+     {
+      "t": "Savings tracker",
+      "i": "One goal per row."
+     },
+     {
+      "t": "Month-end review",
+      "i": "Fifteen minutes, once a month."
+     }
+    ],
+    "es": [
+     {
+      "t": "Presupuesto mensual",
+      "i": "Planifica primero, compara después."
+     },
+     {
+      "t": "Registro de gastos",
+      "i": "Cada gasto, por pequeño que sea."
+     },
+     {
+      "t": "Lista de deudas",
+      "i": "Anótalas todas en un mismo lugar."
+     },
+     {
+      "t": "Registro de ahorro",
+      "i": "Una meta por fila."
+     },
+     {
+      "t": "Revisión de fin de mes",
+      "i": "Quince minutos, una vez al mes."
+     }
+    ]
+   },
+   "pages": {
+    "en": 10,
+    "es": 10
+   },
+   "img": {
+    "en": {
+     "cover": "/plantillas/irregular-income-en-portada.png",
+     "preview": "/plantillas/irregular-income-en-muestra.png"
+    },
+    "es": {
+     "cover": "/plantillas/irregular-income-es-portada.png",
+     "preview": "/plantillas/irregular-income-es-muestra.png"
+    }
+   }
+  },
+  {
+   "id": "debt-payoff",
+   "family": "budget",
+   "price": 899,
+   "title": {
+    "en": "Debt Payoff Planner Kit",
+    "es": "Kit para organizar el pago de deudas"
+   },
+   "lists": [
+    {
+     "label": {
+      "en": "What to write for each debt",
+      "es": "Qué anotar de cada deuda"
+     },
+     "items": [
+      {
+       "en": "Who you owe",
+       "es": "A quién le debes"
+      },
+      {
+       "en": "Current balance",
+       "es": "Saldo actual"
+      },
+      {
+       "en": "Interest rate",
+       "es": "Tasa de interés"
+      },
+      {
+       "en": "Minimum payment and due day",
+       "es": "Pago mínimo y día de vencimiento"
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Decisions to make once",
+      "es": "Decisiones que tomar una vez"
+     },
+     "items": [
+      {
+       "en": "Which debt gets the extra money first",
+       "es": "Qué deuda recibe primero el dinero extra"
+      },
+      {
+       "en": "How much extra you can pay each month",
+       "es": "Cuánto extra puedes pagar al mes"
+      },
+      {
+       "en": "Which day of the month you pay",
+       "es": "Qué día del mes pagas"
+      },
+      {
+       "en": "What you stop using while you pay",
+       "es": "Qué dejas de usar mientras pagas"
+      }
+     ]
+    }
+   ],
+   "tips": [
+    {
+     "en": "Update the balances on the same day every month; watching the numbers go down is what keeps most people going.",
+     "es": "Actualiza los saldos el mismo día cada mes; ver bajar los números es lo que mantiene a la mayoría en el plan."
+    },
+    {
+     "en": "If a payment will be late, write the creditor's phone number on the list and call before the due day.",
+     "es": "Si un pago se va a atrasar, anota el teléfono del acreedor en la lista y llama antes del vencimiento."
+    }
+   ],
+   "slug": {
+    "en": "debt-payoff-planner-kit",
+    "es": "kit-para-organizar-el-pago-de-deudas"
+   },
+   "who": {
+    "en": "People who want all their debts on one page and a payment order",
+    "es": "Personas que quieren todas sus deudas en una página y un orden de pago"
+   },
+   "contents": {
+    "en": [
+     {
+      "t": "Monthly budget",
+      "i": "Plan first, then compare."
+     },
+     {
+      "t": "Spending log",
+      "i": "Every expense, however small."
+     },
+     {
+      "t": "Debt list",
+      "i": "Write them all down in one place."
+     },
+     {
+      "t": "Savings tracker",
+      "i": "One goal per row."
+     },
+     {
+      "t": "Month-end review",
+      "i": "Fifteen minutes, once a month."
+     }
+    ],
+    "es": [
+     {
+      "t": "Presupuesto mensual",
+      "i": "Planifica primero, compara después."
+     },
+     {
+      "t": "Registro de gastos",
+      "i": "Cada gasto, por pequeño que sea."
+     },
+     {
+      "t": "Lista de deudas",
+      "i": "Anótalas todas en un mismo lugar."
+     },
+     {
+      "t": "Registro de ahorro",
+      "i": "Una meta por fila."
+     },
+     {
+      "t": "Revisión de fin de mes",
+      "i": "Quince minutos, una vez al mes."
+     }
+    ]
+   },
+   "pages": {
+    "en": 10,
+    "es": 10
+   },
+   "img": {
+    "en": {
+     "cover": "/plantillas/debt-payoff-en-portada.png",
+     "preview": "/plantillas/debt-payoff-en-muestra.png"
+    },
+    "es": {
+     "cover": "/plantillas/debt-payoff-es-portada.png",
+     "preview": "/plantillas/debt-payoff-es-muestra.png"
+    }
+   }
+  },
+  {
+   "id": "college-finals",
+   "family": "study",
+   "price": 799,
+   "title": {
+    "en": "College Finals Study Planner",
+    "es": "Planificador de estudio para exámenes finales"
+   },
+   "lists": [
+    {
+     "label": {
+      "en": "What to map first",
+      "es": "Qué anotar primero"
+     },
+     "items": [
+      {
+       "en": "Each course and its exam date",
+       "es": "Cada curso y la fecha de su examen"
+      },
+      {
+       "en": "Chapters or units per course",
+       "es": "Capítulos o unidades por curso"
+      },
+      {
+       "en": "Papers and projects due the same weeks",
+       "es": "Trabajos y proyectos que vencen esas semanas"
+      },
+      {
+       "en": "Office hours and review sessions",
+       "es": "Horas de oficina y repasos"
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Materials to gather",
+      "es": "Materiales que reunir"
+     },
+     "items": [
+      {
+       "en": "Syllabus for every course",
+       "es": "Prontuario de cada curso"
+      },
+      {
+       "en": "Past quizzes and midterms",
+       "es": "Pruebas cortas y parciales anteriores"
+      },
+      {
+       "en": "Class notes and slides",
+       "es": "Apuntes y presentaciones"
+      },
+      {
+       "en": "Formula or concept sheets allowed",
+       "es": "Hojas de fórmulas o conceptos permitidas"
+      }
+     ]
+    }
+   ],
+   "tips": [
+    {
+     "en": "Schedule the course you like least in your best hour of the day.",
+     "es": "Programa el curso que menos te gusta en tu mejor hora del día."
+    },
+    {
+     "en": "Leave the last two days before each final for practice questions only, with no new material.",
+     "es": "Deja los dos últimos días antes de cada final solo para ejercicios, sin materia nueva."
+    }
+   ],
+   "slug": {
+    "en": "college-finals-study-planner",
+    "es": "planificador-de-estudio-para-examenes-finales"
+   },
+   "who": {
+    "en": "College students with several finals in the same weeks",
+    "es": "Universitarios con varios finales en las mismas semanas"
+   },
+   "contents": {
+    "en": [
+     {
+      "t": "Your starting point",
+      "i": "Be honest: this page sets the plan."
+     },
+     {
+      "t": "Syllabus map",
+      "i": "One row per topic. Mark each pass."
+     },
+     {
+      "t": "Weekly timetable",
+      "i": "Plan blocks, not hours. Copy this page for each week."
+     },
+     {
+      "t": "Practice test log",
+      "i": "Your mistakes tell you what to study next."
+     },
+     {
+      "t": "Exam day checklist",
+      "i": "Prepare it the night before."
+     }
+    ],
+    "es": [
+     {
+      "t": "Tu punto de partida",
+      "i": "Sé sincero: esta página define el plan."
+     },
+     {
+      "t": "Mapa del temario",
+      "i": "Una fila por tema. Marca cada pasada."
+     },
+     {
+      "t": "Horario semanal",
+      "i": "Planifica bloques, no horas. Copia esta página para cada semana."
+     },
+     {
+      "t": "Registro de simulacros",
+      "i": "Tus errores dicen qué estudiar después."
+     },
+     {
+      "t": "Lista para el día del examen",
+      "i": "Prepárala la noche anterior."
+     }
+    ]
+   },
+   "pages": {
+    "en": 10,
+    "es": 10
+   },
+   "img": {
+    "en": {
+     "cover": "/plantillas/college-finals-en-portada.png",
+     "preview": "/plantillas/college-finals-en-muestra.png"
+    },
+    "es": {
+     "cover": "/plantillas/college-finals-es-portada.png",
+     "preview": "/plantillas/college-finals-es-muestra.png"
+    }
+   }
+  },
+  {
+   "id": "licensing-exam",
+   "family": "study",
+   "price": 799,
+   "title": {
+    "en": "Professional Licensing Exam Planner",
+    "es": "Planificador para exámenes de reválida y licencia"
+   },
+   "lists": [
+    {
+     "label": {
+      "en": "What to map first",
+      "es": "Qué anotar primero"
+     },
+     "items": [
+      {
+       "en": "Exam sections and their weight",
+       "es": "Secciones del examen y su peso"
+      },
+      {
+       "en": "Topics inside each section",
+       "es": "Temas dentro de cada sección"
+      },
+      {
+       "en": "Registration and document deadlines",
+       "es": "Fechas límite de inscripción y documentos"
+      },
+      {
+       "en": "Practice exam dates",
+       "es": "Fechas de exámenes de práctica"
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Materials to gather",
+      "es": "Materiales que reunir"
+     },
+     "items": [
+      {
+       "en": "Official content outline",
+       "es": "Bosquejo oficial de contenido"
+      },
+      {
+       "en": "Question bank or review book",
+       "es": "Banco de preguntas o libro de repaso"
+      },
+      {
+       "en": "Timed practice exams",
+       "es": "Exámenes de práctica cronometrados"
+      },
+      {
+       "en": "ID and admission requirements",
+       "es": "Identificación y requisitos de admisión"
+      }
+     ]
+    }
+   ],
+   "tips": [
+    {
+     "en": "Give more weeks to the sections with more weight, not to the ones you find easiest.",
+     "es": "Dale más semanas a las secciones con más peso, no a las que te resultan más fáciles."
+    },
+    {
+     "en": "Take a full timed practice exam early; the log of topics you missed becomes your study list.",
+     "es": "Haz temprano un examen de práctica completo y cronometrado; el registro de temas fallados se vuelve tu lista de estudio."
+    }
+   ],
+   "slug": {
+    "en": "professional-licensing-exam-planner",
+    "es": "planificador-para-examenes-de-revalida-y-licencia"
+   },
+   "who": {
+    "en": "Candidates for professional licensing exams who study while working",
+    "es": "Aspirantes a reválidas y licencias profesionales que estudian mientras trabajan"
+   },
+   "contents": {
+    "en": [
+     {
+      "t": "Your starting point",
+      "i": "Be honest: this page sets the plan."
+     },
+     {
+      "t": "Syllabus map",
+      "i": "One row per topic. Mark each pass."
+     },
+     {
+      "t": "Weekly timetable",
+      "i": "Plan blocks, not hours. Copy this page for each week."
+     },
+     {
+      "t": "Practice test log",
+      "i": "Your mistakes tell you what to study next."
+     },
+     {
+      "t": "Exam day checklist",
+      "i": "Prepare it the night before."
+     }
+    ],
+    "es": [
+     {
+      "t": "Tu punto de partida",
+      "i": "Sé sincero: esta página define el plan."
+     },
+     {
+      "t": "Mapa del temario",
+      "i": "Una fila por tema. Marca cada pasada."
+     },
+     {
+      "t": "Horario semanal",
+      "i": "Planifica bloques, no horas. Copia esta página para cada semana."
+     },
+     {
+      "t": "Registro de simulacros",
+      "i": "Tus errores dicen qué estudiar después."
+     },
+     {
+      "t": "Lista para el día del examen",
+      "i": "Prepárala la noche anterior."
+     }
+    ]
+   },
+   "pages": {
+    "en": 10,
+    "es": 10
+   },
+   "img": {
+    "en": {
+     "cover": "/plantillas/licensing-exam-en-portada.png",
+     "preview": "/plantillas/licensing-exam-en-muestra.png"
+    },
+    "es": {
+     "cover": "/plantillas/licensing-exam-es-portada.png",
+     "preview": "/plantillas/licensing-exam-es-muestra.png"
+    }
+   }
+  },
+  {
+   "id": "language-exam",
+   "family": "study",
+   "price": 799,
+   "title": {
+    "en": "Language Exam Study Planner",
+    "es": "Planificador de estudio para exámenes de idiomas"
+   },
+   "lists": [
+    {
+     "label": {
+      "en": "What to map first",
+      "es": "Qué anotar primero"
+     },
+     "items": [
+      {
+       "en": "Reading",
+       "es": "Lectura"
+      },
+      {
+       "en": "Listening",
+       "es": "Comprensión auditiva"
+      },
+      {
+       "en": "Writing",
+       "es": "Escritura"
+      },
+      {
+       "en": "Speaking",
+       "es": "Expresión oral"
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Materials to gather",
+      "es": "Materiales que reunir"
+     },
+     "items": [
+      {
+       "en": "Official sample test",
+       "es": "Examen de muestra oficial"
+      },
+      {
+       "en": "Vocabulary list by topic",
+       "es": "Lista de vocabulario por tema"
+      },
+      {
+       "en": "Recordings for listening practice",
+       "es": "Grabaciones para practicar"
+      },
+      {
+       "en": "A partner or tutor for speaking",
+       "es": "Un compañero o tutor para hablar"
+      }
+     ]
+    }
+   ],
+   "tips": [
+    {
+     "en": "Put the four skills in every week; skipping speaking until the end is the most common regret.",
+     "es": "Incluye las cuatro destrezas cada semana; dejar la expresión oral para el final es el arrepentimiento más común."
+    },
+    {
+     "en": "In the practice log, write the exact kind of question you missed, not only the score.",
+     "es": "En el registro de simulacros, anota el tipo exacto de pregunta que fallaste, no solo la nota."
+    }
+   ],
+   "slug": {
+    "en": "language-exam-study-planner",
+    "es": "planificador-de-estudio-para-examenes-de-idiomas"
+   },
+   "who": {
+    "en": "Learners preparing a language certification",
+    "es": "Estudiantes que preparan una certificación de idioma"
+   },
+   "contents": {
+    "en": [
+     {
+      "t": "Your starting point",
+      "i": "Be honest: this page sets the plan."
+     },
+     {
+      "t": "Syllabus map",
+      "i": "One row per topic. Mark each pass."
+     },
+     {
+      "t": "Weekly timetable",
+      "i": "Plan blocks, not hours. Copy this page for each week."
+     },
+     {
+      "t": "Practice test log",
+      "i": "Your mistakes tell you what to study next."
+     },
+     {
+      "t": "Exam day checklist",
+      "i": "Prepare it the night before."
+     }
+    ],
+    "es": [
+     {
+      "t": "Tu punto de partida",
+      "i": "Sé sincero: esta página define el plan."
+     },
+     {
+      "t": "Mapa del temario",
+      "i": "Una fila por tema. Marca cada pasada."
+     },
+     {
+      "t": "Horario semanal",
+      "i": "Planifica bloques, no horas. Copia esta página para cada semana."
+     },
+     {
+      "t": "Registro de simulacros",
+      "i": "Tus errores dicen qué estudiar después."
+     },
+     {
+      "t": "Lista para el día del examen",
+      "i": "Prepárala la noche anterior."
+     }
+    ]
+   },
+   "pages": {
+    "en": 10,
+    "es": 10
+   },
+   "img": {
+    "en": {
+     "cover": "/plantillas/language-exam-en-portada.png",
+     "preview": "/plantillas/language-exam-en-muestra.png"
+    },
+    "es": {
+     "cover": "/plantillas/language-exam-es-portada.png",
+     "preview": "/plantillas/language-exam-es-muestra.png"
+    }
+   }
+  },
+  {
+   "id": "first-job",
+   "family": "jobsearch",
+   "price": 799,
+   "title": {
+    "en": "First Job Search Workbook",
+    "es": "Cuaderno para buscar tu primer empleo"
+   },
+   "lists": [
+    {
+     "label": {
+      "en": "Where to look",
+      "es": "Dónde buscar"
+     },
+     "items": [
+      {
+       "en": "Campus career office",
+       "es": "Oficina de empleo de la universidad"
+      },
+      {
+       "en": "Internship and trainee programs",
+       "es": "Programas de internado y práctica"
+      },
+      {
+       "en": "People you know and their employers",
+       "es": "Conocidos y sus lugares de trabajo"
+      },
+      {
+       "en": "Job boards for entry-level roles",
+       "es": "Portales con puestos de entrada"
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "What to have ready",
+      "es": "Qué tener listo"
+     },
+     "items": [
+      {
+       "en": "One-page résumé",
+       "es": "Résumé de una página"
+      },
+      {
+       "en": "Two people who agreed to be references",
+       "es": "Dos personas que aceptaron ser referencia"
+      },
+      {
+       "en": "A short answer about what you studied and why",
+       "es": "Una respuesta corta sobre qué estudiaste y por qué"
+      },
+      {
+       "en": "Examples from classes, projects or volunteering",
+       "es": "Ejemplos de clases, proyectos o voluntariado"
+      }
+     ]
+    }
+   ],
+   "tips": [
+    {
+     "en": "Without work history, use the interview page to prepare three stories from projects or volunteering.",
+     "es": "Sin historial laboral, usa la página de entrevista para preparar tres historias de proyectos o voluntariado."
+    },
+    {
+     "en": "Follow up one week after each application and write the date in the tracker.",
+     "es": "Da seguimiento una semana después de cada solicitud y anota la fecha en el control."
+    }
+   ],
+   "slug": {
+    "en": "first-job-search-workbook",
+    "es": "cuaderno-para-buscar-tu-primer-empleo"
+   },
+   "who": {
+    "en": "Students and recent graduates looking for their first job",
+    "es": "Estudiantes y recién graduados que buscan su primer empleo"
+   },
+   "contents": {
+    "en": [
+     {
+      "t": "Application tracker",
+      "i": "One row per application."
+     },
+     {
+      "t": "CV checklist",
+      "i": "Check before every submission."
+     },
+     {
+      "t": "Interview preparation",
+      "i": "Fill in one page per interview."
+     },
+     {
+      "t": "Network list",
+      "i": "People who can open a door."
+     }
+    ],
+    "es": [
+     {
+      "t": "Seguimiento de candidaturas",
+      "i": "Una fila por candidatura."
+     },
+     {
+      "t": "Lista para el currículum",
+      "i": "Revísala antes de cada envío."
+     },
+     {
+      "t": "Preparación de entrevista",
+      "i": "Completa una página por entrevista."
+     },
+     {
+      "t": "Lista de contactos",
+      "i": "Personas que pueden abrir una puerta."
+     }
+    ]
+   },
+   "pages": {
+    "en": 9,
+    "es": 9
+   },
+   "img": {
+    "en": {
+     "cover": "/plantillas/first-job-en-portada.png",
+     "preview": "/plantillas/first-job-en-muestra.png"
+    },
+    "es": {
+     "cover": "/plantillas/first-job-es-portada.png",
+     "preview": "/plantillas/first-job-es-muestra.png"
+    }
+   }
+  },
+  {
+   "id": "career-change",
+   "family": "jobsearch",
+   "price": 799,
+   "title": {
+    "en": "Career Change Workbook",
+    "es": "Cuaderno para cambiar de carrera"
+   },
+   "lists": [
+    {
+     "label": {
+      "en": "Where to look",
+      "es": "Dónde buscar"
+     },
+     "items": [
+      {
+       "en": "People already working in the new field",
+       "es": "Personas que ya trabajan en el nuevo campo"
+      },
+      {
+       "en": "Roles that mix your old and new skills",
+       "es": "Puestos que mezclan tus destrezas viejas y nuevas"
+      },
+      {
+       "en": "Professional associations",
+       "es": "Asociaciones profesionales"
+      },
+      {
+       "en": "Courses with employer contacts",
+       "es": "Cursos con contacto con patronos"
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "What to have ready",
+      "es": "Qué tener listo"
+     },
+     "items": [
+      {
+       "en": "Résumé rewritten around transferable skills",
+       "es": "Résumé reescrito alrededor de destrezas transferibles"
+      },
+      {
+       "en": "A clear reason for the change",
+       "es": "Una razón clara para el cambio"
+      },
+      {
+       "en": "Proof of the new skill: course, project or certificate",
+       "es": "Prueba de la nueva destreza: curso, proyecto o certificado"
+      },
+      {
+       "en": "Salary range you can accept at the start",
+       "es": "Rango salarial que puedes aceptar al inicio"
+      }
+     ]
+    }
+   ],
+   "tips": [
+    {
+     "en": "Use the network list for short conversations with people in the new field before you apply anywhere.",
+     "es": "Usa la lista de contactos para conversaciones cortas con gente del nuevo campo antes de solicitar."
+    },
+    {
+     "en": "On the interview page, prepare the answer to why you are leaving your field; it will be asked every time.",
+     "es": "En la página de entrevista, prepara la respuesta a por qué dejas tu campo; te lo preguntarán siempre."
+    }
+   ],
+   "slug": {
+    "en": "career-change-workbook",
+    "es": "cuaderno-para-cambiar-de-carrera"
+   },
+   "who": {
+    "en": "Experienced workers moving to a different field",
+    "es": "Personas con experiencia que se mueven a otro campo"
+   },
+   "contents": {
+    "en": [
+     {
+      "t": "Application tracker",
+      "i": "One row per application."
+     },
+     {
+      "t": "CV checklist",
+      "i": "Check before every submission."
+     },
+     {
+      "t": "Interview preparation",
+      "i": "Fill in one page per interview."
+     },
+     {
+      "t": "Network list",
+      "i": "People who can open a door."
+     }
+    ],
+    "es": [
+     {
+      "t": "Seguimiento de candidaturas",
+      "i": "Una fila por candidatura."
+     },
+     {
+      "t": "Lista para el currículum",
+      "i": "Revísala antes de cada envío."
+     },
+     {
+      "t": "Preparación de entrevista",
+      "i": "Completa una página por entrevista."
+     },
+     {
+      "t": "Lista de contactos",
+      "i": "Personas que pueden abrir una puerta."
+     }
+    ]
+   },
+   "pages": {
+    "en": 9,
+    "es": 9
+   },
+   "img": {
+    "en": {
+     "cover": "/plantillas/career-change-en-portada.png",
+     "preview": "/plantillas/career-change-en-muestra.png"
+    },
+    "es": {
+     "cover": "/plantillas/career-change-es-portada.png",
+     "preview": "/plantillas/career-change-es-muestra.png"
+    }
+   }
+  },
+  {
+   "id": "working-parents",
+   "family": "planner",
+   "price": 699,
+   "title": {
+    "en": "Weekly Planner for Working Parents",
+    "es": "Planificador semanal para madres y padres que trabajan"
+   },
+   "lists": [
+    {
+     "label": {
+      "en": "Fixed blocks to write first",
+      "es": "Bloques fijos que anotar primero"
+     },
+     "items": [
+      {
+       "en": "Work hours",
+       "es": "Horario de trabajo"
+      },
+      {
+       "en": "School drop-off and pick-up",
+       "es": "Llevar y recoger en la escuela"
+      },
+      {
+       "en": "Activities and appointments",
+       "es": "Actividades y citas"
+      },
+      {
+       "en": "Meals to plan",
+       "es": "Comidas que planificar"
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Habits worth tracking",
+      "es": "Hábitos que vale la pena registrar"
+     },
+     "items": [
+      {
+       "en": "Lunches and bags packed the night before",
+       "es": "Loncheras y bultos listos la noche anterior"
+      },
+      {
+       "en": "One block of time for yourself",
+       "es": "Un bloque de tiempo para ti"
+      },
+      {
+       "en": "Bedtime for the children",
+       "es": "Hora de dormir de los niños"
+      },
+      {
+       "en": "Ten-minute tidy up",
+       "es": "Diez minutos de recoger"
+      }
+     ]
+    }
+   ],
+   "tips": [
+    {
+     "en": "Fill in the children's schedule before your own priorities; it shows the hours you really have.",
+     "es": "Llena primero el horario de los niños y después tus prioridades; así ves las horas que de verdad tienes."
+    },
+    {
+     "en": "Plan the week on the same day with whoever shares the pick-ups.",
+     "es": "Planifiquen la semana el mismo día con quien comparte las recogidas."
+    }
+   ],
+   "slug": {
+    "en": "weekly-planner-for-working-parents",
+    "es": "planificador-semanal-para-madres-y-padres-que-trabajan"
+   },
+   "who": {
+    "en": "Parents who combine a job with school and family schedules",
+    "es": "Madres y padres que combinan trabajo con horarios de escuela y familia"
+   },
+   "contents": {
+    "en": [
+     {
+      "t": "Three priorities",
+      "i": "If only three things get done, which ones?"
+     },
+     {
+      "t": "Week at a glance",
+      "i": "Appointments first, then focus blocks."
+     },
+     {
+      "t": "Habit tracker",
+      "i": "Few habits, tracked daily."
+     },
+     {
+      "t": "Priority matrix",
+      "i": "Sort tasks before you start them."
+     },
+     {
+      "t": "Weekly review",
+      "i": "Ten minutes on the last day of the week."
+     }
+    ],
+    "es": [
+     {
+      "t": "Tres prioridades",
+      "i": "Si solo salen tres cosas, ¿cuáles?"
+     },
+     {
+      "t": "La semana de un vistazo",
+      "i": "Primero las citas, luego los bloques de enfoque."
+     },
+     {
+      "t": "Registro de hábitos",
+      "i": "Pocos hábitos, registrados a diario."
+     },
+     {
+      "t": "Matriz de prioridades",
+      "i": "Ordena las tareas antes de empezarlas."
+     },
+     {
+      "t": "Revisión semanal",
+      "i": "Diez minutos el último día de la semana."
+     }
+    ]
+   },
+   "pages": {
+    "en": 10,
+    "es": 10
+   },
+   "img": {
+    "en": {
+     "cover": "/plantillas/working-parents-en-portada.png",
+     "preview": "/plantillas/working-parents-en-muestra.png"
+    },
+    "es": {
+     "cover": "/plantillas/working-parents-es-portada.png",
+     "preview": "/plantillas/working-parents-es-muestra.png"
+    }
+   }
+  },
+  {
+   "id": "students",
+   "family": "planner",
+   "price": 699,
+   "title": {
+    "en": "Weekly Planner for Students",
+    "es": "Planificador semanal para estudiantes"
+   },
+   "lists": [
+    {
+     "label": {
+      "en": "Fixed blocks to write first",
+      "es": "Bloques fijos que anotar primero"
+     },
+     "items": [
+      {
+       "en": "Class schedule",
+       "es": "Horario de clases"
+      },
+      {
+       "en": "Assignment due dates",
+       "es": "Fechas de entrega"
+      },
+      {
+       "en": "Work shifts or practice",
+       "es": "Turnos de trabajo o prácticas"
+      },
+      {
+       "en": "Travel time",
+       "es": "Tiempo de viaje"
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Habits worth tracking",
+      "es": "Hábitos que vale la pena registrar"
+     },
+     "items": [
+      {
+       "en": "Review of the day's notes",
+       "es": "Repaso de los apuntes del día"
+      },
+      {
+       "en": "Reading ahead for the next class",
+       "es": "Lectura previa de la próxima clase"
+      },
+      {
+       "en": "Sleep before midnight",
+       "es": "Dormir antes de la medianoche"
+      },
+      {
+       "en": "Phone away during study blocks",
+       "es": "Teléfono lejos durante el estudio"
+      }
+     ]
+    }
+   ],
+   "tips": [
+    {
+     "en": "Write each assignment on the day you will start it, not on the day it is due.",
+     "es": "Anota cada asignación el día en que la vas a empezar, no el día en que se entrega."
+    },
+    {
+     "en": "Use the weekly review to move unfinished work to a specific block, not to a general list.",
+     "es": "Usa la revisión semanal para mover lo pendiente a un bloque concreto, no a una lista general."
+    }
+   ],
+   "slug": {
+    "en": "weekly-planner-for-students",
+    "es": "planificador-semanal-para-estudiantes"
+   },
+   "who": {
+    "en": "High school and college students",
+    "es": "Estudiantes de escuela superior y universidad"
+   },
+   "contents": {
+    "en": [
+     {
+      "t": "Three priorities",
+      "i": "If only three things get done, which ones?"
+     },
+     {
+      "t": "Week at a glance",
+      "i": "Appointments first, then focus blocks."
+     },
+     {
+      "t": "Habit tracker",
+      "i": "Few habits, tracked daily."
+     },
+     {
+      "t": "Priority matrix",
+      "i": "Sort tasks before you start them."
+     },
+     {
+      "t": "Weekly review",
+      "i": "Ten minutes on the last day of the week."
+     }
+    ],
+    "es": [
+     {
+      "t": "Tres prioridades",
+      "i": "Si solo salen tres cosas, ¿cuáles?"
+     },
+     {
+      "t": "La semana de un vistazo",
+      "i": "Primero las citas, luego los bloques de enfoque."
+     },
+     {
+      "t": "Registro de hábitos",
+      "i": "Pocos hábitos, registrados a diario."
+     },
+     {
+      "t": "Matriz de prioridades",
+      "i": "Ordena las tareas antes de empezarlas."
+     },
+     {
+      "t": "Revisión semanal",
+      "i": "Diez minutos el último día de la semana."
+     }
+    ]
+   },
+   "pages": {
+    "en": 10,
+    "es": 10
+   },
+   "img": {
+    "en": {
+     "cover": "/plantillas/students-en-portada.png",
+     "preview": "/plantillas/students-en-muestra.png"
+    },
+    "es": {
+     "cover": "/plantillas/students-es-portada.png",
+     "preview": "/plantillas/students-es-muestra.png"
+    }
+   }
+  },
+  {
+   "id": "freelancers",
+   "family": "planner",
+   "price": 699,
+   "title": {
+    "en": "Weekly Planner for Freelancers",
+    "es": "Planificador semanal para freelancers"
+   },
+   "lists": [
+    {
+     "label": {
+      "en": "Fixed blocks to write first",
+      "es": "Bloques fijos que anotar primero"
+     },
+     "items": [
+      {
+       "en": "Client deadlines",
+       "es": "Fechas de entrega de clientes"
+      },
+      {
+       "en": "Calls and meetings",
+       "es": "Llamadas y reuniones"
+      },
+      {
+       "en": "Invoicing and follow-ups",
+       "es": "Facturación y seguimientos"
+      },
+      {
+       "en": "Time to look for new work",
+       "es": "Tiempo para buscar trabajo nuevo"
+      }
+     ]
+    },
+    {
+     "label": {
+      "en": "Habits worth tracking",
+      "es": "Hábitos que vale la pena registrar"
+     },
+     "items": [
+      {
+       "en": "Hours worked per client",
+       "es": "Horas trabajadas por cliente"
+      },
+      {
+       "en": "Invoices sent on time",
+       "es": "Facturas enviadas a tiempo"
+      },
+      {
+       "en": "A fixed end to the workday",
+       "es": "Una hora fija para terminar el día"
+      },
+      {
+       "en": "One outreach message a day",
+       "es": "Un mensaje de contacto al día"
+      }
+     ]
+    }
+   ],
+   "tips": [
+    {
+     "en": "Give invoicing its own block each week; unbilled work is the easiest money to lose.",
+     "es": "Dale a la facturación su propio bloque cada semana; el trabajo sin facturar es el dinero más fácil de perder."
+    },
+    {
+     "en": "Put the hardest client task in your first focus block of the day.",
+     "es": "Pon la tarea más difícil de un cliente en tu primer bloque de enfoque del día."
+    }
+   ],
+   "slug": {
+    "en": "weekly-planner-for-freelancers",
+    "es": "planificador-semanal-para-freelancers"
+   },
+   "who": {
+    "en": "Freelancers who manage several clients at once",
+    "es": "Freelancers que manejan varios clientes a la vez"
+   },
+   "contents": {
+    "en": [
+     {
+      "t": "Three priorities",
+      "i": "If only three things get done, which ones?"
+     },
+     {
+      "t": "Week at a glance",
+      "i": "Appointments first, then focus blocks."
+     },
+     {
+      "t": "Habit tracker",
+      "i": "Few habits, tracked daily."
+     },
+     {
+      "t": "Priority matrix",
+      "i": "Sort tasks before you start them."
+     },
+     {
+      "t": "Weekly review",
+      "i": "Ten minutes on the last day of the week."
+     }
+    ],
+    "es": [
+     {
+      "t": "Tres prioridades",
+      "i": "Si solo salen tres cosas, ¿cuáles?"
+     },
+     {
+      "t": "La semana de un vistazo",
+      "i": "Primero las citas, luego los bloques de enfoque."
+     },
+     {
+      "t": "Registro de hábitos",
+      "i": "Pocos hábitos, registrados a diario."
+     },
+     {
+      "t": "Matriz de prioridades",
+      "i": "Ordena las tareas antes de empezarlas."
+     },
+     {
+      "t": "Revisión semanal",
+      "i": "Diez minutos el último día de la semana."
+     }
+    ]
+   },
+   "pages": {
+    "en": 10,
+    "es": 10
+   },
+   "img": {
+    "en": {
+     "cover": "/plantillas/freelancers-en-portada.png",
+     "preview": "/plantillas/freelancers-en-muestra.png"
+    },
+    "es": {
+     "cover": "/plantillas/freelancers-es-portada.png",
+     "preview": "/plantillas/freelancers-es-muestra.png"
+    }
+   }
+  }
+ ]
+}
